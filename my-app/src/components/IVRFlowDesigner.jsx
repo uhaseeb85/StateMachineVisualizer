@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Plus, Save, Upload, Trash2, Play } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Plus, Save, Upload, Trash2, Play, RotateCcw } from 'lucide-react';
 
 const IVRFlowDesigner = () => {
   const [states, setStates] = useState([]);
   const [selectedState, setSelectedState] = useState(null);
   const [showSimulation, setShowSimulation] = useState(false);
+  const [newStateName, setNewStateName] = useState('');
   const [simulationState, setSimulationState] = useState({
     currentState: null,
-    selectedRule: null,
-    ruleOutcome: null
+    currentRule: null,
+    path: [],
+    status: 'initial'
   });
-  const [newStateName, setNewStateName] = useState('');
 
-  // Load saved state from localStorage on component mount
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
     if (savedFlow) {
@@ -23,42 +23,10 @@ const IVRFlowDesigner = () => {
     }
   }, []);
 
-  // Save state to localStorage
   const saveFlow = () => {
     localStorage.setItem('ivrFlow', JSON.stringify(states));
   };
 
-  // Export flow as JSON file
-  const exportFlow = () => {
-    const dataStr = JSON.stringify(states, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    const exportFileDefaultName = 'ivr-flow.json';
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
-
-  // Import flow from JSON file
-  const importFlow = (event) => {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const importedStates = JSON.parse(e.target.result);
-        setStates(importedStates);
-        localStorage.setItem('ivrFlow', JSON.stringify(importedStates));
-      } catch (error) {
-        console.error('Error importing flow:', error);
-      }
-    };
-    
-    reader.readAsText(file);
-  };
-
-  // Add new state
   const addState = () => {
     if (newStateName.trim()) {
       const newState = {
@@ -71,7 +39,6 @@ const IVRFlowDesigner = () => {
     }
   };
 
-  // Add rule to state
   const addRule = (stateId) => {
     const updatedStates = states.map(state => {
       if (state.id === stateId) {
@@ -89,7 +56,6 @@ const IVRFlowDesigner = () => {
     setStates(updatedStates);
   };
 
-  // Update rule
   const updateRule = (stateId, ruleId, field, value) => {
     const updatedStates = states.map(state => {
       if (state.id === stateId) {
@@ -106,7 +72,6 @@ const IVRFlowDesigner = () => {
     setStates(updatedStates);
   };
 
-  // Delete rule
   const deleteRule = (stateId, ruleId) => {
     const updatedStates = states.map(state => {
       if (state.id === stateId) {
@@ -120,7 +85,6 @@ const IVRFlowDesigner = () => {
     setStates(updatedStates);
   };
 
-  // Delete state
   const deleteState = (stateId) => {
     setStates(states.filter(state => state.id !== stateId));
     if (selectedState === stateId) {
@@ -128,249 +92,306 @@ const IVRFlowDesigner = () => {
     }
   };
 
-  return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="text-2xl font-bold">IVR Flow Designer</div>
-          <div className="space-x-2">
-            <Button onClick={saveFlow}>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-            <Button onClick={exportFlow}>Export</Button>
-            <Button onClick={() => {
-              setShowSimulation(true);
-              setSimulationState({
-                currentState: states[0]?.id || null,
-                selectedRule: null,
-                ruleOutcome: null
-              });
-            }}>
-              <Play className="w-4 h-4 mr-2" />
-              Simulate
-            </Button>
-            <Button className="relative">
-              <input
-                type="file"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={importFlow}
-                accept=".json"
-              />
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
+  const importFlow = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const importedStates = JSON.parse(e.target.result);
+        setStates(importedStates);
+        localStorage.setItem('ivrFlow', JSON.stringify(importedStates));
+      } catch (error) {
+        console.error('Error importing flow:', error);
+      }
+    };
+    
+    reader.readAsText(file);
+  };
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* States List */}
-        <div className="col-span-4">
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">States</h3>
-              <div className="flex space-x-2">
-                <Input
-                  placeholder="New state name"
-                  value={newStateName}
-                  onChange={(e) => setNewStateName(e.target.value)}
-                  className="flex-1"
-                />
-                <Button onClick={addState}>
-                  <Plus className="w-4 h-4" />
+  const startSimulation = () => {
+    if (states.length === 0) {
+      alert("Please add at least one state to simulate");
+      return;
+    }
+    
+    setSimulationState({
+      currentState: states[0].id,
+      currentRule: null,
+      path: [{ type: 'state', id: states[0].id }],
+      status: 'initial'
+    });
+    setShowSimulation(true);
+  };
+
+  const handleStateClick = (stateId) => {
+    const currentState = states.find(s => s.id === stateId);
+    if (!currentState || currentState.rules.length === 0) {
+      alert("This state has no rules");
+      return;
+    }
+
+    if (simulationState.status !== 'initial') return;
+
+    const firstRule = currentState.rules[0];
+    setSimulationState(prev => ({
+      ...prev,
+      currentRule: firstRule.id,
+      path: [...prev.path, { type: 'rule', id: firstRule.id }],
+      status: 'selecting-rule'
+    }));
+  };
+
+  const handleRuleClick = (ruleId) => {
+    if (simulationState.status !== 'selecting-rule') return;
+    
+    setSimulationState(prev => ({
+      ...prev,
+      status: 'showing-outcomes'
+    }));
+  };
+
+  const handleOutcome = (outcome) => {
+    const currentState = states.find(s => s.id === simulationState.currentState);
+    const currentRule = currentState?.rules.find(r => r.id === simulationState.currentRule);
+
+    if (outcome === 'success' && currentRule?.nextState) {
+      setSimulationState(prev => ({
+        currentState: currentRule.nextState,
+        currentRule: null,
+        path: [...prev.path, { type: 'state', id: currentRule.nextState }],
+        status: 'initial'
+      }));
+    } else if (outcome === 'failure') {
+      const currentRuleIndex = currentState.rules.findIndex(r => r.id === simulationState.currentRule);
+      const nextRule = currentState.rules[currentRuleIndex + 1];
+
+      if (nextRule) {
+        setSimulationState(prev => ({
+          ...prev,
+          currentRule: nextRule.id,
+          path: [...prev.path, { type: 'rule', id: nextRule.id }],
+          status: 'selecting-rule'
+        }));
+      } else {
+        // No more rules, end simulation
+        setSimulationState(prev => ({
+          ...prev,
+          path: [...prev.path, { type: 'state', id: 'end' }],
+          status: 'completed'
+        }));
+      }
+    }
+  };
+
+  const renderSimulationNode = (node, index) => {
+    if (node.type === 'state') {
+      const state = node.id === 'end' ? { name: 'END' } : states.find(s => s.id === node.id);
+      return (
+        <div 
+          key={index}
+          className={`
+            w-32 h-32 rounded-full flex items-center justify-center text-white
+            ${node.id === 'end' 
+              ? 'bg-gray-500' 
+              : simulationState.status === 'initial' && node.id === simulationState.currentState
+                ? 'bg-blue-600 cursor-pointer hover:bg-blue-700'
+                : 'bg-blue-400'
+            }
+            transition-colors
+          `}
+          onClick={() => {
+            if (simulationState.status === 'initial' && node.id === simulationState.currentState) {
+              handleStateClick(node.id);
+            }
+          }}
+        >
+          {state?.name || 'Unknown'}
+        </div>
+      );
+    }
+
+    if (node.type === 'rule') {
+      const currentState = states.find(s => s.id === simulationState.currentState);
+      const rule = currentState?.rules.find(r => r.id === node.id);
+      return (
+        <div 
+          key={index}
+          className={`
+            w-40 h-40 rotate-45 flex items-center justify-center
+            ${simulationState.status === 'selecting-rule' && node.id === simulationState.currentRule
+              ? 'bg-yellow-600 cursor-pointer hover:bg-yellow-700'
+              : 'bg-yellow-400'
+            }
+            transition-colors
+          `}
+          onClick={() => {
+            if (simulationState.status === 'selecting-rule' && node.id === simulationState.currentRule) {
+              handleRuleClick(node.id);
+            }
+          }}
+        >
+          <span className="-rotate-45 text-white">
+            {rule?.condition || 'Unknown'}
+          </span>
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">IVR Flow Designer</h1>
+      
+      {/* Add State Section */}
+      <div className="mb-4 flex gap-4 items-center">
+        <Input
+          type="text"
+          value={newStateName}
+          onChange={(e) => setNewStateName(e.target.value)}
+          placeholder="Enter state name"
+          className="max-w-xs"
+        />
+        <Button onClick={addState}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add State
+        </Button>
+        <Button onClick={saveFlow}>
+          <Save className="w-4 h-4 mr-2" />
+          Save Flow
+        </Button>
+        <Button onClick={startSimulation}>
+          <Play className="w-4 h-4 mr-2" />
+          Simulate
+        </Button>
+        <input
+          type="file"
+          onChange={importFlow}
+          className="hidden"
+          id="flow-import"
+        />
+        <Button onClick={() => document.getElementById('flow-import').click()}>
+          <Upload className="w-4 h-4 mr-2" />
+          Import
+        </Button>
+      </div>
+
+      {/* States List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {states.map(state => (
+          <Card key={state.id} className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">{state.name}</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteState(state.id)}
+                className="text-red-500 hover:text-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <Button
+              onClick={() => setSelectedState(state.id === selectedState ? null : state.id)}
+              className="w-full mb-2"
+            >
+              {state.id === selectedState ? 'Hide Rules' : 'Manage Rules'}
+            </Button>
+
+            {selectedState === state.id && (
+              <div className="space-y-2 mt-4">
+                <Button
+                  onClick={() => addRule(state.id)}
+                  className="w-full"
+                >
+                  Add Rule
                 </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {states.map(state => (
-                  <div
-                    key={state.id}
-                    className="flex items-center justify-between p-2 rounded border hover:bg-gray-50 cursor-pointer"
-                    onClick={() => setSelectedState(state.id)}
-                  >
-                    <span className="font-medium">{state.name}</span>
+                {state.rules.map(rule => (
+                  <div key={rule.id} className="space-y-2 p-2 border rounded">
+                    <Input
+                      value={rule.condition}
+                      onChange={(e) => updateRule(state.id, rule.id, 'condition', e.target.value)}
+                      placeholder="Rule condition"
+                    />
+                    <select
+                      value={rule.nextState}
+                      onChange={(e) => updateRule(state.id, rule.id, 'nextState', e.target.value)}
+                      className="w-full border rounded p-2"
+                    >
+                      <option value="">Select next state</option>
+                      {states.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteState(state.id);
-                      }}
+                      onClick={() => deleteRule(state.id, rule.id)}
+                      className="text-red-500 hover:text-red-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 ))}
               </div>
-            </CardContent>
+            )}
           </Card>
-        </div>
-
-        {/* Rules Editor */}
-        <div className="col-span-8">
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">
-                {selectedState
-                  ? `Rules for ${states.find(s => s.id === selectedState)?.name}`
-                  : 'Select a state to edit rules'}
-              </h3>
-              {selectedState && (
-                <Button onClick={() => addRule(selectedState)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Rule
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {selectedState && (
-                <div className="space-y-4">
-                  {states
-                    .find(s => s.id === selectedState)
-                    ?.rules.map(rule => (
-                      <div
-                        key={rule.id}
-                        className="flex items-center space-x-2 p-4 border rounded"
-                      >
-                        <Input
-                          placeholder="Condition"
-                          value={rule.condition}
-                          onChange={(e) =>
-                            updateRule(
-                              selectedState,
-                              rule.id,
-                              'condition',
-                              e.target.value
-                            )
-                          }
-                          className="flex-1"
-                        />
-                        <select
-                          value={rule.nextState}
-                          onChange={(e) =>
-                            updateRule(
-                              selectedState,
-                              rule.id,
-                              'nextState',
-                              e.target.value
-                            )
-                          }
-                          className="border rounded p-2"
-                        >
-                          <option value="">Select next state</option>
-                          {states.map(state => (
-                            <option key={state.id} value={state.id}>
-                              {state.name}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteRule(selectedState, rule.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        ))}
       </div>
 
       {/* Simulation Modal */}
       {showSimulation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-4/5 h-4/5 overflow-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-4/5 h-4/5 overflow-auto relative">
             <div className="flex justify-between mb-4">
               <h2 className="text-xl font-bold">Flow Simulation</h2>
-              <Button onClick={() => setShowSimulation(false)}>Close</Button>
+              <Button
+                onClick={() => setShowSimulation(false)}
+                className="bg-red-500 hover:bg-red-600 transition"
+              >
+                Close
+              </Button>
             </div>
-            
-            <div className="flex flex-wrap gap-4 justify-center items-center min-h-96">
-              {/* Current State Block */}
-              {simulationState.currentState && (
-                <div 
-                  className="relative"
-                  onClick={() => {
-                    if (!simulationState.selectedRule) {
-                      setSimulationState(prev => ({
-                        ...prev,
-                        selectedRule: states.find(s => s.id === prev.currentState)?.rules[0]?.id || null
-                      }));
-                    }
-                  }}
-                >
-                  <div className={`p-4 rounded-lg ${
-                    !simulationState.selectedRule ? 'bg-blue-500 cursor-pointer' : 'bg-gray-400'
-                  } text-white font-semibold min-w-40 text-center`}>
-                    {states.find(s => s.id === simulationState.currentState)?.name}
-                  </div>
-                  {simulationState.selectedRule && (
-                    <div className="h-8 w-0.5 bg-black mx-auto mt-2" />
-                  )}
-                </div>
-              )}
 
-              {/* Rule Block */}
-              {simulationState.selectedRule && !simulationState.ruleOutcome && (
-                <div className="relative">
-                  <div 
-                    className="p-4 rounded-lg bg-yellow-500 text-white font-semibold min-w-40 text-center cursor-pointer"
-                    onClick={() => setSimulationState(prev => ({...prev, ruleOutcome: 'pending'}))}
-                  >
-                    {states
-                      .find(s => s.id === simulationState.currentState)
-                      ?.rules.find(r => r.id === simulationState.selectedRule)
-                      ?.condition}
+            {/* Simulation Content */}
+            <div className="min-h-[400px] border rounded-lg p-4 relative">
+              {/* Path Visualization */}
+              <div className="flex flex-wrap gap-8 items-center justify-start">
+                {simulationState.path.map((node, index) => (
+                  <div key={index} className="flex items-center">
+                    {renderSimulationNode(node, index)}
+                    {index < simulationState.path.length - 1 && (
+                      <div className="w-8 h-0.5 bg-gray-400 mx-2" />
+                    )}
                   </div>
-                  {simulationState.ruleOutcome && (
-                    <div className="h-8 w-0.5 bg-black mx-auto mt-2" />
-                  )}
-                </div>
-              )}
+                ))}
+              </div>
 
-              {/* Outcome Blocks */}
-              {simulationState.ruleOutcome === 'pending' && (
-                <div className="flex gap-8">
-                  <div 
-                    className="p-4 rounded-lg bg-green-500 text-white font-semibold min-w-40 text-center cursor-pointer"
-                    onClick={() => {
-                      const rule = states
-                        .find(s => s.id === simulationState.currentState)
-                        ?.rules.find(r => r.id === simulationState.selectedRule);
-                      setSimulationState({
-                        currentState: rule?.nextState || null,
-                        selectedRule: null,
-                        ruleOutcome: null
-                      });
-                    }}
+              {/* Outcome Options */}
+              {simulationState.status === 'showing-outcomes' && (
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4">
+                  <Button
+                    onClick={() => handleOutcome('success')}
+                    className="bg-green-500 hover:bg-green-600 transition"
                   >
                     Success
-                  </div>
-                  <div 
-                    className="p-4 rounded-lg bg-red-500 text-white font-semibold min-w-40 text-center cursor-pointer"
-                    onClick={() => {
-                      const currentRules = states
-                        .find(s => s.id === simulationState.currentState)
-                        ?.rules || [];
-                      const currentRuleIndex = currentRules
-                        .findIndex(r => r.id === simulationState.selectedRule);
-                      const nextRule = currentRules[currentRuleIndex + 1];
-                      
-                      setSimulationState({
-                        currentState: simulationState.currentState,
-                        selectedRule: nextRule?.id || null,
-                        ruleOutcome: null
-                      });
-                    }}
+                  </Button>
+                  <Button
+                    onClick={() => handleOutcome('failure')}
+                    className="bg-red-500 hover:bg-red-600 transition"
                   >
                     Failure
-                  </div>
+                  </Button>
+                </div>
+              )}
+
+              {/* Instructions */}
+              {simulationState.status === 'initial' && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-gray-500">
+                  Click on the state to see its rules
                 </div>
               )}
             </div>
