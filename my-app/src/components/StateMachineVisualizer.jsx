@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download } from 'lucide-react';
 import FeedbackForm from './FeedbackForm';
+import HelpGuide from './HelpGuide';
 
 const StateMachineVisualizer = () => {
   const [states, setStates] = useState([]);
@@ -18,6 +19,8 @@ const StateMachineVisualizer = () => {
   });
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
@@ -46,6 +49,8 @@ const StateMachineVisualizer = () => {
 
   const saveFlow = () => {
     localStorage.setItem('ivrFlow', JSON.stringify(states));
+    setShowSaveNotification(true);
+    setTimeout(() => setShowSaveNotification(false), 2000); // Hide after 2 seconds
   };
 
   const addState = () => {
@@ -339,63 +344,97 @@ const StateMachineVisualizer = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+      {/* Save Notification */}
+      {showSaveNotification && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg 
+                      transition-opacity duration-300 flex items-center space-x-2 z-50">
+          <svg 
+            className="w-5 h-5" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M5 13l4 4L19 7" 
+            />
+          </svg>
+          <span>Flow saved successfully!</span>
+        </div>
+      )}
+
       <div className="container mx-auto p-4">
-        <div className="flex justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            State Machine Visualizer
-          </h1>
-          <div className="space-x-2 flex items-center">
-            <Button
-              onClick={() => setShowFeedback(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white text-sm
-                       dark:bg-blue-600 dark:hover:bg-blue-700"
-            >
-              Feedback
-            </Button>
-            <Button
-              onClick={toggleTheme}
-              variant="ghost"
-              className="w-10 h-10 p-0 text-gray-900 dark:text-white"
-            >
-              {isDarkMode ? (
-                <Sun className="h-5 w-5 text-yellow-500" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-            <Button 
-              onClick={saveFlow} 
-              className="bg-gray-900 hover:bg-gray-700 text-white 
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save Flow
-            </Button>
-            <Button 
-              onClick={startSimulation}
-              className="bg-orange-500 hover:bg-orange-600 text-white 
-                       dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Simulate
-            </Button>
-            <Button 
-              onClick={exportConfiguration}
-              className="bg-gray-900 hover:bg-gray-700 text-white 
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-            <Button 
-              onClick={() => document.getElementById('flow-import').click()}
-              className="bg-gray-900 hover:bg-gray-700 text-white 
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-            </Button>
+        <div className="flex justify-between mb-4 mr-[200px]">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              State Machine Visualizer
+            </h1>
+          </div>
+          <div className="flex items-center">
+            <div className="space-x-2 flex items-center mr-4">
+              <Button
+                onClick={() => setShowFeedback(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white text-sm
+                         dark:bg-blue-600 dark:hover:bg-blue-700"
+              >
+                Feedback
+              </Button>
+              <Button
+                onClick={toggleTheme}
+                variant="ghost"
+                className="w-10 h-10 p-0 text-gray-900 dark:text-white"
+              >
+                {isDarkMode ? (
+                  <Sun className="h-5 w-5 text-yellow-500" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
+              <Button 
+                onClick={saveFlow} 
+                className="bg-gray-900 hover:bg-gray-700 text-white text-sm
+                         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Flow
+              </Button>
+              <Button 
+                onClick={startSimulation}
+                className="bg-orange-500 hover:bg-orange-600 text-white text-sm
+                         dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Simulate
+              </Button>
+              <Button 
+                onClick={exportConfiguration}
+                className="bg-gray-900 hover:bg-gray-700 text-white text-sm
+                         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <Button 
+                onClick={() => document.getElementById('flow-import').click()}
+                className="bg-gray-900 hover:bg-gray-700 text-white text-sm
+                         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import
+              </Button>
+            </div>
+            <div className="border-l pl-4 dark:border-gray-700">
+              <Button
+                onClick={() => setShowHelp(true)}
+                className="bg-green-400 hover:bg-green-500 text-white text-sm
+                         dark:bg-green-500 dark:hover:bg-green-600"
+              >
+                User Guide
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -614,6 +653,9 @@ const StateMachineVisualizer = () => {
         {showFeedback && (
           <FeedbackForm onClose={() => setShowFeedback(false)} />
         )}
+
+        {/* Help Modal */}
+        {showHelp && <HelpGuide onClose={() => setShowHelp(false)} />}
       </div>
     </div>
   );
