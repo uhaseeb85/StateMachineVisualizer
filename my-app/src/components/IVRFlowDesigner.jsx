@@ -238,21 +238,25 @@ const IVRFlowDesigner = () => {
             </span>
           </div>
           
-          {/* Success/Failure buttons directly under the active rule */}
+          {/* Round Yes/No buttons under the active rule */}
           {simulationState.status === 'showing-outcomes' && 
            simulationState.currentRule === node.id && (
-            <div className="flex gap-2 -mt-1">
+            <div className="flex gap-4 -mt-1">
               <button
                 onClick={() => handleOutcome('success')}
-                className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded"
+                className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 
+                         text-white text-xs flex items-center justify-center 
+                         transition-colors shadow-sm hover:shadow"
               >
-                Success
+                Yes
               </button>
               <button
                 onClick={() => handleOutcome('failure')}
-                className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded"
+                className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 
+                         text-white text-xs flex items-center justify-center 
+                         transition-colors shadow-sm hover:shadow"
               >
-                Failure
+                No
               </button>
             </div>
           )}
@@ -263,105 +267,155 @@ const IVRFlowDesigner = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">IVR Flow Designer</h1>
-      
-      {/* Add State Section */}
-      <div className="mb-4 flex gap-4 items-center">
-        <Input
-          type="text"
-          value={newStateName}
-          onChange={(e) => setNewStateName(e.target.value)}
-          placeholder="Enter state name"
-          className="max-w-xs"
-        />
-        <Button onClick={addState}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add State
-        </Button>
-        <Button onClick={saveFlow}>
-          <Save className="w-4 h-4 mr-2" />
-          Save Flow
-        </Button>
-        <Button onClick={startSimulation}>
-          <Play className="w-4 h-4 mr-2" />
-          Simulate
-        </Button>
-        <input
-          type="file"
-          onChange={importFlow}
-          className="hidden"
-          id="flow-import"
-        />
-        <Button onClick={() => document.getElementById('flow-import').click()}>
-          <Upload className="w-4 h-4 mr-2" />
-          Import
-        </Button>
+      <div className="flex justify-between mb-4">
+        <h1 className="text-2xl font-bold">IVR Flow Designer</h1>
+        <div className="space-x-2">
+          <Button onClick={saveFlow}>
+            <Save className="w-4 h-4 mr-2" />
+            Save Flow
+          </Button>
+          <Button onClick={startSimulation}>
+            <Play className="w-4 h-4 mr-2" />
+            Simulate
+          </Button>
+          <input
+            type="file"
+            onChange={importFlow}
+            className="hidden"
+            id="flow-import"
+          />
+          <Button onClick={() => document.getElementById('flow-import').click()}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import
+          </Button>
+        </div>
       </div>
 
-      {/* States List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {states.map(state => (
-          <Card key={state.id} className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">{state.name}</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteState(state.id)}
-                className="text-red-500 hover:text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
+      <div className="flex gap-6">
+        {/* Left Side - States List */}
+        <div className="w-1/3 border rounded-lg p-4">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold mb-2">States</h2>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={newStateName}
+                onChange={(e) => setNewStateName(e.target.value)}
+                placeholder="Enter state name"
+                className="flex-1"
+              />
+              <Button onClick={addState}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add
               </Button>
             </div>
-            
-            <Button
-              onClick={() => setSelectedState(state.id === selectedState ? null : state.id)}
-              className="w-full mb-2"
-            >
-              {state.id === selectedState ? 'Hide Rules' : 'Manage Rules'}
-            </Button>
+          </div>
 
-            {selectedState === state.id && (
-              <div className="space-y-2 mt-4">
-                <Button
-                  onClick={() => addRule(state.id)}
-                  className="w-full"
-                >
+          <div className="space-y-2">
+            {states.map(state => (
+              <div 
+                key={state.id} 
+                className={`
+                  p-3 rounded-lg border cursor-pointer
+                  ${selectedState === state.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'}
+                `}
+                onClick={() => setSelectedState(state.id)}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{state.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteState(state.id);
+                    }}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {state.rules.length} rule{state.rules.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Side - Rule Management */}
+        <div className="w-2/3 border rounded-lg p-4">
+          {selectedState ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">
+                  Rules for {states.find(s => s.id === selectedState)?.name}
+                </h2>
+                <Button onClick={() => addRule(selectedState)}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Add Rule
                 </Button>
-                {state.rules.map(rule => (
-                  <div key={rule.id} className="space-y-2 p-2 border rounded">
-                    <Input
-                      value={rule.condition}
-                      onChange={(e) => updateRule(state.id, rule.id, 'condition', e.target.value)}
-                      placeholder="Rule condition"
-                    />
-                    <select
-                      value={rule.nextState}
-                      onChange={(e) => updateRule(state.id, rule.id, 'nextState', e.target.value)}
-                      className="w-full border rounded p-2"
-                    >
-                      <option value="">Select next state</option>
-                      {states.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteRule(state.id, rule.id)}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
               </div>
-            )}
-          </Card>
-        ))}
+              
+              <div className="space-y-4">
+                {states
+                  .find(s => s.id === selectedState)
+                  ?.rules.map((rule, index) => (
+                    <div key={rule.id} className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">Rule {index + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRule(selectedState, rule.id)}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          value={rule.condition}
+                          onChange={(e) =>
+                            updateRule(
+                              selectedState,
+                              rule.id,
+                              'condition',
+                              e.target.value
+                            )
+                          }
+                          placeholder="Rule condition"
+                        />
+                        <select
+                          value={rule.nextState}
+                          onChange={(e) =>
+                            updateRule(
+                              selectedState,
+                              rule.id,
+                              'nextState',
+                              e.target.value
+                            )
+                          }
+                          className="w-full border rounded-md p-2"
+                        >
+                          <option value="">Select next state</option>
+                          {states.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              Select a state to manage its rules
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Simulation Modal */}
