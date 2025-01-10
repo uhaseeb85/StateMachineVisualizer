@@ -118,21 +118,26 @@ const StateMachineVisualizer = () => {
     }
   };
 
-  const importFlow = (event) => {
+  const handleImport = (event) => {
     const file = event.target.files[0];
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const importedStates = JSON.parse(e.target.result);
-        setStates(importedStates);
-        localStorage.setItem('ivrFlow', JSON.stringify(importedStates));
-      } catch (error) {
-        console.error('Error importing flow:', error);
-      }
-    };
-    
-    reader.readAsText(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          // Add confirmation dialog
+          if (window.confirm('Are you sure you want to import? This will overwrite your current configuration.')) {
+            setStates(importedData);
+            localStorage.setItem('ivrFlow', JSON.stringify(importedData));
+            alert('Configuration imported successfully!');
+          }
+        } catch (error) {
+          alert('Error importing file. Please make sure it\'s a valid configuration file.');
+          console.error('Import error:', error);
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   const startSimulation = () => {
@@ -292,77 +297,28 @@ const StateMachineVisualizer = () => {
   };
 
   const exportConfiguration = () => {
-    const configuration = {
-      states,
-      version: '1.0',
-      exportDate: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(configuration, null, 2)], { 
-      type: 'application/json' 
-    });
+    const configuration = JSON.stringify(states, null, 2);
+    const blob = new Blob([configuration], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ivr-flow-config-${new Date().toISOString().split('T')[0]}.json`;
-    
-    document.body.appendChild(link);
-    link.click();
-    
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `state-machine-config-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const importConfiguration = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    event.target.value = '';
-
-    const confirmed = window.confirm(
-      'Importing a configuration will overwrite your current setup. Are you sure you want to continue?'
-    );
-
-    if (!confirmed) return;
-
-    try {
-      const text = await file.text();
-      const configuration = JSON.parse(text);
-
-      if (!Array.isArray(configuration.states)) {
-        throw new Error('Invalid configuration format');
-      }
-
-      setStates(configuration.states);
-      localStorage.setItem('ivrFlow', JSON.stringify(configuration.states));
-      alert('Configuration imported successfully!');
-    } catch (error) {
-      alert('Error importing configuration. Please make sure the file is valid.');
-      console.error('Import error:', error);
-    }
   };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
-      {/* Centered Save Notification */}
+      {/* Save Notification */}
       {showSaveNotification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
                         transition-opacity duration-300 flex items-center space-x-2
                         animate-fade-in-out">
-            <svg 
-              className="w-6 h-6" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M5 13l4 4L19 7" 
-              />
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <span className="text-lg font-medium">Flow saved successfully!</span>
           </div>
@@ -376,68 +332,58 @@ const StateMachineVisualizer = () => {
               State Machine Visualizer
             </h1>
           </div>
-          <div className="flex items-center">
-            <div className="space-x-2 flex items-center mr-4">
-              <Button
-                onClick={() => setShowFeedback(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white text-sm
-                         dark:bg-blue-600 dark:hover:bg-blue-700"
-              >
-                Feedback
-              </Button>
-              <Button
-                onClick={toggleTheme}
-                variant="ghost"
-                className="w-10 h-10 p-0 text-gray-900 dark:text-white"
-              >
-                {isDarkMode ? (
-                  <Sun className="h-5 w-5 text-yellow-500" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
-              </Button>
-              <Button 
-                onClick={saveFlow} 
-                className="bg-gray-900 hover:bg-gray-700 text-white text-sm
-                         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Flow
-              </Button>
-              <Button 
-                onClick={startSimulation}
-                className="bg-orange-500 hover:bg-orange-600 text-white text-sm
-                         dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Simulate
-              </Button>
-              <Button 
-                onClick={exportConfiguration}
-                className="bg-gray-900 hover:bg-gray-700 text-white text-sm
-                         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-              <Button 
-                onClick={() => document.getElementById('flow-import').click()}
-                className="bg-gray-900 hover:bg-gray-700 text-white text-sm
-                         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Import
-              </Button>
-            </div>
-            <div className="border-l pl-4 dark:border-gray-700">
-              <Button
-                onClick={() => setShowHelp(true)}
-                className="bg-green-400 hover:bg-green-500 text-white text-sm
-                         dark:bg-green-500 dark:hover:bg-green-600"
-              >
-                User Guide
-              </Button>
-            </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={toggleTheme}
+              variant="ghost"
+              className="w-10 h-10 p-0 text-gray-900 dark:text-white"
+            >
+              {isDarkMode ? (
+                <Sun className="h-5 w-5 text-yellow-500" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+            <Button 
+              onClick={saveFlow} 
+              className="bg-gray-900 hover:bg-gray-700 text-white text-sm
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save Flow
+            </Button>
+            <Button 
+              onClick={startSimulation}
+              className="bg-orange-500 hover:bg-orange-600 text-white text-sm
+                       dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Simulate
+            </Button>
+            <Button 
+              onClick={exportConfiguration}
+              className="bg-gray-900 hover:bg-gray-700 text-white text-sm
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <input
+              type="file"
+              id="flow-import"
+              className="hidden"
+              accept=".json"
+              onChange={handleImport}
+              onClick={(e) => e.target.value = null} // Reset file input
+            />
+            <Button 
+              onClick={() => document.getElementById('flow-import').click()}
+              className="bg-gray-900 hover:bg-gray-700 text-white text-sm
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
           </div>
         </div>
 
@@ -659,6 +605,24 @@ const StateMachineVisualizer = () => {
 
         {/* Help Modal */}
         {showHelp && <HelpGuide onClose={() => setShowHelp(false)} />}
+
+        {/* Fixed bottom right buttons */}
+        <div className="fixed bottom-4 right-4 flex flex-col space-y-2">
+          <Button
+            onClick={() => setShowHelp(true)}
+            className="bg-green-400 hover:bg-green-500 text-white text-sm
+                     dark:bg-green-500 dark:hover:bg-green-600 shadow-lg"
+          >
+            User Guide
+          </Button>
+          <Button
+            onClick={() => setShowFeedback(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white text-sm
+                     dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg"
+          >
+            Feedback
+          </Button>
+        </div>
       </div>
     </div>
   );
