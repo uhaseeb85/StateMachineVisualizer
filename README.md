@@ -2,9 +2,6 @@
 
 A modern, interactive web application for designing, visualizing, and simulating state machines. Built with React and Tailwind CSS, this tool provides an intuitive interface for creating and managing state machines with a focus on user experience.
 
-![State Machine Visualizer Screenshot]
-[Add a screenshot of your application here]
-
 ## Features
 
 - **Interactive State Management**
