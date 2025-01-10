@@ -421,7 +421,7 @@ const IVRFlowDesigner = () => {
                     p-3 rounded-lg border transition-colors duration-200
                     ${selectedState === state.id 
                       ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-100 dark:text-blue-900' 
-                      : 'border-gray-200 bg-gray-800 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
+                      : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
                     }
                     cursor-pointer
                   `}
@@ -431,7 +431,7 @@ const IVRFlowDesigner = () => {
                     <span className={`font-medium ${
                       selectedState === state.id 
                         ? 'text-white dark:text-blue-900'
-                        : 'text-white dark:text-gray-900'
+                        : 'text-gray-900 dark:text-gray-900'
                     }`}>
                       {state.name}
                     </span>
@@ -443,10 +443,10 @@ const IVRFlowDesigner = () => {
                         deleteState(state.id);
                       }}
                       className={`
-                        hover:bg-gray-700 dark:hover:bg-gray-200
+                        hover:bg-gray-300 dark:hover:bg-gray-200
                         ${selectedState === state.id 
                           ? 'text-white hover:text-red-300 dark:text-blue-900 dark:hover:text-red-600' 
-                          : 'text-gray-300 hover:text-red-300 dark:text-gray-700 dark:hover:text-red-600'
+                          : 'text-gray-700 hover:text-red-600 dark:text-gray-700 dark:hover:text-red-600'
                         }
                       `}
                     >
@@ -456,7 +456,7 @@ const IVRFlowDesigner = () => {
                   <div className={`text-sm mt-1 ${
                     selectedState === state.id 
                       ? 'text-gray-100 dark:text-blue-800'
-                      : 'text-gray-300 dark:text-gray-600'
+                      : 'text-gray-600 dark:text-gray-600'
                   }`}>
                     {state.rules.length} rule{state.rules.length !== 1 ? 's' : ''}
                   </div>
@@ -490,21 +490,21 @@ const IVRFlowDesigner = () => {
                         key={rule.id} 
                         className={`
                           p-3 rounded-lg border transition-colors duration-200
-                          border-gray-200 bg-gray-800 text-white hover:bg-gray-700 
+                          border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
                           dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100
                           dark:border-gray-200
                         `}
                       >
                         <div className="flex justify-between items-center">
-                          <span className="font-medium text-white dark:text-gray-900">
+                          <span className="font-medium text-gray-900 dark:text-gray-900">
                             Rule {index + 1}
                           </span>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => deleteRule(selectedState, rule.id)}
-                            className="text-gray-300 hover:text-red-300 dark:text-gray-700 
-                                      dark:hover:text-red-600 hover:bg-gray-700 
+                            className="text-gray-700 hover:text-red-600 dark:text-gray-700 
+                                      dark:hover:text-red-600 hover:bg-gray-300 
                                       dark:hover:bg-gray-200"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -522,8 +522,8 @@ const IVRFlowDesigner = () => {
                               )
                             }
                             placeholder="Rule condition"
-                            className="bg-gray-700 text-white border-gray-600 
-                                      focus:border-gray-500 placeholder-gray-400
+                            className="bg-white text-gray-900 border-gray-300 
+                                      focus:border-gray-400 placeholder-gray-500
                                       dark:bg-gray-100 dark:text-gray-900 
                                       dark:border-gray-300 dark:placeholder-gray-500"
                           />
@@ -538,7 +538,7 @@ const IVRFlowDesigner = () => {
                               )
                             }
                             className="w-full border rounded-md p-2 
-                                      bg-gray-700 text-white border-gray-600
+                                      bg-white text-gray-900 border-gray-300
                                       dark:bg-gray-100 dark:text-gray-900 
                                       dark:border-gray-300"
                           >
