@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download } from 'lucide-react';
+import FeedbackForm from './FeedbackForm';
 
 const StateMachineVisualizer = () => {
   const [states, setStates] = useState([]);
@@ -16,6 +17,7 @@ const StateMachineVisualizer = () => {
     status: 'initial'
   });
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
@@ -345,6 +347,13 @@ const StateMachineVisualizer = () => {
           </h1>
           <div className="space-x-2 flex items-center">
             <Button
+              onClick={() => setShowFeedback(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white text-sm
+                       dark:bg-blue-600 dark:hover:bg-blue-700"
+            >
+              Feedback
+            </Button>
+            <Button
               onClick={toggleTheme}
               variant="ghost"
               className="w-10 h-10 p-0 text-gray-900 dark:text-white"
@@ -599,6 +608,11 @@ const StateMachineVisualizer = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Add Feedback Form Modal */}
+        {showFeedback && (
+          <FeedbackForm onClose={() => setShowFeedback(false)} />
         )}
       </div>
     </div>
