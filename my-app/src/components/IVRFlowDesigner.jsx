@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun } from 'lucide-react';
+import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download } from 'lucide-react';
 
 const IVRFlowDesigner = () => {
   const [states, setStates] = useState([]);
@@ -280,6 +280,58 @@ const IVRFlowDesigner = () => {
     }
   };
 
+  const exportConfiguration = () => {
+    const configuration = {
+      states,
+      version: '1.0',
+      exportDate: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(configuration, null, 2)], { 
+      type: 'application/json' 
+    });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ivr-flow-config-${new Date().toISOString().split('T')[0]}.json`;
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const importConfiguration = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    event.target.value = '';
+
+    const confirmed = window.confirm(
+      'Importing a configuration will overwrite your current setup. Are you sure you want to continue?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const text = await file.text();
+      const configuration = JSON.parse(text);
+
+      if (!Array.isArray(configuration.states)) {
+        throw new Error('Invalid configuration format');
+      }
+
+      setStates(configuration.states);
+      localStorage.setItem('ivrFlow', JSON.stringify(configuration.states));
+      alert('Configuration imported successfully!');
+    } catch (error) {
+      alert('Error importing configuration. Please make sure the file is valid.');
+      console.error('Import error:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
       <div className="container mx-auto p-4">
@@ -314,9 +366,17 @@ const IVRFlowDesigner = () => {
               <Play className="w-4 h-4 mr-2" />
               Simulate
             </Button>
+            <Button 
+              onClick={exportConfiguration}
+              className="bg-gray-900 hover:bg-gray-700 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
             <input
               type="file"
-              onChange={importFlow}
+              onChange={importConfiguration}
+              accept=".json"
               className="hidden"
               id="flow-import"
             />
