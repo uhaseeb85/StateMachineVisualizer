@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download } from 'lucide-react';
 
-const IVRFlowDesigner = () => {
+const StateMachineVisualizer = () => {
   const [states, setStates] = useState([]);
   const [selectedState, setSelectedState] = useState(null);
   const [showSimulation, setShowSimulation] = useState(false);
@@ -15,7 +15,7 @@ const IVRFlowDesigner = () => {
     path: [],
     status: 'initial'
   });
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
@@ -26,13 +26,17 @@ const IVRFlowDesigner = () => {
 
   useEffect(() => {
     const darkModePreference = localStorage.getItem('darkMode');
-    setIsDarkMode(darkModePreference === null ? true : darkModePreference === 'true');
+    setIsDarkMode(darkModePreference === null ? false : darkModePreference === 'true');
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
     localStorage.setItem('darkMode', isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    document.title = 'State Machine Visualizer';
+  }, []);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -337,7 +341,7 @@ const IVRFlowDesigner = () => {
       <div className="container mx-auto p-4">
         <div className="flex justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            IVR Flow Designer
+            State Machine Visualizer
           </h1>
           <div className="space-x-2 flex items-center">
             <Button
@@ -353,7 +357,8 @@ const IVRFlowDesigner = () => {
             </Button>
             <Button 
               onClick={saveFlow} 
-              className="bg-gray-900 hover:bg-gray-700 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+              className="bg-gray-900 hover:bg-gray-700 text-white 
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
             >
               <Save className="w-4 h-4 mr-2" />
               Save Flow
@@ -368,21 +373,16 @@ const IVRFlowDesigner = () => {
             </Button>
             <Button 
               onClick={exportConfiguration}
-              className="bg-gray-900 hover:bg-gray-700 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+              className="bg-gray-900 hover:bg-gray-700 text-white 
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
             >
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <input
-              type="file"
-              onChange={importConfiguration}
-              accept=".json"
-              className="hidden"
-              id="flow-import"
-            />
             <Button 
               onClick={() => document.getElementById('flow-import').click()}
-              className="bg-gray-900 hover:bg-gray-700 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+              className="bg-gray-900 hover:bg-gray-700 text-white 
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
             >
               <Upload className="w-4 h-4 mr-2" />
               Import
@@ -391,9 +391,9 @@ const IVRFlowDesigner = () => {
         </div>
 
         <div className="flex gap-6">
-          {/* Left Side - States List */}
+          {/* Left Side - States List - increased width, reduced height */}
           <div className="w-1/3 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
-            <div className="mb-4">
+            <div className="mb-2">
               <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">States</h2>
               <div className="flex gap-2">
                 <Input
@@ -401,39 +401,43 @@ const IVRFlowDesigner = () => {
                   value={newStateName}
                   onChange={(e) => setNewStateName(e.target.value)}
                   placeholder="Enter state name"
-                  className="flex-1 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  className="flex-1 text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
                 <Button 
                   onClick={addState}
-                  className="bg-gray-900 hover:bg-gray-700 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                  className="bg-gray-900 hover:bg-gray-700 text-white text-sm h-8
+                           dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="w-3 h-3 mr-1" />
                   Add
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               {states.map(state => (
                 <div 
                   key={state.id} 
                   className={`
-                    p-3 rounded-lg border transition-colors duration-200
+                    py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
                     ${selectedState === state.id 
-                      ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-100 dark:text-blue-900' 
-                      : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
+                      ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white' 
+                      : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500'
                     }
-                    cursor-pointer
+                    cursor-pointer flex justify-between items-center
                   `}
                   onClick={() => setSelectedState(state.id)}
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between w-full">
                     <span className={`font-medium ${
                       selectedState === state.id 
-                        ? 'text-white dark:text-blue-900'
-                        : 'text-gray-900 dark:text-gray-900'
+                        ? 'text-white dark:text-white'
+                        : 'text-gray-900 dark:text-white'
                     }`}>
                       {state.name}
+                      <span className="text-xs ml-2 opacity-75">
+                        {state.rules.length} rule{state.rules.length !== 1 ? 's' : ''}
+                      </span>
                     </span>
                     <Button
                       variant="ghost"
@@ -443,119 +447,105 @@ const IVRFlowDesigner = () => {
                         deleteState(state.id);
                       }}
                       className={`
-                        hover:bg-gray-300 dark:hover:bg-gray-200
-                        ${selectedState === state.id 
-                          ? 'text-white hover:text-red-300 dark:text-blue-900 dark:hover:text-red-600' 
-                          : 'text-gray-700 hover:text-red-600 dark:text-gray-700 dark:hover:text-red-600'
-                        }
+                        p-1 h-6 hover:bg-gray-300 dark:hover:bg-gray-500
+                        text-red-500 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400
                       `}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
-                  </div>
-                  <div className={`text-sm mt-1 ${
-                    selectedState === state.id 
-                      ? 'text-gray-100 dark:text-blue-800'
-                      : 'text-gray-600 dark:text-gray-600'
-                  }`}>
-                    {state.rules.length} rule{state.rules.length !== 1 ? 's' : ''}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right Side - Rule Management */}
-          <div className="w-2/3 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
+          {/* Right Side - Rule Management - increased width, reduced height */}
+          <div className="w-1/2 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
             {selectedState ? (
               <>
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-2">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Rules for {states.find(s => s.id === selectedState)?.name}
                   </h2>
                   <Button 
                     onClick={() => addRule(selectedState)}
-                    className="bg-gray-900 hover:bg-gray-700 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="bg-gray-900 hover:bg-gray-700 text-white text-sm h-8
+                             dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-3 h-3 mr-1" />
                     Add Rule
                   </Button>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-1">
                   {states
                     .find(s => s.id === selectedState)
                     ?.rules.map((rule, index) => (
                       <div 
                         key={rule.id} 
                         className={`
-                          p-3 rounded-lg border transition-colors duration-200
+                          py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
                           border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
-                          dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100
-                          dark:border-gray-200
+                          dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500
+                          dark:border-gray-300
                         `}
                       >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-gray-900 dark:text-gray-900">
-                            Rule {index + 1}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteRule(selectedState, rule.id)}
-                            className="text-gray-700 hover:text-red-600 dark:text-gray-700 
-                                      dark:hover:text-red-600 hover:bg-gray-300 
-                                      dark:hover:bg-gray-200"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div className="space-y-2 mt-2">
-                          <Input
-                            value={rule.condition}
-                            onChange={(e) =>
-                              updateRule(
-                                selectedState,
-                                rule.id,
-                                'condition',
-                                e.target.value
-                              )
-                            }
-                            placeholder="Rule condition"
-                            className="bg-white text-gray-900 border-gray-300 
-                                      focus:border-gray-400 placeholder-gray-500
-                                      dark:bg-gray-100 dark:text-gray-900 
-                                      dark:border-gray-300 dark:placeholder-gray-500"
-                          />
-                          <select
-                            value={rule.nextState}
-                            onChange={(e) =>
-                              updateRule(
-                                selectedState,
-                                rule.id,
-                                'nextState',
-                                e.target.value
-                              )
-                            }
-                            className="w-full border rounded-md p-2 
-                                      bg-white text-gray-900 border-gray-300
-                                      dark:bg-gray-100 dark:text-gray-900 
-                                      dark:border-gray-300"
-                          >
-                            <option value="">Select next state</option>
-                            {states.map(s => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 w-full">
+                            <span className="font-medium text-gray-900 dark:text-white min-w-[60px]">
+                              Rule {index + 1}
+                            </span>
+                            <Input
+                              value={rule.condition}
+                              onChange={(e) =>
+                                updateRule(
+                                  selectedState,
+                                  rule.id,
+                                  'condition',
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Rule condition"
+                              className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                            />
+                            <select
+                              value={rule.nextState}
+                              onChange={(e) =>
+                                updateRule(
+                                  selectedState,
+                                  rule.id,
+                                  'nextState',
+                                  e.target.value
+                                )
+                              }
+                              className="w-1/3 border rounded-md h-8 px-2 text-sm
+                                       dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                            >
+                              <option value="">Select next state</option>
+                              {states.map(s => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteRule(selectedState, rule.id)}
+                              className="p-1 h-6 text-red-500 hover:text-red-700 
+                                        dark:text-red-500 dark:hover:text-red-400 
+                                        hover:bg-gray-300 dark:hover:bg-gray-500"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
                 </div>
               </>
             ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+              <div className="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">
                 Select a state to manage its rules
               </div>
             )}
@@ -615,4 +605,4 @@ const IVRFlowDesigner = () => {
   );
 };
 
-export default IVRFlowDesigner; 
+export default StateMachineVisualizer; 

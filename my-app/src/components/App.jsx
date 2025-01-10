@@ -1,10 +1,11 @@
 import React from 'react';
-import IVRFlowDesigner from './IVRFlowDesigner';
+import IVRFlowDesigner from './StateMachineVisualizer';
+import StateMachineVisualizer from './StateMachineVisualizer';
 
 const App = () => {
   return (
     <div className="min-h-screen bg-background">
-      <IVRFlowDesigner />
+      <StateMachineVisualizer />
     </div>
   );
 };
