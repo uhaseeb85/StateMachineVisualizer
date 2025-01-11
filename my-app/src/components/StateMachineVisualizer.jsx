@@ -264,7 +264,8 @@ const StateMachineVisualizer = () => {
         <div 
           key={index}
           className={`
-            w-20 h-20 rounded-full flex items-center justify-center text-white text-sm
+            min-w-[5rem] min-h-[5rem] w-auto h-auto p-4
+            rounded-full flex items-center justify-center text-white text-sm
             ${node.id === 'end' 
               ? 'bg-gray-500' 
               : simulationState.status === 'active' && node.id === simulationState.currentState
@@ -279,7 +280,7 @@ const StateMachineVisualizer = () => {
             }
           }}
         >
-          <span className="px-2 text-center">
+          <span className="px-2 text-center break-words max-w-[150px]">
             {state?.name || 'Unknown'}
           </span>
         </div>
@@ -287,18 +288,26 @@ const StateMachineVisualizer = () => {
     }
 
     if (node.type === 'rule') {
-      const currentState = states.find(s => s.id === simulationState.currentState);
-      const rule = currentState?.rules.find(r => r.id === node.id);
+      // Find the rule information from the path history
+      const ruleState = simulationState.path
+        .slice(0, index)
+        .reverse()
+        .find(n => n.type === 'state');
+      
+      const stateWithRule = states.find(s => s.id === ruleState?.id);
+      const rule = stateWithRule?.rules.find(r => r.id === node.id);
+
       return (
         <div className="flex flex-col items-center gap-2">
           <div 
             className={`
-              w-20 h-20 rotate-45 flex items-center justify-center
+              min-w-[8rem] min-h-[3.5rem] w-auto h-auto p-4
+              rounded-full flex items-center justify-center
               ${simulationState.status === 'evaluating' && node.id === simulationState.currentRule
-                ? 'bg-yellow-600 cursor-pointer hover:bg-yellow-700'
+                ? 'bg-orange-500 cursor-pointer hover:bg-orange-600'
                 : simulationState.status === 'deciding' && node.id === simulationState.currentRule
-                  ? 'bg-yellow-600'
-                  : 'bg-yellow-400'
+                  ? 'bg-orange-500'
+                  : 'bg-orange-400'
               }
               transition-colors
             `}
@@ -308,12 +317,11 @@ const StateMachineVisualizer = () => {
               }
             }}
           >
-            <span className="-rotate-45 text-white text-xs px-2 text-center">
+            <span className="text-white text-xs px-2 text-center break-words max-w-[150px]">
               {rule?.condition || 'Unknown'}
             </span>
           </div>
           
-          {/* Show Yes/No buttons when the rule is in deciding state */}
           {simulationState.status === 'deciding' && 
            simulationState.currentRule === node.id && (
             <div className="flex gap-4 -mt-1">
@@ -324,7 +332,8 @@ const StateMachineVisualizer = () => {
                   e.stopPropagation();
                   handleOutcome('success');
                 }}
-                className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 
+                className="min-w-[2rem] min-h-[2rem] w-auto h-auto p-2
+                         rounded-full bg-green-500 hover:bg-green-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
@@ -337,7 +346,8 @@ const StateMachineVisualizer = () => {
                   e.stopPropagation();
                   handleOutcome('failure');
                 }}
-                className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 
+                className="min-w-[2rem] min-h-[2rem] w-auto h-auto p-2
+                         rounded-full bg-red-500 hover:bg-red-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
@@ -630,12 +640,12 @@ const StateMachineVisualizer = () => {
               {/* Simulation Content */}
               <div className="min-h-[400px] border dark:border-gray-700 rounded-lg p-4 relative bg-gray-50 dark:bg-gray-900">
                 {/* Path Visualization */}
-                <div className="flex flex-wrap gap-4 items-center justify-start">
+                <div className="flex flex-wrap gap-6 items-center justify-start p-4">
                   {simulationState.path.map((node, index) => (
                     <div key={index} className="flex items-center">
                       {renderSimulationNode(node, index)}
                       {index < simulationState.path.length - 1 && (
-                        <div className="w-4 h-0.5 bg-gray-400 mx-1" />
+                        <div className="w-6 h-0.5 bg-gray-400 mx-2" />
                       )}
                     </div>
                   ))}
