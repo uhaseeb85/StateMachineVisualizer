@@ -344,12 +344,12 @@ const StateMachineVisualizer = () => {
                   e.stopPropagation();
                   handleOutcome('success');
                 }}
-                className="min-w-[2rem] min-h-[2rem] w-auto h-auto p-2
+                className="min-w-[4rem] min-h-[2rem] w-auto h-auto p-2
                          rounded-full bg-green-500 hover:bg-green-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
-                Yes
+                Success
               </Button>
               <Button
                 type="button"
@@ -358,12 +358,12 @@ const StateMachineVisualizer = () => {
                   e.stopPropagation();
                   handleOutcome('failure');
                 }}
-                className="min-w-[2rem] min-h-[2rem] w-auto h-auto p-2
+                className="min-w-[4rem] min-h-[2rem] w-auto h-auto p-2
                          rounded-full bg-red-500 hover:bg-red-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
-                No
+                Failure
               </Button>
             </div>
           )}
@@ -488,7 +488,7 @@ const StateMachineVisualizer = () => {
               className="bg-gray-900 hover:bg-gray-700 text-white text-sm
                        dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
             >
-              <Download className="w-4 h-4 mr-2" />
+              <Upload className="w-4 h-4 mr-2" />
               Export
             </Button>
             <input
@@ -504,7 +504,7 @@ const StateMachineVisualizer = () => {
               className="bg-gray-900 hover:bg-gray-700 text-white text-sm
                        dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
             >
-              <Upload className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-2" />
               Import
             </Button>
           </div>
@@ -579,42 +579,57 @@ const StateMachineVisualizer = () => {
             </div>
           </div>
 
-          {/* Right Side - Rule Management - increased width, reduced height */}
+          {/* Right Side - Rule Management */}
           <div className="w-1/2 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
             {selectedState ? (
               <>
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Rules for {states.find(s => s.id === selectedState)?.name}
+                    {states.find(s => s.id === selectedState)?.name}
                   </h2>
-                  <Button 
-                    onClick={() => addRule(selectedState)}
-                    className="bg-gray-900 hover:bg-gray-700 text-white text-sm h-8
-                             dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Rule
-                  </Button>
                 </div>
-                
-                <div className="space-y-1">
-                  {states
-                    .find(s => s.id === selectedState)
-                    ?.rules.map((rule, index) => (
-                      <div 
-                        key={rule.id} 
-                        className={`
-                          py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
-                          border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
-                          dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500
-                          dark:border-gray-300
-                        `}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 w-full">
-                            <span className="font-medium text-gray-900 dark:text-white min-w-[60px]">
-                              Rule {index + 1}
-                            </span>
+
+                {/* Rules Section */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-md font-semibold text-gray-900 dark:text-white">
+                      Rules
+                    </h3>
+                    <Button 
+                      onClick={() => addRule(selectedState)}
+                      className="bg-gray-900 hover:bg-gray-700 text-white text-sm h-8
+                               dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Rule
+                    </Button>
+                  </div>
+
+                  {/* Column Headers */}
+                  <div className="grid grid-cols-[1fr,1fr,auto] gap-2 mb-2 px-3">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Rule Name
+                    </div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Target State
+                    </div>
+                    <div className="w-8"></div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    {states
+                      .find(s => s.id === selectedState)
+                      ?.rules.map((rule, index) => (
+                        <div 
+                          key={rule.id} 
+                          className={`
+                            py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
+                            border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
+                            dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500
+                            dark:border-gray-300
+                          `}
+                        >
+                          <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
                             <Input
                               value={rule.condition}
                               onChange={(e) =>
@@ -638,7 +653,7 @@ const StateMachineVisualizer = () => {
                                   e.target.value
                                 )
                               }
-                              className="w-1/3 border rounded-md h-8 px-2 text-sm
+                              className="w-full border rounded-md h-8 px-2 text-sm
                                        dark:bg-gray-700 dark:text-white dark:border-gray-600"
                             >
                               <option value="">Select next state</option>
@@ -652,16 +667,17 @@ const StateMachineVisualizer = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => deleteRule(selectedState, rule.id)}
-                              className="p-1 h-6 text-red-500 hover:text-red-700 
-                                        dark:text-red-500 dark:hover:text-red-400 
-                                        hover:bg-gray-300 dark:hover:bg-gray-500"
+                              className="p-1 h-8 text-red-500 hover:text-red-700 
+                                      dark:text-red-500 dark:hover:text-red-400 
+                                      hover:bg-gray-300 dark:hover:bg-gray-500
+                                      min-w-[32px] flex items-center justify-center"
                             >
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                  </div>
                 </div>
               </>
             ) : (
