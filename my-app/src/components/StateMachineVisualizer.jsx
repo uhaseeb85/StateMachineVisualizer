@@ -150,50 +150,74 @@ const StateMachineVisualizer = () => {
       currentState: states[0].id,
       currentRule: null,
       path: [{ type: 'state', id: states[0].id }],
-      status: 'initial'
+      status: 'active'
     });
     setShowSimulation(true);
   };
 
   const handleStateClick = (stateId) => {
+    if (simulationState.status !== 'active') return;
+
     const currentState = states.find(s => s.id === stateId);
     if (!currentState || currentState.rules.length === 0) {
-      alert("This state has no rules");
+      alert("This state has no rules. Simulation ended.");
+      setSimulationState(prev => ({
+        ...prev,
+        path: [...prev.path, { type: 'state', id: 'end' }],
+        status: 'completed'
+      }));
       return;
     }
 
-    if (simulationState.status !== 'initial') return;
-
-    const firstRule = currentState.rules[0];
     setSimulationState(prev => ({
       ...prev,
-      currentRule: firstRule.id,
-      path: [...prev.path, { type: 'rule', id: firstRule.id }],
-      status: 'selecting-rule'
+      currentState: stateId,
+      currentRule: currentState.rules[0].id,
+      path: [...prev.path, { type: 'rule', id: currentState.rules[0].id }],
+      status: 'evaluating'
     }));
   };
 
   const handleRuleClick = (ruleId) => {
-    if (simulationState.status !== 'selecting-rule') return;
+    if (simulationState.status !== 'evaluating') return;
     
     setSimulationState(prev => ({
       ...prev,
-      status: 'showing-outcomes'
+      status: 'deciding'
     }));
   };
 
   const handleOutcome = (outcome) => {
+    if (simulationState.status !== 'deciding') return;
+
     const currentState = states.find(s => s.id === simulationState.currentState);
     const currentRule = currentState?.rules.find(r => r.id === simulationState.currentRule);
 
+    // Add type conversion for comparison
+    const findStateById = (stateId) => {
+      return states.find(s => String(s.id) === String(stateId));
+    };
+
     if (outcome === 'success' && currentRule?.nextState) {
+      const nextState = findStateById(currentRule.nextState);
+      if (!nextState) {
+        console.error('Next state not found. Rule points to:', currentRule.nextState);
+        console.error('Available state IDs:', states.map(s => s.id));
+        setSimulationState(prev => ({
+          ...prev,
+          path: [...prev.path, { type: 'state', id: 'end' }],
+          status: 'completed'
+        }));
+        return;
+      }
+      
       setSimulationState(prev => ({
-        currentState: currentRule.nextState,
+        currentState: nextState.id,
         currentRule: null,
-        path: [...prev.path, { type: 'state', id: currentRule.nextState }],
-        status: 'initial'
+        path: [...prev.path, { type: 'state', id: nextState.id }],
+        status: 'active'
       }));
-    } else if (outcome === 'failure') {
+    } else {
       const currentRuleIndex = currentState.rules.findIndex(r => r.id === simulationState.currentRule);
       const nextRule = currentState.rules[currentRuleIndex + 1];
 
@@ -202,10 +226,28 @@ const StateMachineVisualizer = () => {
           ...prev,
           currentRule: nextRule.id,
           path: [...prev.path, { type: 'rule', id: nextRule.id }],
-          status: 'selecting-rule'
+          status: 'evaluating'
+        }));
+      } else if (currentRule?.nextState) {
+        const nextState = findStateById(currentRule.nextState);
+        if (!nextState) {
+          console.error('Next state not found. Rule points to:', currentRule.nextState);
+          console.error('Available state IDs:', states.map(s => s.id));
+          setSimulationState(prev => ({
+            ...prev,
+            path: [...prev.path, { type: 'state', id: 'end' }],
+            status: 'completed'
+          }));
+          return;
+        }
+
+        setSimulationState(prev => ({
+          currentState: nextState.id,
+          currentRule: null,
+          path: [...prev.path, { type: 'state', id: nextState.id }],
+          status: 'active'
         }));
       } else {
-        // No more rules, end simulation
         setSimulationState(prev => ({
           ...prev,
           path: [...prev.path, { type: 'state', id: 'end' }],
@@ -222,22 +264,23 @@ const StateMachineVisualizer = () => {
         <div 
           key={index}
           className={`
-            w-20 h-20 rounded-full flex items-center justify-center text-white text-sm
+            min-w-[5rem] min-h-[5rem] w-auto h-auto p-4
+            rounded-full flex items-center justify-center text-white text-sm
             ${node.id === 'end' 
               ? 'bg-gray-500' 
-              : simulationState.status === 'initial' && node.id === simulationState.currentState
+              : simulationState.status === 'active' && node.id === simulationState.currentState
                 ? 'bg-blue-600 cursor-pointer hover:bg-blue-700'
                 : 'bg-blue-400'
             }
             transition-colors
           `}
           onClick={() => {
-            if (simulationState.status === 'initial' && node.id === simulationState.currentState) {
+            if (simulationState.status === 'active' && node.id === simulationState.currentState) {
               handleStateClick(node.id);
             }
           }}
         >
-          <span className="px-2 text-center">
+          <span className="px-2 text-center break-words max-w-[150px]">
             {state?.name || 'Unknown'}
           </span>
         </div>
@@ -245,50 +288,71 @@ const StateMachineVisualizer = () => {
     }
 
     if (node.type === 'rule') {
-      const currentState = states.find(s => s.id === simulationState.currentState);
-      const rule = currentState?.rules.find(r => r.id === node.id);
+      // Find the rule information from the path history
+      const ruleState = simulationState.path
+        .slice(0, index)
+        .reverse()
+        .find(n => n.type === 'state');
+      
+      const stateWithRule = states.find(s => s.id === ruleState?.id);
+      const rule = stateWithRule?.rules.find(r => r.id === node.id);
+
       return (
         <div className="flex flex-col items-center gap-2">
           <div 
             className={`
-              w-20 h-20 rotate-45 flex items-center justify-center
-              ${simulationState.status === 'selecting-rule' && node.id === simulationState.currentRule
-                ? 'bg-yellow-600 cursor-pointer hover:bg-yellow-700'
-                : 'bg-yellow-400'
+              min-w-[8rem] min-h-[3.5rem] w-auto h-auto p-4
+              rounded-full flex items-center justify-center
+              ${simulationState.status === 'evaluating' && node.id === simulationState.currentRule
+                ? 'bg-orange-500 cursor-pointer hover:bg-orange-600'
+                : simulationState.status === 'deciding' && node.id === simulationState.currentRule
+                  ? 'bg-orange-500'
+                  : 'bg-orange-400'
               }
               transition-colors
             `}
             onClick={() => {
-              if (simulationState.status === 'selecting-rule' && node.id === simulationState.currentRule) {
+              if (simulationState.status === 'evaluating' && node.id === simulationState.currentRule) {
                 handleRuleClick(node.id);
               }
             }}
           >
-            <span className="-rotate-45 text-white text-xs px-2 text-center">
+            <span className="text-white text-xs px-2 text-center break-words max-w-[150px]">
               {rule?.condition || 'Unknown'}
             </span>
           </div>
           
-          {/* Round Yes/No buttons under the active rule */}
-          {simulationState.status === 'showing-outcomes' && 
+          {simulationState.status === 'deciding' && 
            simulationState.currentRule === node.id && (
             <div className="flex gap-4 -mt-1">
-              <button
-                onClick={() => handleOutcome('success')}
-                className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 
+              <Button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleOutcome('success');
+                }}
+                className="min-w-[2rem] min-h-[2rem] w-auto h-auto p-2
+                         rounded-full bg-green-500 hover:bg-green-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
                 Yes
-              </button>
-              <button
-                onClick={() => handleOutcome('failure')}
-                className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 
+              </Button>
+              <Button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleOutcome('failure');
+                }}
+                className="min-w-[2rem] min-h-[2rem] w-auto h-auto p-2
+                         rounded-full bg-red-500 hover:bg-red-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
                 No
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -576,12 +640,12 @@ const StateMachineVisualizer = () => {
               {/* Simulation Content */}
               <div className="min-h-[400px] border dark:border-gray-700 rounded-lg p-4 relative bg-gray-50 dark:bg-gray-900">
                 {/* Path Visualization */}
-                <div className="flex flex-wrap gap-4 items-center justify-start">
+                <div className="flex flex-wrap gap-6 items-center justify-start p-4">
                   {simulationState.path.map((node, index) => (
                     <div key={index} className="flex items-center">
                       {renderSimulationNode(node, index)}
                       {index < simulationState.path.length - 1 && (
-                        <div className="w-4 h-0.5 bg-gray-400 mx-1" />
+                        <div className="w-6 h-0.5 bg-gray-400 mx-2" />
                       )}
                     </div>
                   ))}
