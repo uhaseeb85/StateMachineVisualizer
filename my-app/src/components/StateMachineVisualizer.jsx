@@ -21,6 +21,8 @@ const StateMachineVisualizer = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [startState, setStartState] = useState(null);
+  const [showStartModal, setShowStartModal] = useState(false);
 
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
@@ -145,11 +147,21 @@ const StateMachineVisualizer = () => {
       alert("Please add at least one state to simulate");
       return;
     }
+
+    const initialStateId = startState || states[0].id;
+    const initialState = states.find(s => String(s.id) === String(initialStateId));
+    
+    if (!initialState) {
+      console.error('Initial state not found:', initialStateId);
+      console.error('Available states:', states.map(s => s.id));
+      alert("Selected state not found. Please try again.");
+      return;
+    }
     
     setSimulationState({
-      currentState: states[0].id,
+      currentState: initialState.id,
       currentRule: null,
-      path: [{ type: 'state', id: states[0].id }],
+      path: [{ type: 'state', id: initialState.id }],
       status: 'active'
     });
     setShowSimulation(true);
@@ -373,6 +385,53 @@ const StateMachineVisualizer = () => {
     URL.revokeObjectURL(url);
   };
 
+  const SimulationStartModal = ({ onStart, onCancel }) => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Start Simulation
+          </h2>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              Select Starting State
+            </label>
+            <select
+              value={startState || ''}
+              onChange={(e) => setStartState(e.target.value)}
+              className="w-full border rounded-md p-2 text-sm
+                       dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            >
+              <option value="">Select a state</option>
+              {states.map(state => (
+                <option key={state.id} value={String(state.id)}>
+                  {state.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              onClick={onCancel}
+              className="bg-gray-500 hover:bg-gray-600 text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={onStart}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              disabled={!startState && states.length > 1}
+            >
+              Start
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Save Notification */}
@@ -417,7 +476,7 @@ const StateMachineVisualizer = () => {
               Save Flow
             </Button>
             <Button 
-              onClick={startSimulation}
+              onClick={() => setShowStartModal(true)}
               className="bg-orange-500 hover:bg-orange-600 text-white text-sm
                        dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
             >
@@ -621,7 +680,10 @@ const StateMachineVisualizer = () => {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Flow Simulation</h2>
                 <div className="space-x-2">
                   <Button
-                    onClick={() => startSimulation()}
+                    onClick={() => {
+                      setStartState(null);
+                      startSimulation();
+                    }}
                     className="bg-orange-500 hover:bg-orange-600 text-white 
                              dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
                   >
@@ -687,6 +749,19 @@ const StateMachineVisualizer = () => {
             Feedback
           </Button>
         </div>
+
+        {showStartModal && (
+          <SimulationStartModal
+            onStart={() => {
+              setShowStartModal(false);
+              startSimulation();
+            }}
+            onCancel={() => {
+              setShowStartModal(false);
+              setStartState(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
