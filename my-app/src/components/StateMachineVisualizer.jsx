@@ -511,9 +511,9 @@ const StateMachineVisualizer = () => {
         </div>
 
         <div className="flex gap-6">
-          {/* Left Side - States List - increased width, reduced height */}
+          {/* Left Side - States List */}
           <div className="w-1/3 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
-            <div className="mb-2">
+            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">States</h2>
               <div className="flex gap-2">
                 <Input
