@@ -150,50 +150,74 @@ const StateMachineVisualizer = () => {
       currentState: states[0].id,
       currentRule: null,
       path: [{ type: 'state', id: states[0].id }],
-      status: 'initial'
+      status: 'active'
     });
     setShowSimulation(true);
   };
 
   const handleStateClick = (stateId) => {
+    if (simulationState.status !== 'active') return;
+
     const currentState = states.find(s => s.id === stateId);
     if (!currentState || currentState.rules.length === 0) {
-      alert("This state has no rules");
+      alert("This state has no rules. Simulation ended.");
+      setSimulationState(prev => ({
+        ...prev,
+        path: [...prev.path, { type: 'state', id: 'end' }],
+        status: 'completed'
+      }));
       return;
     }
 
-    if (simulationState.status !== 'initial') return;
-
-    const firstRule = currentState.rules[0];
     setSimulationState(prev => ({
       ...prev,
-      currentRule: firstRule.id,
-      path: [...prev.path, { type: 'rule', id: firstRule.id }],
-      status: 'selecting-rule'
+      currentState: stateId,
+      currentRule: currentState.rules[0].id,
+      path: [...prev.path, { type: 'rule', id: currentState.rules[0].id }],
+      status: 'evaluating'
     }));
   };
 
   const handleRuleClick = (ruleId) => {
-    if (simulationState.status !== 'selecting-rule') return;
+    if (simulationState.status !== 'evaluating') return;
     
     setSimulationState(prev => ({
       ...prev,
-      status: 'showing-outcomes'
+      status: 'deciding'
     }));
   };
 
   const handleOutcome = (outcome) => {
+    if (simulationState.status !== 'deciding') return;
+
     const currentState = states.find(s => s.id === simulationState.currentState);
     const currentRule = currentState?.rules.find(r => r.id === simulationState.currentRule);
 
+    // Add type conversion for comparison
+    const findStateById = (stateId) => {
+      return states.find(s => String(s.id) === String(stateId));
+    };
+
     if (outcome === 'success' && currentRule?.nextState) {
+      const nextState = findStateById(currentRule.nextState);
+      if (!nextState) {
+        console.error('Next state not found. Rule points to:', currentRule.nextState);
+        console.error('Available state IDs:', states.map(s => s.id));
+        setSimulationState(prev => ({
+          ...prev,
+          path: [...prev.path, { type: 'state', id: 'end' }],
+          status: 'completed'
+        }));
+        return;
+      }
+      
       setSimulationState(prev => ({
-        currentState: currentRule.nextState,
+        currentState: nextState.id,
         currentRule: null,
-        path: [...prev.path, { type: 'state', id: currentRule.nextState }],
-        status: 'initial'
+        path: [...prev.path, { type: 'state', id: nextState.id }],
+        status: 'active'
       }));
-    } else if (outcome === 'failure') {
+    } else {
       const currentRuleIndex = currentState.rules.findIndex(r => r.id === simulationState.currentRule);
       const nextRule = currentState.rules[currentRuleIndex + 1];
 
@@ -202,10 +226,28 @@ const StateMachineVisualizer = () => {
           ...prev,
           currentRule: nextRule.id,
           path: [...prev.path, { type: 'rule', id: nextRule.id }],
-          status: 'selecting-rule'
+          status: 'evaluating'
+        }));
+      } else if (currentRule?.nextState) {
+        const nextState = findStateById(currentRule.nextState);
+        if (!nextState) {
+          console.error('Next state not found. Rule points to:', currentRule.nextState);
+          console.error('Available state IDs:', states.map(s => s.id));
+          setSimulationState(prev => ({
+            ...prev,
+            path: [...prev.path, { type: 'state', id: 'end' }],
+            status: 'completed'
+          }));
+          return;
+        }
+
+        setSimulationState(prev => ({
+          currentState: nextState.id,
+          currentRule: null,
+          path: [...prev.path, { type: 'state', id: nextState.id }],
+          status: 'active'
         }));
       } else {
-        // No more rules, end simulation
         setSimulationState(prev => ({
           ...prev,
           path: [...prev.path, { type: 'state', id: 'end' }],
@@ -225,14 +267,14 @@ const StateMachineVisualizer = () => {
             w-20 h-20 rounded-full flex items-center justify-center text-white text-sm
             ${node.id === 'end' 
               ? 'bg-gray-500' 
-              : simulationState.status === 'initial' && node.id === simulationState.currentState
+              : simulationState.status === 'active' && node.id === simulationState.currentState
                 ? 'bg-blue-600 cursor-pointer hover:bg-blue-700'
                 : 'bg-blue-400'
             }
             transition-colors
           `}
           onClick={() => {
-            if (simulationState.status === 'initial' && node.id === simulationState.currentState) {
+            if (simulationState.status === 'active' && node.id === simulationState.currentState) {
               handleStateClick(node.id);
             }
           }}
@@ -252,14 +294,16 @@ const StateMachineVisualizer = () => {
           <div 
             className={`
               w-20 h-20 rotate-45 flex items-center justify-center
-              ${simulationState.status === 'selecting-rule' && node.id === simulationState.currentRule
+              ${simulationState.status === 'evaluating' && node.id === simulationState.currentRule
                 ? 'bg-yellow-600 cursor-pointer hover:bg-yellow-700'
-                : 'bg-yellow-400'
+                : simulationState.status === 'deciding' && node.id === simulationState.currentRule
+                  ? 'bg-yellow-600'
+                  : 'bg-yellow-400'
               }
               transition-colors
             `}
             onClick={() => {
-              if (simulationState.status === 'selecting-rule' && node.id === simulationState.currentRule) {
+              if (simulationState.status === 'evaluating' && node.id === simulationState.currentRule) {
                 handleRuleClick(node.id);
               }
             }}
@@ -269,26 +313,36 @@ const StateMachineVisualizer = () => {
             </span>
           </div>
           
-          {/* Round Yes/No buttons under the active rule */}
-          {simulationState.status === 'showing-outcomes' && 
+          {/* Show Yes/No buttons when the rule is in deciding state */}
+          {simulationState.status === 'deciding' && 
            simulationState.currentRule === node.id && (
             <div className="flex gap-4 -mt-1">
-              <button
-                onClick={() => handleOutcome('success')}
+              <Button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleOutcome('success');
+                }}
                 className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
                 Yes
-              </button>
-              <button
-                onClick={() => handleOutcome('failure')}
+              </Button>
+              <Button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleOutcome('failure');
+                }}
                 className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 
                          text-white text-xs flex items-center justify-center 
                          transition-colors shadow-sm hover:shadow"
               >
                 No
-              </button>
+              </Button>
             </div>
           )}
         </div>
