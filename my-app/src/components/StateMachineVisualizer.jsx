@@ -534,11 +534,10 @@ const StateMachineVisualizer = () => {
       <div className="container mx-auto p-4 max-w-full min-h-screen 
                     bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
                     dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
-        {/* Title - updated to be minimalist black */}
+        {/* Title */}
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5
-                 tracking-wide"
-          >
+                 tracking-wide">
             State Machine Visualizer
           </h1>
         </div>
@@ -927,17 +926,6 @@ const StateMachineVisualizer = () => {
             }}
           />
         )}
-
-        {/* Clickable email contact */}
-        <div className="fixed bottom-6 left-6 opacity-60 hover:opacity-100 
-                transition-all duration-300 hidden sm:block">
-          <a href="mailto:uhaseeb85@gmail.com?subject=State Machine Visualizer Feedback"
-             className="text-sm text-gray-700 dark:text-gray-300 
-                        font-mono tracking-tight hover:tracking-wide
-                        no-underline hover:no-underline cursor-pointer">
-            uhaseeb85@gmail.com
-          </a>
-        </div>
       </div>
     </div>
   );
