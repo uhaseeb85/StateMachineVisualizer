@@ -534,11 +534,11 @@ const StateMachineVisualizer = () => {
       <div className="container mx-auto p-4 max-w-full min-h-screen 
                     bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
                     dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
-        {/* Title */}
+        {/* Title - updated to be minimalist black */}
         <div className="flex flex-col items-center mb-8">
-          <h1 className="text-3xl font-bold text-transparent bg-clip-text 
-                         bg-gradient-to-r from-blue-600 to-indigo-600 
-                         dark:from-blue-400 dark:to-indigo-400 mb-5">
+          <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5
+                 tracking-wide"
+          >
             State Machine Visualizer
           </h1>
         </div>
