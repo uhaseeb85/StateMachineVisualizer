@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download } from 'lucide-react';
+import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download, Camera } from 'lucide-react';
 import FeedbackForm from './FeedbackForm';
 import HelpGuide from './HelpGuide';
+import html2canvas from 'html2canvas';
 
 const StateMachineVisualizer = () => {
   const [states, setStates] = useState([]);
@@ -282,7 +283,7 @@ const StateMachineVisualizer = () => {
               ? 'bg-gray-500' 
               : simulationState.status === 'active' && node.id === simulationState.currentState
                 ? 'bg-blue-600 cursor-pointer hover:bg-blue-700'
-                : 'bg-blue-400'
+                : 'bg-blue-400 dark:bg-white dark:text-blue-600'
             }
             transition-colors
           `}
@@ -430,6 +431,27 @@ const StateMachineVisualizer = () => {
         </div>
       </div>
     );
+  };
+
+  const exportSimulationImage = async () => {
+    const simulationElement = document.querySelector('.simulation-content');
+    if (!simulationElement) {
+      console.error('Simulation element not found');
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(simulationElement);
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `state-machine-simulation-${new Date().toISOString().slice(0, 10)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting simulation:', error);
+    }
   };
 
   return (
@@ -696,6 +718,14 @@ const StateMachineVisualizer = () => {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Flow Simulation</h2>
                 <div className="space-x-2">
                   <Button
+                    onClick={exportSimulationImage}
+                    className="bg-green-500 hover:bg-green-600 text-white 
+                             dark:bg-green-500 dark:text-white dark:hover:bg-green-600"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Export Image
+                  </Button>
+                  <Button
                     onClick={() => {
                       setStartState(null);
                       startSimulation();
@@ -716,7 +746,7 @@ const StateMachineVisualizer = () => {
               </div>
 
               {/* Simulation Content */}
-              <div className="min-h-[400px] border dark:border-gray-700 rounded-lg p-4 relative bg-gray-50 dark:bg-gray-900">
+              <div className="simulation-content min-h-[400px] border dark:border-gray-700 rounded-lg p-4 relative bg-gray-50 dark:bg-gray-900">
                 {/* Path Visualization */}
                 <div className="flex flex-wrap gap-6 items-center justify-start p-4">
                   {simulationState.path.map((node, index) => (
@@ -778,6 +808,13 @@ const StateMachineVisualizer = () => {
             }}
           />
         )}
+
+        {/* Developer Signature - subtle and only visible on hover */}
+        <div className="fixed bottom-4 left-4 opacity-30 hover:opacity-70 transition-opacity duration-300">
+          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-tight">
+            crafted by H.U.A
+          </div>
+        </div>
       </div>
     </div>
   );

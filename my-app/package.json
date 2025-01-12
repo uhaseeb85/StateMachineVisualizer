@@ -15,6 +15,7 @@
     "@shadcn/ui": "^0.0.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.344.0",
     "my-app": "file:",
     "react": "^18.2.0",
