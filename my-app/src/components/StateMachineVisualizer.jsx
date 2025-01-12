@@ -283,7 +283,7 @@ const StateMachineVisualizer = () => {
               ? 'bg-gray-500' 
               : simulationState.status === 'active' && node.id === simulationState.currentState
                 ? 'bg-blue-600 cursor-pointer hover:bg-blue-700'
-                : 'bg-blue-400'
+                : 'bg-blue-400 dark:bg-white dark:text-blue-600'
             }
             transition-colors
           `}
@@ -808,6 +808,13 @@ const StateMachineVisualizer = () => {
             }}
           />
         )}
+
+        {/* Developer Signature - subtle and only visible on hover */}
+        <div className="fixed bottom-4 left-4 opacity-30 hover:opacity-70 transition-opacity duration-300">
+          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-tight">
+            crafted by H.U.A
+          </div>
+        </div>
       </div>
     </div>
   );
