@@ -6,6 +6,7 @@ import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download, Camer
 import FeedbackForm from './FeedbackForm';
 import HelpGuide from './HelpGuide';
 import html2canvas from 'html2canvas';
+import Joyride, { STATUS } from 'react-joyride';
 
 const StateMachineVisualizer = () => {
   const [states, setStates] = useState([]);
@@ -25,6 +26,50 @@ const StateMachineVisualizer = () => {
   const [startState, setStartState] = useState(null);
   const [showStartModal, setShowStartModal] = useState(false);
   const [isVerticalLayout, setIsVerticalLayout] = useState(false);
+  const [runTour, setRunTour] = useState(false);
+
+  const tourSteps = [
+    {
+      target: '.add-state-section',
+      content: 'Start by adding a state. Enter a name and click Add to create a new state.',
+      disableBeacon: true,
+    },
+    {
+      target: '.states-list',
+      content: 'Your states will appear here. Click on a state to manage its rules.',
+    },
+    {
+      target: '.rules-section',
+      content: 'Once you select a state, you can add rules here. Rules determine how your state machine transitions.',
+    },
+    {
+      target: '.simulate-button',
+      content: 'Click Simulate to test your state machine and see how it flows.',
+    },
+    {
+      target: '.save-button',
+      content: 'Remember to save your work! This will store your state machine locally.',
+    },
+    {
+      target: '.export-button',
+      content: 'You can export your state machine configuration to share or backup.',
+    },
+    {
+      target: '.import-button',
+      content: 'Import previously exported configurations here.',
+    },
+    {
+      target: '.theme-toggle',
+      content: 'Toggle between light and dark themes for comfortable viewing.',
+    }
+  ];
+
+  const handleTourCallback = (data) => {
+    const { status } = data;
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+      setRunTour(false);
+    }
+  };
 
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
@@ -457,6 +502,21 @@ const StateMachineVisualizer = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous={true}
+        showProgress={true}
+        showSkipButton={true}
+        callback={handleTourCallback}
+        styles={{
+          options: {
+            primaryColor: '#10B981', // Green color to match theme
+            zIndex: 1000,
+          },
+        }}
+      />
+
       {/* Save Notification */}
       {showSaveNotification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -472,17 +532,30 @@ const StateMachineVisualizer = () => {
       )}
 
       <div className="container mx-auto p-4">
+        {/* Center title */}
+        <div className="flex flex-col items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-5">
+            State Machine Visualizer
+          </h1>
+        </div>
+
+        {/* Buttons row with Getting Started on left and others on right */}
         <div className="flex justify-between mb-4 mr-[200px]">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              State Machine Visualizer
-            </h1>
-          </div>
+          <Button
+            onClick={() => setRunTour(true)}
+            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                     dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                     transform transition-all duration-200 hover:scale-110"
+          >
+            Getting Started
+          </Button>
+
           <div className="flex items-center space-x-2">
             <Button
               onClick={toggleTheme}
               variant="ghost"
-              className="w-10 h-10 p-0 text-gray-900 dark:text-white"
+              className="theme-toggle w-10 h-10 p-0 text-gray-900 dark:text-white
+                       transform transition-all duration-200 hover:scale-110"
             >
               {isDarkMode ? (
                 <Sun className="h-5 w-5 text-yellow-500" />
@@ -492,24 +565,27 @@ const StateMachineVisualizer = () => {
             </Button>
             <Button 
               onClick={() => setShowStartModal(true)}
-              className="bg-green-500 hover:bg-green-600 text-white text-sm
-                       dark:bg-green-500 dark:text-white dark:hover:bg-green-600"
+              className="simulate-button bg-green-500 hover:bg-green-600 text-white text-sm
+                       dark:bg-green-500 dark:text-white dark:hover:bg-green-600
+                       transform transition-all duration-200 hover:scale-110"
             >
               <Play className="w-4 h-4 mr-2" />
               Simulate
             </Button>
             <Button 
-              onClick={saveFlow} 
-              className="bg-gray-900 hover:bg-gray-700 text-white text-sm
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              onClick={saveFlow}
+              className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                       transform transition-all duration-200 hover:scale-110"
             >
               <Save className="w-4 h-4 mr-2" />
               Save Flow
             </Button>
             <Button 
               onClick={exportConfiguration}
-              className="bg-gray-900 hover:bg-gray-700 text-white text-sm
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                       transform transition-all duration-200 hover:scale-110"
             >
               <Upload className="w-4 h-4 mr-2" />
               Export
@@ -524,8 +600,9 @@ const StateMachineVisualizer = () => {
             />
             <Button 
               onClick={() => document.getElementById('flow-import').click()}
-              className="bg-gray-900 hover:bg-gray-700 text-white text-sm
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                       dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                       transform transition-all duration-200 hover:scale-110"
             >
               <Download className="w-4 h-4 mr-2" />
               Import
@@ -533,10 +610,11 @@ const StateMachineVisualizer = () => {
           </div>
         </div>
 
+        {/* Main content */}
         <div className="flex gap-6">
           {/* Left Side - States List */}
           <div className="w-1/3 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 add-state-section">
               <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">States</h2>
               <div className="flex gap-2">
                 <Input
@@ -548,8 +626,9 @@ const StateMachineVisualizer = () => {
                 />
                 <Button 
                   onClick={addState}
-                  className="bg-gray-900 hover:bg-gray-700 text-white text-sm h-8
-                           dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                  className="bg-gray-900 hover:bg-blue-600 text-white text-sm h-8
+                           dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                           transform transition-all duration-200 hover:scale-110"
                 >
                   <Plus className="w-3 h-3 mr-1" />
                   Add
@@ -557,7 +636,7 @@ const StateMachineVisualizer = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 states-list">
               {states.map(state => (
                 <div 
                   key={state.id} 
@@ -603,7 +682,7 @@ const StateMachineVisualizer = () => {
           </div>
 
           {/* Right Side - Rule Management */}
-          <div className="w-1/2 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="w-1/2 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm rules-section">
             {selectedState ? (
               <>
                 <div className="flex justify-between items-center mb-4">
@@ -720,15 +799,17 @@ const StateMachineVisualizer = () => {
                 <div className="space-x-2">
                   <Button
                     onClick={() => setIsVerticalLayout(!isVerticalLayout)}
-                    className="bg-gray-900 hover:bg-gray-700 text-white 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="bg-gray-900 hover:bg-blue-600 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                     transition-colors duration-200"
                   >
                     {isVerticalLayout ? 'Horizontal' : 'Vertical'} Layout
                   </Button>
                   <Button
                     onClick={exportSimulationImage}
-                    className="bg-gray-900 hover:bg-gray-700 text-white 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="bg-gray-900 hover:bg-blue-600 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                     transition-colors duration-200"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Export Image
@@ -738,16 +819,18 @@ const StateMachineVisualizer = () => {
                       setStartState(null);
                       startSimulation();
                     }}
-                    className="bg-gray-900 hover:bg-gray-700 text-white 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="bg-gray-900 hover:bg-blue-600 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                     transition-colors duration-200"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     Reset
                   </Button>
                   <Button
                     onClick={() => setShowSimulation(false)}
-                    className="bg-gray-900 hover:bg-gray-700 text-white 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="bg-gray-900 hover:bg-red-600 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-red-600 dark:hover:text-white
+                     transition-colors duration-200"
                   >
                     Close
                   </Button>
@@ -799,15 +882,17 @@ const StateMachineVisualizer = () => {
         <div className="fixed bottom-4 right-4 flex flex-col space-y-2">
           <Button
             onClick={() => setShowHelp(true)}
-            className="bg-green-400 hover:bg-green-500 text-white text-sm
-                     dark:bg-green-500 dark:hover:bg-green-600 shadow-lg"
+            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                     dark:bg-gray-700 dark:hover:bg-blue-600 shadow-lg
+                     transform transition-all duration-200 hover:scale-110"
           >
             User Guide
           </Button>
           <Button
             onClick={() => setShowFeedback(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white text-sm
-                     dark:bg-blue-600 dark:hover:bg-blue-700 shadow-lg"
+            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                     dark:bg-gray-700 dark:hover:bg-blue-600 shadow-lg
+                     transform transition-all duration-200 hover:scale-110"
           >
             Feedback
           </Button>
