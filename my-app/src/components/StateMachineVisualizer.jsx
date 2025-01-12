@@ -24,6 +24,7 @@ const StateMachineVisualizer = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [startState, setStartState] = useState(null);
   const [showStartModal, setShowStartModal] = useState(false);
+  const [isVerticalLayout, setIsVerticalLayout] = useState(false);
 
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
@@ -490,20 +491,20 @@ const StateMachineVisualizer = () => {
               )}
             </Button>
             <Button 
+              onClick={() => setShowStartModal(true)}
+              className="bg-green-500 hover:bg-green-600 text-white text-sm
+                       dark:bg-green-500 dark:text-white dark:hover:bg-green-600"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Simulate
+            </Button>
+            <Button 
               onClick={saveFlow} 
               className="bg-gray-900 hover:bg-gray-700 text-white text-sm
                        dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
             >
               <Save className="w-4 h-4 mr-2" />
               Save Flow
-            </Button>
-            <Button 
-              onClick={() => setShowStartModal(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white text-sm
-                       dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Simulate
             </Button>
             <Button 
               onClick={exportConfiguration}
@@ -519,7 +520,7 @@ const StateMachineVisualizer = () => {
               className="hidden"
               accept=".json"
               onChange={handleImport}
-              onClick={(e) => e.target.value = null} // Reset file input
+              onClick={(e) => e.target.value = null}
             />
             <Button 
               onClick={() => document.getElementById('flow-import').click()}
@@ -718,9 +719,16 @@ const StateMachineVisualizer = () => {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Flow Simulation</h2>
                 <div className="space-x-2">
                   <Button
+                    onClick={() => setIsVerticalLayout(!isVerticalLayout)}
+                    className="bg-gray-900 hover:bg-gray-700 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                  >
+                    {isVerticalLayout ? 'Horizontal' : 'Vertical'} Layout
+                  </Button>
+                  <Button
                     onClick={exportSimulationImage}
-                    className="bg-green-500 hover:bg-green-600 text-white 
-                             dark:bg-green-500 dark:text-white dark:hover:bg-green-600"
+                    className="bg-gray-900 hover:bg-gray-700 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Export Image
@@ -730,15 +738,16 @@ const StateMachineVisualizer = () => {
                       setStartState(null);
                       startSimulation();
                     }}
-                    className="bg-orange-500 hover:bg-orange-600 text-white 
-                             dark:bg-orange-500 dark:text-white dark:hover:bg-orange-600"
+                    className="bg-gray-900 hover:bg-gray-700 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     Reset
                   </Button>
                   <Button
                     onClick={() => setShowSimulation(false)}
-                    className="bg-red-500 hover:bg-red-600 text-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="bg-gray-900 hover:bg-gray-700 text-white 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     Close
                   </Button>
@@ -748,12 +757,20 @@ const StateMachineVisualizer = () => {
               {/* Simulation Content */}
               <div className="simulation-content min-h-[400px] border dark:border-gray-700 rounded-lg p-4 relative bg-gray-50 dark:bg-gray-900">
                 {/* Path Visualization */}
-                <div className="flex flex-wrap gap-6 items-center justify-start p-4">
+                <div className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row flex-wrap'} gap-6 items-center ${isVerticalLayout ? 'justify-center' : 'justify-start'} p-4`}>
                   {simulationState.path.map((node, index) => (
-                    <div key={index} className="flex items-center">
+                    <div key={index} className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row'} items-center`}>
                       {renderSimulationNode(node, index)}
                       {index < simulationState.path.length - 1 && (
-                        <div className="w-6 h-0.5 bg-gray-400 mx-2" />
+                        <div 
+                          className={`
+                            bg-gray-400
+                            ${isVerticalLayout 
+                              ? 'h-6 w-0.5 my-2' 
+                              : 'w-6 h-0.5 mx-2'
+                            }
+                          `}
+                        />
                       )}
                     </div>
                   ))}
