@@ -531,89 +531,102 @@ const StateMachineVisualizer = () => {
         </div>
       )}
 
-      <div className="container mx-auto p-4">
-        {/* Center title */}
-        <div className="flex flex-col items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-5">
+      <div className="container mx-auto p-4 max-w-full min-h-screen 
+                    bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
+                    dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
+        {/* Title */}
+        <div className="flex flex-col items-center mb-8">
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text 
+                         bg-gradient-to-r from-blue-600 to-indigo-600 
+                         dark:from-blue-400 dark:to-indigo-400 mb-5">
             State Machine Visualizer
           </h1>
         </div>
 
-        {/* Buttons row with Getting Started on left and others on right */}
-        <div className="flex justify-between mb-4 mr-[200px]">
-          <Button
-            onClick={() => setRunTour(true)}
-            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                     dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
-                     transform transition-all duration-200 hover:scale-110"
-          >
-            Getting Started
-          </Button>
-
-          <div className="flex items-center space-x-2">
+        {/* Top Panel with Buttons - updated with subtle background */}
+        <div className="mb-8 p-6 border border-gray-200/20 rounded-xl 
+                        bg-white/40 dark:bg-gray-800/40 shadow-xl backdrop-blur-sm
+                        hover:bg-white/50 dark:hover:bg-gray-800/50 
+                        transition-all duration-300">
+          <div className="flex flex-wrap gap-4 justify-center">
             <Button
-              onClick={toggleTheme}
-              variant="ghost"
-              className="theme-toggle w-10 h-10 p-0 text-gray-900 dark:text-white
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              {isDarkMode ? (
-                <Sun className="h-5 w-5 text-yellow-500" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-            <Button 
-              onClick={() => setShowStartModal(true)}
-              className="simulate-button bg-green-500 hover:bg-green-600 text-white text-sm
-                       dark:bg-green-500 dark:text-white dark:hover:bg-green-600
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Simulate
-            </Button>
-            <Button 
-              onClick={saveFlow}
-              className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+              onClick={() => setRunTour(true)}
+              className="bg-gray-900 hover:bg-blue-600 text-white text-sm
                        dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
                        transform transition-all duration-200 hover:scale-110"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Save Flow
+              Getting Started
             </Button>
-            <Button 
-              onClick={exportConfiguration}
-              className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-            <input
-              type="file"
-              id="flow-import"
-              className="hidden"
-              accept=".json"
-              onChange={handleImport}
-              onClick={(e) => e.target.value = null}
-            />
-            <Button 
-              onClick={() => document.getElementById('flow-import').click()}
-              className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Import
-            </Button>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={toggleTheme}
+                variant="ghost"
+                className="theme-toggle w-10 h-10 p-0 text-gray-900 dark:text-white
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                {isDarkMode ? (
+                  <Sun className="h-5 w-5 text-yellow-500" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
+              <Button 
+                onClick={() => setShowStartModal(true)}
+                className="simulate-button bg-green-500 hover:bg-green-600 text-white text-sm
+                         dark:bg-green-500 dark:text-white dark:hover:bg-green-600
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Simulate
+              </Button>
+              <Button 
+                onClick={saveFlow}
+                className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                         dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Flow
+              </Button>
+              <Button 
+                onClick={exportConfiguration}
+                className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                         dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <input
+                type="file"
+                id="flow-import"
+                className="hidden"
+                accept=".json"
+                onChange={handleImport}
+                onClick={(e) => e.target.value = null}
+              />
+              <Button 
+                onClick={() => document.getElementById('flow-import').click()}
+                className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                         dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Import
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Main content */}
-        <div className="flex gap-6">
-          {/* Left Side - States List */}
-          <div className="w-1/3 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
+        {/* Main content - updated with subtle backgrounds */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* States section */}
+          <div className="w-full lg:w-1/3 border border-gray-200/20 dark:border-gray-700/20 
+                          rounded-xl p-6 
+                          bg-white/40 dark:bg-gray-800/40 shadow-xl 
+                          hover:bg-white/50 dark:hover:bg-gray-800/50
+                          transition-all duration-300 backdrop-blur-sm">
             <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 add-state-section">
               <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">States</h2>
               <div className="flex gap-2">
@@ -681,8 +694,12 @@ const StateMachineVisualizer = () => {
             </div>
           </div>
 
-          {/* Right Side - Rule Management */}
-          <div className="w-1/2 border dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm rules-section">
+          {/* Rules section */}
+          <div className="w-full lg:w-1/2 border border-gray-200/20 dark:border-gray-700/20 
+                          rounded-xl p-6 
+                          bg-white/40 dark:bg-gray-800/40 shadow-xl 
+                          hover:bg-white/50 dark:hover:bg-gray-800/50
+                          transition-all duration-300 backdrop-blur-sm">
             {selectedState ? (
               <>
                 <div className="flex justify-between items-center mb-4">
