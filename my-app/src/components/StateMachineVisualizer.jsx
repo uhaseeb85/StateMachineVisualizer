@@ -928,13 +928,15 @@ const StateMachineVisualizer = () => {
           />
         )}
 
-        {/* Simplified developer signature */}
+        {/* Clickable email contact */}
         <div className="fixed bottom-6 left-6 opacity-60 hover:opacity-100 
                 transition-all duration-300 hidden sm:block">
-          <div className="text-sm text-gray-700 dark:text-gray-300 
-                  font-mono tracking-tight hover:tracking-wide">
-            H.U.A
-          </div>
+          <a href="mailto:uhaseeb85@gmail.com?subject=State Machine Visualizer Feedback"
+             className="text-sm text-gray-700 dark:text-gray-300 
+                        font-mono tracking-tight hover:tracking-wide
+                        no-underline hover:no-underline cursor-pointer">
+            uhaseeb85@gmail.com
+          </a>
         </div>
       </div>
     </div>
