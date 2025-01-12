@@ -928,12 +928,12 @@ const StateMachineVisualizer = () => {
           />
         )}
 
-        {/* Enhanced developer signature */}
+        {/* Simplified developer signature */}
         <div className="fixed bottom-6 left-6 opacity-60 hover:opacity-100 
                 transition-all duration-300 hidden sm:block">
           <div className="text-sm text-gray-700 dark:text-gray-300 
                   font-mono tracking-tight hover:tracking-wide">
-            crafted by H.U.A
+            H.U.A
           </div>
         </div>
       </div>
