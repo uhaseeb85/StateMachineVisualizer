@@ -662,12 +662,13 @@ const StateMachineVisualizer = () => {
                 <div 
                   key={state.id} 
                   className={`
-                    py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
+                    py-1 px-3 rounded-lg border transition-all duration-200 text-sm
                     ${selectedState === state.id 
-                      ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white' 
-                      : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500'
+                      ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white transform scale-105 shadow-lg'
+                      : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hover:scale-105 hover:shadow-md'
                     }
                     cursor-pointer flex justify-between items-center
+                    transform transition-all duration-200
                   `}
                   onClick={() => setSelectedState(state.id)}
                 >
@@ -690,8 +691,9 @@ const StateMachineVisualizer = () => {
                         deleteState(state.id);
                       }}
                       className={`
-                        p-1 h-6 hover:bg-gray-300 dark:hover:bg-gray-500
-                        text-red-500 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400
+                        p-1 h-6 hover:bg-red-500/10
+                        text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300
+                        transform transition-all duration-200 hover:scale-110
                       `}
                     >
                       <Trash2 className="w-3 h-3" />
