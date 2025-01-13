@@ -724,8 +724,9 @@ const StateMachineVisualizer = () => {
                     </h3>
                     <Button 
                       onClick={() => addRule(selectedState)}
-                      className="bg-gray-900 hover:bg-gray-700 text-white text-sm h-8
-                               dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                      className="bg-gray-900 hover:bg-blue-600 text-white text-sm h-8
+                               transform transition-all duration-200 hover:scale-110
+                               shadow-lg hover:shadow-xl"
                     >
                       <Plus className="w-3 h-3 mr-1" />
                       Add Rule
