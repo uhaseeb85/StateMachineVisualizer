@@ -429,12 +429,22 @@ const StateMachineVisualizer = () => {
   };
 
   const exportConfiguration = () => {
+    // Prompt for file name
+    const defaultName = `state-machine-config-${new Date().toISOString().slice(0, 10)}`;
+    const fileName = window.prompt('Enter file name:', defaultName);
+    
+    // If user cancels or enters empty name, don't proceed
+    if (!fileName) return;
+    
+    // Add .json extension if not present
+    const finalFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
+    
     const configuration = JSON.stringify(states, null, 2);
     const blob = new Blob([configuration], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `state-machine-config-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = finalFileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
