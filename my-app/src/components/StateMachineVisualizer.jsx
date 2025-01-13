@@ -368,16 +368,16 @@ const StateMachineVisualizer = () => {
               min-w-[8rem] min-h-[3.5rem] w-auto h-auto p-4
               rounded-full flex items-center justify-center
               ${simulationState.status === 'evaluating' && node.id === simulationState.currentRule
-                ? 'bg-orange-500 cursor-pointer hover:bg-orange-600'
+                ? 'bg-white text-gray-900 cursor-pointer hover:bg-gray-100'
                 : simulationState.status === 'deciding' && node.id === simulationState.currentRule
-                  ? 'bg-orange-500'
+                  ? 'bg-white text-gray-900'
                   : hasOutcome
-                    ? 'bg-green-500' // Success outcome
+                    ? 'bg-green-500 text-white' // Success outcome
                     : isFailure
-                      ? 'bg-red-500' // Failure outcome
-                      : 'bg-orange-400'
+                      ? 'bg-red-500 text-white' // Failure outcome
+                      : 'bg-white text-gray-900'
               }
-              transition-colors duration-300
+              transition-colors duration-300 border border-gray-200
             `}
             onClick={() => {
               if (simulationState.status === 'evaluating' && node.id === simulationState.currentRule) {
@@ -385,7 +385,7 @@ const StateMachineVisualizer = () => {
               }
             }}
           >
-            <span className="text-white text-xs px-2 text-center break-words max-w-[150px]">
+            <span className="text-xs px-2 text-center break-words max-w-[150px]">
               {rule?.condition || 'Unknown'}
             </span>
           </div>
