@@ -506,11 +506,21 @@ const StateMachineVisualizer = () => {
     }
 
     try {
+      // Prompt for file name
+      const defaultName = `state-machine-simulation-${new Date().toISOString().slice(0, 10)}`;
+      const fileName = window.prompt('Enter file name:', defaultName);
+      
+      // If user cancels or enters empty name, don't proceed
+      if (!fileName) return;
+      
+      // Add .png extension if not present
+      const finalFileName = fileName.endsWith('.png') ? fileName : `${fileName}.png`;
+
       const canvas = await html2canvas(simulationElement);
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = image;
-      link.download = `state-machine-simulation-${new Date().toISOString().slice(0, 10)}.png`;
+      link.download = finalFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
