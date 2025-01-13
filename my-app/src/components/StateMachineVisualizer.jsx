@@ -347,7 +347,7 @@ const StateMachineVisualizer = () => {
     }
 
     if (node.type === 'rule') {
-      // Find the rule information from the path history
+      // Find the rule information and outcome from the path history
       const ruleState = simulationState.path
         .slice(0, index)
         .reverse()
@@ -355,6 +355,11 @@ const StateMachineVisualizer = () => {
       
       const stateWithRule = states.find(s => s.id === ruleState?.id);
       const rule = stateWithRule?.rules.find(r => r.id === node.id);
+
+      // Find if this rule has an outcome in the path
+      const nextNode = simulationState.path[index + 1];
+      const hasOutcome = nextNode && nextNode.type === 'state' && nextNode.id !== 'end';
+      const isFailure = nextNode && nextNode.type === 'rule'; // If next node is a rule, this one failed
 
       return (
         <div className="flex flex-col items-center gap-2">
@@ -366,9 +371,13 @@ const StateMachineVisualizer = () => {
                 ? 'bg-orange-500 cursor-pointer hover:bg-orange-600'
                 : simulationState.status === 'deciding' && node.id === simulationState.currentRule
                   ? 'bg-orange-500'
-                  : 'bg-orange-400'
+                  : hasOutcome
+                    ? 'bg-green-500' // Success outcome
+                    : isFailure
+                      ? 'bg-red-500' // Failure outcome
+                      : 'bg-orange-400'
               }
-              transition-colors
+              transition-colors duration-300
             `}
             onClick={() => {
               if (simulationState.status === 'evaluating' && node.id === simulationState.currentRule) {
