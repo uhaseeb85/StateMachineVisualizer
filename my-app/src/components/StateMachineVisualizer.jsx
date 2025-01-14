@@ -937,14 +937,7 @@ const StateMachineVisualizer = () => {
           >
             User Guide
           </Button>
-          <Button
-            onClick={() => setShowFeedback(true)}
-            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                     dark:bg-gray-700 dark:hover:bg-blue-600 shadow-lg
-                     transform transition-all duration-200 hover:scale-110"
-          >
-            Feedback
-          </Button>
+          
         </div>
 
         {showStartModal && (
