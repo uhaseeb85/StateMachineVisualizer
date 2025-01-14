@@ -7,7 +7,7 @@ import FeedbackForm from './FeedbackForm';
 import HelpGuide from './HelpGuide';
 import html2canvas from 'html2canvas';
 import Joyride, { STATUS } from 'react-joyride';
-import { read, utils } from 'xlsx';
+import * as XLSX from 'xlsx/xlsx.mjs';
 
 const generateId = () => {
   return 'id_' + Math.random().toString(36).substr(2, 9);
@@ -201,7 +201,7 @@ const StateMachineVisualizer = () => {
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
-        const workbook = read(data, { 
+        const workbook = XLSX.read(data, { 
           type: 'array',
           cellDates: true,
           cellNF: false,
@@ -218,7 +218,7 @@ const StateMachineVisualizer = () => {
         }
 
         // Get all rows including headers
-        const rows = utils.sheet_to_json(firstSheet, { 
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { 
           header: 1,
           raw: false,
           defval: ''
