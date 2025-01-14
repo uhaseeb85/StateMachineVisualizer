@@ -201,20 +201,23 @@ const StateMachineVisualizer = () => {
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { 
-          type: 'array',
-          cellDates: true,
-          cellNF: false,
-          cellText: false
-        });
+        const fileType = file.name.split('.').pop().toLowerCase();
+        
+        // Handle different file types
+        const workbook = fileType === 'csv' 
+          ? XLSX.read(e.target.result, { type: 'string' })
+          : XLSX.read(data, { type: 'array' });
+
+        console.log('File type:', fileType);
+        console.log('Workbook loaded:', workbook.SheetNames);
 
         if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
-          throw new Error('Invalid Excel file format');
+          throw new Error('Invalid file format');
         }
 
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!firstSheet) {
-          throw new Error('No data found in the first sheet');
+          throw new Error('No data found in the file');
         }
 
         // Get all rows including headers
@@ -231,18 +234,18 @@ const StateMachineVisualizer = () => {
         }
 
         // Get headers from first row and find required column indices
-        const headers = rows[0];
+        const headers = rows[0].map(h => h?.toString().trim().toLowerCase());
         console.log('Headers found:', headers);
 
         // Find column indices (case-insensitive)
         const sourceNodeIndex = headers.findIndex(h => 
-          h?.toString().trim().toLowerCase() === 'source node'
+          h === 'source node' || h === 'source node '
         );
         const destNodeIndex = headers.findIndex(h => 
-          h?.toString().trim().toLowerCase() === 'destination node'
+          h === 'destination node' || h === 'destination node '
         );
         const ruleListIndex = headers.findIndex(h => 
-          h?.toString().trim().toLowerCase() === 'rule list'
+          h === 'rule list' || h === 'rule list '
         );
 
         if (sourceNodeIndex === -1 || destNodeIndex === -1 || ruleListIndex === -1) {
@@ -317,16 +320,12 @@ const StateMachineVisualizer = () => {
       }
     };
 
-    reader.onerror = (error) => {
-      console.error('File reading error:', error);
-      alert('Error reading file: ' + error.message);
-    };
-
-    try {
+    // Handle different file types
+    const fileType = file.name.split('.').pop().toLowerCase();
+    if (fileType === 'csv') {
+      reader.readAsText(file);
+    } else {
       reader.readAsArrayBuffer(file);
-    } catch (error) {
-      console.error('File reading error:', error);
-      alert('Error reading file: ' + error.message);
     }
   };
 
@@ -784,7 +783,7 @@ const StateMachineVisualizer = () => {
                          transform transition-all duration-200 hover:scale-110"
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Import Excel
+                Import Excel/CSV
               </Button>
               <input
                 type="file"
@@ -798,7 +797,7 @@ const StateMachineVisualizer = () => {
                 type="file"
                 id="excel-import"
                 className="hidden"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv"
                 onChange={handleExcelImport}
                 onClick={(e) => e.target.value = null}
               />
