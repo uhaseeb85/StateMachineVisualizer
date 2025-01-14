@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download, Camera } from 'lucide-react';
+import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download, Camera, FileSpreadsheet } from 'lucide-react';
 import FeedbackForm from './FeedbackForm';
 import HelpGuide from './HelpGuide';
 import html2canvas from 'html2canvas';
 import Joyride, { STATUS } from 'react-joyride';
+import { read, utils } from 'xlsx';
+
+const generateId = () => {
+  return 'id_' + Math.random().toString(36).substr(2, 9);
+};
 
 const StateMachineVisualizer = () => {
   const [states, setStates] = useState([]);
@@ -186,6 +191,142 @@ const StateMachineVisualizer = () => {
         }
       };
       reader.readAsText(file);
+    }
+  };
+
+  const handleExcelImport = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = read(data, { 
+          type: 'array',
+          cellDates: true,
+          cellNF: false,
+          cellText: false
+        });
+
+        if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error('Invalid Excel file format');
+        }
+
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!firstSheet) {
+          throw new Error('No data found in the first sheet');
+        }
+
+        // Get all rows including headers
+        const rows = utils.sheet_to_json(firstSheet, { 
+          header: 1,
+          raw: false,
+          defval: ''
+        });
+
+        console.log('Raw rows:', rows);
+
+        if (rows.length < 2) {
+          throw new Error('File contains no data rows');
+        }
+
+        // Get headers from first row and find required column indices
+        const headers = rows[0];
+        console.log('Headers found:', headers);
+
+        // Find column indices (case-insensitive)
+        const sourceNodeIndex = headers.findIndex(h => 
+          h?.toString().trim().toLowerCase() === 'source node'
+        );
+        const destNodeIndex = headers.findIndex(h => 
+          h?.toString().trim().toLowerCase() === 'destination node'
+        );
+        const ruleListIndex = headers.findIndex(h => 
+          h?.toString().trim().toLowerCase() === 'rule list'
+        );
+
+        if (sourceNodeIndex === -1 || destNodeIndex === -1 || ruleListIndex === -1) {
+          throw new Error(
+            'Missing required columns. Please ensure your file has: "Source Node", "Destination Node", and "Rule List"\n' +
+            'Found columns: ' + headers.join(', ')
+          );
+        }
+
+        // Process data rows
+        const stateMap = new Map();
+        
+        // Skip header row (index 0)
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          
+          // Skip empty rows
+          if (!row.some(cell => cell)) continue;
+
+          const sourceNode = row[sourceNodeIndex]?.toString().trim();
+          const destNode = row[destNodeIndex]?.toString().trim();
+          const ruleList = row[ruleListIndex]?.toString().trim();
+
+          // Skip rows with missing required data
+          if (!sourceNode || !destNode || !ruleList) {
+            console.warn(`Skipping row ${i + 1} due to missing required data`);
+            continue;
+          }
+
+          // Create source state if it doesn't exist
+          if (!stateMap.has(sourceNode)) {
+            stateMap.set(sourceNode, {
+              id: generateId(),
+              name: sourceNode,
+              rules: []
+            });
+          }
+
+          // Create destination state if it doesn't exist
+          if (!stateMap.has(destNode)) {
+            stateMap.set(destNode, {
+              id: generateId(),
+              name: destNode,
+              rules: []
+            });
+          }
+
+          // Add rule
+          const sourceState = stateMap.get(sourceNode);
+          const targetState = stateMap.get(destNode);
+          
+          sourceState.rules.push({
+            id: generateId(),
+            condition: ruleList,
+            nextState: targetState.id
+          });
+        }
+
+        const newStates = Array.from(stateMap.values());
+        console.log('Processed states:', newStates);
+
+        if (newStates.length === 0) {
+          throw new Error('No valid states could be created from the file');
+        }
+
+        setStates(newStates);
+        alert(`Import successful! Created ${newStates.length} states.`);
+
+      } catch (error) {
+        console.error('Import error:', error);
+        alert('Error importing file: ' + error.message);
+      }
+    };
+
+    reader.onerror = (error) => {
+      console.error('File reading error:', error);
+      alert('Error reading file: ' + error.message);
+    };
+
+    try {
+      reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('File reading error:', error);
+      alert('Error reading file: ' + error.message);
     }
   };
 
@@ -627,6 +768,24 @@ const StateMachineVisualizer = () => {
                 <Upload className="w-4 h-4 mr-2" />
                 Export
               </Button>
+              <Button 
+                onClick={() => document.getElementById('flow-import').click()}
+                className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Import JSON
+              </Button>
+              <Button 
+                onClick={() => document.getElementById('excel-import').click()}
+                className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                         transform transition-all duration-200 hover:scale-110"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Import Excel
+              </Button>
               <input
                 type="file"
                 id="flow-import"
@@ -635,15 +794,14 @@ const StateMachineVisualizer = () => {
                 onChange={handleImport}
                 onClick={(e) => e.target.value = null}
               />
-              <Button 
-                onClick={() => document.getElementById('flow-import').click()}
-                className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                         transform transition-all duration-200 hover:scale-110"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Import
-              </Button>
+              <input
+                type="file"
+                id="excel-import"
+                className="hidden"
+                accept=".xlsx,.xls"
+                onChange={handleExcelImport}
+                onClick={(e) => e.target.value = null}
+              />
             </div>
           </div>
         </div>
