@@ -506,11 +506,21 @@ const StateMachineVisualizer = () => {
     }
 
     try {
+      // Prompt for file name
+      const defaultName = `state-machine-simulation-${new Date().toISOString().slice(0, 10)}`;
+      const fileName = window.prompt('Enter file name:', defaultName);
+      
+      // If user cancels or enters empty name, don't proceed
+      if (!fileName) return;
+      
+      // Add .png extension if not present
+      const finalFileName = fileName.endsWith('.png') ? fileName : `${fileName}.png`;
+
       const canvas = await html2canvas(simulationElement);
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = image;
-      link.download = `state-machine-simulation-${new Date().toISOString().slice(0, 10)}.png`;
+      link.download = finalFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -570,7 +580,7 @@ const StateMachineVisualizer = () => {
             <Button
               onClick={() => setRunTour(true)}
               className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                       dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                        transform transition-all duration-200 hover:scale-110"
             >
               Getting Started
@@ -580,7 +590,8 @@ const StateMachineVisualizer = () => {
               <Button
                 onClick={toggleTheme}
                 variant="ghost"
-                className="theme-toggle w-10 h-10 p-0 text-gray-900 dark:text-white
+                className="theme-toggle w-10 h-10 p-0 text-gray-900 
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          transform transition-all duration-200 hover:scale-110"
               >
                 {isDarkMode ? (
@@ -601,7 +612,7 @@ const StateMachineVisualizer = () => {
               <Button 
                 onClick={saveFlow}
                 className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                         dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          transform transition-all duration-200 hover:scale-110"
               >
                 <Save className="w-4 h-4 mr-2" />
@@ -610,7 +621,7 @@ const StateMachineVisualizer = () => {
               <Button 
                 onClick={exportConfiguration}
                 className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                         dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          transform transition-all duration-200 hover:scale-110"
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -627,7 +638,7 @@ const StateMachineVisualizer = () => {
               <Button 
                 onClick={() => document.getElementById('flow-import').click()}
                 className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                         dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          transform transition-all duration-200 hover:scale-110"
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -658,7 +669,7 @@ const StateMachineVisualizer = () => {
                 <Button 
                   onClick={addState}
                   className="bg-gray-900 hover:bg-blue-600 text-white text-sm h-8
-                           dark:bg-gray-700 dark:text-white dark:hover:bg-blue-600
+                           dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                            transform transition-all duration-200 hover:scale-110"
                 >
                   <Plus className="w-3 h-3 mr-1" />
@@ -736,9 +747,9 @@ const StateMachineVisualizer = () => {
                     </h3>
                     <Button 
                       onClick={() => addRule(selectedState)}
-                      className="bg-gray-900 hover:bg-blue-600 text-white text-sm h-8
-                               transform transition-all duration-200 hover:scale-110
-                               shadow-lg hover:shadow-xl"
+                      className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                               dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                               transform transition-all duration-200 hover:scale-110"
                     >
                       <Plus className="w-3 h-3 mr-1" />
                       Add Rule
@@ -926,14 +937,7 @@ const StateMachineVisualizer = () => {
           >
             User Guide
           </Button>
-          <Button
-            onClick={() => setShowFeedback(true)}
-            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                     dark:bg-gray-700 dark:hover:bg-blue-600 shadow-lg
-                     transform transition-all duration-200 hover:scale-110"
-          >
-            Feedback
-          </Button>
+          
         </div>
 
         {showStartModal && (
