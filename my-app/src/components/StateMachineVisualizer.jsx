@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download, Camera, FileSpreadsheet } from 'lucide-react';
+import { Plus, Save, Upload, Trash2, Play, RotateCcw, Moon, Sun, Download, Camera, FileSpreadsheet, ArrowRight } from 'lucide-react';
 import FeedbackForm from './FeedbackForm';
 import HelpGuide from './HelpGuide';
 import html2canvas from 'html2canvas';
@@ -1006,11 +1006,18 @@ const StateMachineVisualizer = () => {
                                   setSelectedState(targetState.id);
                                 }
                               }}
-                              className="text-blue-500 hover:text-blue-700 text-sm h-8 text-left px-2 
-                                       hover:underline focus:outline-none bg-white dark:bg-gray-700 
-                                       rounded border border-gray-200 dark:border-gray-600"
+                              className="text-blue-600 hover:text-blue-800 text-sm h-8 px-3
+                                       focus:outline-none bg-blue-50 dark:bg-blue-900/20 
+                                       rounded-md border border-blue-200 dark:border-blue-800
+                                       flex items-center justify-between
+                                       transition-all duration-200 cursor-pointer
+                                       hover:bg-blue-100 dark:hover:bg-blue-900/30
+                                       font-medium"
                             >
-                              {states.find(s => s.id === rule.nextState)?.name || 'Select next state'}
+                              <span>{states.find(s => s.id === rule.nextState)?.name || 'Select next state'}</span>
+                              <span className="text-xs text-blue-500 dark:text-blue-400">
+                                (click to view)
+                              </span>
                             </button>
                             <Button
                               variant="ghost"
