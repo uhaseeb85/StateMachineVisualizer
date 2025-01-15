@@ -924,18 +924,66 @@ const StateMachineVisualizer = () => {
                     <div className="w-8"></div>
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
+                      <Input
+                        placeholder="New rule condition"
+                        className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                      />
+                      <select
+                        className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600 rounded"
+                        onChange={(e) => {
+                          const targetState = states.find(s => s.name === e.target.value);
+                          if (targetState) {
+                            const newRule = {
+                              id: Date.now(),
+                              condition: document.querySelector('input[placeholder="New rule condition"]').value,
+                              nextState: targetState.id
+                            };
+                            if (newRule.condition.trim()) {
+                              const updatedStates = states.map(s => {
+                                if (s.id === selectedState) {
+                                  return {
+                                    ...s,
+                                    rules: [...s.rules, newRule]
+                                  };
+                                }
+                                return s;
+                              });
+                              setStates(updatedStates);
+                              // Clear the input
+                              document.querySelector('input[placeholder="New rule condition"]').value = '';
+                            }
+                          }
+                        }}
+                      >
+                        <option value="">Select target state</option>
+                        {states.map(s => (
+                          <option key={s.id} value={s.name}>{s.name}</option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 h-8 text-blue-500 hover:text-blue-700 
+                                  dark:text-blue-500 dark:hover:text-blue-400 
+                                  hover:bg-gray-300 dark:hover:bg-gray-500
+                                  min-w-[32px] flex items-center justify-center"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+
+                    {/* Existing rules with clickable target states */}
                     {states
                       .find(s => s.id === selectedState)
                       ?.rules.map((rule, index) => (
                         <div 
                           key={rule.id} 
-                          className={`
-                            py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
-                            border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
-                            dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500
-                            dark:border-gray-300
-                          `}
+                          className="py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
+                                    border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
+                                    dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500
+                                    dark:border-gray-300"
                         >
                           <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
                             <Input
@@ -951,26 +999,19 @@ const StateMachineVisualizer = () => {
                               placeholder="Rule condition"
                               className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                             />
-                            <select
-                              value={rule.nextState}
-                              onChange={(e) =>
-                                updateRule(
-                                  selectedState,
-                                  rule.id,
-                                  'nextState',
-                                  e.target.value
-                                )
-                              }
-                              className="w-full border rounded-md h-8 px-2 text-sm
-                                       dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                            <button
+                              onClick={() => {
+                                const targetState = states.find(s => s.id === rule.nextState);
+                                if (targetState) {
+                                  setSelectedState(targetState.id);
+                                }
+                              }}
+                              className="text-blue-500 hover:text-blue-700 text-sm h-8 text-left px-2 
+                                       hover:underline focus:outline-none bg-white dark:bg-gray-700 
+                                       rounded border border-gray-200 dark:border-gray-600"
                             >
-                              <option value="">Select next state</option>
-                              {states.map(s => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name}
-                                </option>
-                              ))}
-                            </select>
+                              {states.find(s => s.id === rule.nextState)?.name || 'Select next state'}
+                            </button>
                             <Button
                               variant="ghost"
                               size="sm"
