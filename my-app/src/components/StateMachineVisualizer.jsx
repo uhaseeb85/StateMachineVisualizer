@@ -32,6 +32,8 @@ const StateMachineVisualizer = () => {
   const [showStartModal, setShowStartModal] = useState(false);
   const [isVerticalLayout, setIsVerticalLayout] = useState(false);
   const [runTour, setRunTour] = useState(false);
+  const [newRuleCondition, setNewRuleCondition] = useState("");
+  const [newRuleNextState, setNewRuleNextState] = useState("");
 
   const tourSteps = [
     {
@@ -927,35 +929,15 @@ const StateMachineVisualizer = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
                       <Input
+                        value={newRuleCondition}
+                        onChange={(e) => setNewRuleCondition(e.target.value)}
                         placeholder="New rule condition"
                         className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                       />
                       <select
+                        value={newRuleNextState}
+                        onChange={(e) => setNewRuleNextState(e.target.value)}
                         className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600 rounded"
-                        onChange={(e) => {
-                          const targetState = states.find(s => s.name === e.target.value);
-                          if (targetState) {
-                            const newRule = {
-                              id: Date.now(),
-                              condition: document.querySelector('input[placeholder="New rule condition"]').value,
-                              nextState: targetState.id
-                            };
-                            if (newRule.condition.trim()) {
-                              const updatedStates = states.map(s => {
-                                if (s.id === selectedState) {
-                                  return {
-                                    ...s,
-                                    rules: [...s.rules, newRule]
-                                  };
-                                }
-                                return s;
-                              });
-                              setStates(updatedStates);
-                              // Clear the input
-                              document.querySelector('input[placeholder="New rule condition"]').value = '';
-                            }
-                          }
-                        }}
                       >
                         <option value="">Select target state</option>
                         {states.map(s => (
@@ -965,6 +947,50 @@ const StateMachineVisualizer = () => {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => {
+                          if (newRuleCondition.trim() && newRuleNextState) {
+                            const targetState = states.find(s => s.name === newRuleNextState);
+                            if (targetState) {
+                              const currentState = states.find(s => s.id === selectedState);
+                              
+                              // Check if rule with same condition exists
+                              const existingRule = currentState.rules.find(r => 
+                                r.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
+                              );
+
+                              const updatedStates = states.map(s => {
+                                if (s.id === selectedState) {
+                                  if (existingRule) {
+                                    // Update only the nextState of the existing rule
+                                    return {
+                                      ...s,
+                                      rules: s.rules.map(r => 
+                                        r.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
+                                          ? { ...r, nextState: targetState.id }
+                                          : r
+                                      )
+                                    };
+                                  } else {
+                                    // Add new rule if it doesn't exist
+                                    return {
+                                      ...s,
+                                      rules: [...s.rules, {
+                                        id: Date.now(),
+                                        condition: newRuleCondition.trim(),
+                                        nextState: targetState.id
+                                      }]
+                                    };
+                                  }
+                                }
+                                return s;
+                              });
+                              
+                              setStates(updatedStates);
+                              setNewRuleCondition("");
+                              setNewRuleNextState("");
+                            }
+                          }
+                        }}
                         className="p-1 h-8 text-blue-500 hover:text-blue-700 
                                   dark:text-blue-500 dark:hover:text-blue-400 
                                   hover:bg-gray-300 dark:hover:bg-gray-500
