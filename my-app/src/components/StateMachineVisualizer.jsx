@@ -8,6 +8,7 @@ import HelpGuide from './HelpGuide';
 import html2canvas from 'html2canvas';
 import Joyride, { STATUS } from 'react-joyride';
 import * as XLSX from 'xlsx/xlsx.mjs';
+import RulesSection from './RulesSection';
 
 const generateId = () => {
   return 'id_' + Math.random().toString(36).substr(2, 9);
@@ -900,20 +901,7 @@ const StateMachineVisualizer = () => {
 
                 {/* Rules Section */}
                 <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-md font-semibold text-gray-900 dark:text-white">
-                      Rules
-                    </h3>
-                    <Button 
-                      onClick={() => addRule(selectedState)}
-                      className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                               dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                               transform transition-all duration-200 hover:scale-110"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Rule
-                    </Button>
-                  </div>
+                
 
                   {/* Column Headers */}
                   <div className="grid grid-cols-[1fr,1fr,auto] gap-2 mb-2 px-3">
@@ -927,138 +915,16 @@ const StateMachineVisualizer = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
-                      <Input
-                        value={newRuleCondition}
-                        onChange={(e) => setNewRuleCondition(e.target.value)}
-                        placeholder="New rule condition"
-                        className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                      />
-                      <select
-                        value={newRuleNextState}
-                        onChange={(e) => setNewRuleNextState(e.target.value)}
-                        className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600 rounded"
-                      >
-                        <option value="">Select target state</option>
-                        {states.map(s => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
-                        ))}
-                      </select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (newRuleCondition.trim() && newRuleNextState) {
-                            const targetState = states.find(s => s.name === newRuleNextState);
-                            if (targetState) {
-                              const currentState = states.find(s => s.id === selectedState);
-                              
-                              // Check if rule with same condition exists
-                              const existingRule = currentState.rules.find(r => 
-                                r.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
-                              );
-
-                              const updatedStates = states.map(s => {
-                                if (s.id === selectedState) {
-                                  if (existingRule) {
-                                    // Update only the nextState of the existing rule
-                                    return {
-                                      ...s,
-                                      rules: s.rules.map(r => 
-                                        r.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
-                                          ? { ...r, nextState: targetState.id }
-                                          : r
-                                      )
-                                    };
-                                  } else {
-                                    // Add new rule if it doesn't exist
-                                    return {
-                                      ...s,
-                                      rules: [...s.rules, {
-                                        id: Date.now(),
-                                        condition: newRuleCondition.trim(),
-                                        nextState: targetState.id
-                                      }]
-                                    };
-                                  }
-                                }
-                                return s;
-                              });
-                              
-                              setStates(updatedStates);
-                              setNewRuleCondition("");
-                              setNewRuleNextState("");
-                            }
-                          }
-                        }}
-                        className="p-1 h-8 text-blue-500 hover:text-blue-700 
-                                  dark:text-blue-500 dark:hover:text-blue-400 
-                                  hover:bg-gray-300 dark:hover:bg-gray-500
-                                  min-w-[32px] flex items-center justify-center"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    </div>
-
-                    {/* Existing rules with clickable target states */}
-                    {states
-                      .find(s => s.id === selectedState)
-                      ?.rules.map((rule, index) => (
-                        <div 
-                          key={rule.id} 
-                          className="py-1 px-3 rounded-lg border transition-colors duration-200 text-sm
-                                    border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 
-                                    dark:bg-gray-400 dark:text-white dark:hover:bg-gray-500
-                                    dark:border-gray-300"
-                        >
-                          <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
-                            <Input
-                              value={rule.condition}
-                              onChange={(e) =>
-                                updateRule(
-                                  selectedState,
-                                  rule.id,
-                                  'condition',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Rule condition"
-                              className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                            />
-                            <button
-                              onClick={() => {
-                                const targetState = states.find(s => s.id === rule.nextState);
-                                if (targetState) {
-                                  setSelectedState(targetState.id);
-                                }
-                              }}
-                              className="text-blue-600 hover:text-blue-800 text-sm h-8 px-3
-                                       focus:outline-none bg-blue-50 dark:bg-blue-900/20 
-                                       rounded-md border border-blue-200 dark:border-blue-800
-                                       flex items-center justify-between
-                                       transition-all duration-200 cursor-pointer
-                                       hover:bg-blue-100 dark:hover:bg-blue-900/30
-                                       font-medium"
-                            >
-                              <span>{states.find(s => s.id === rule.nextState)?.name || 'Select next state'}</span>
-                              <span className="text-xs text-blue-500 dark:text-blue-400">
-                                (click to view)
-                              </span>
-                            </button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteRule(selectedState, rule.id)}
-                              className="p-1 h-8 text-red-500 hover:text-red-700 
-                                      dark:text-red-500 dark:hover:text-red-400 
-                                      hover:bg-gray-300 dark:hover:bg-gray-500
-                                      min-w-[32px] flex items-center justify-center"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                    <RulesSection
+                      selectedState={selectedState}
+                      states={states}
+                      newRuleCondition={newRuleCondition}
+                      setNewRuleCondition={setNewRuleCondition}
+                      newRuleNextState={newRuleNextState}
+                      setNewRuleNextState={setNewRuleNextState}
+                      setStates={setStates}
+                      setSelectedState={setSelectedState}
+                    />
                   </div>
                 </div>
               </>
