@@ -951,22 +951,41 @@ const StateMachineVisualizer = () => {
                           if (newRuleCondition.trim() && newRuleNextState) {
                             const targetState = states.find(s => s.name === newRuleNextState);
                             if (targetState) {
-                              const newRule = {
-                                id: Date.now(),
-                                condition: newRuleCondition.trim(),
-                                nextState: targetState.id
-                              };
+                              const currentState = states.find(s => s.id === selectedState);
+                              
+                              // Check if rule with same condition exists
+                              const existingRule = currentState.rules.find(r => 
+                                r.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
+                              );
+
                               const updatedStates = states.map(s => {
                                 if (s.id === selectedState) {
-                                  return {
-                                    ...s,
-                                    rules: [...s.rules, newRule]
-                                  };
+                                  if (existingRule) {
+                                    // Update only the nextState of the existing rule
+                                    return {
+                                      ...s,
+                                      rules: s.rules.map(r => 
+                                        r.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
+                                          ? { ...r, nextState: targetState.id }
+                                          : r
+                                      )
+                                    };
+                                  } else {
+                                    // Add new rule if it doesn't exist
+                                    return {
+                                      ...s,
+                                      rules: [...s.rules, {
+                                        id: Date.now(),
+                                        condition: newRuleCondition.trim(),
+                                        nextState: targetState.id
+                                      }]
+                                    };
+                                  }
                                 }
                                 return s;
                               });
+                              
                               setStates(updatedStates);
-                              // Clear inputs after adding
                               setNewRuleCondition("");
                               setNewRuleNextState("");
                             }
