@@ -901,11 +901,7 @@ const StateMachineVisualizer = () => {
 
                 {/* Rules Section */}
                 <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-md font-semibold text-gray-900 dark:text-white">
-                      Rules
-                    </h3>
-                  </div>
+                
 
                   {/* Column Headers */}
                   <div className="grid grid-cols-[1fr,1fr,auto] gap-2 mb-2 px-3">
