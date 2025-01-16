@@ -32,6 +32,8 @@ const StateMachineVisualizer = () => {
   const [showStartModal, setShowStartModal] = useState(false);
   const [isVerticalLayout, setIsVerticalLayout] = useState(false);
   const [runTour, setRunTour] = useState(false);
+  const [newRuleCondition, setNewRuleCondition] = useState("");
+  const [newRuleNextState, setNewRuleNextState] = useState("");
 
   const tourSteps = [
     {
@@ -927,20 +929,33 @@ const StateMachineVisualizer = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center">
                       <Input
+                        value={newRuleCondition}
+                        onChange={(e) => setNewRuleCondition(e.target.value)}
                         placeholder="New rule condition"
                         className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                       />
                       <select
+                        value={newRuleNextState}
+                        onChange={(e) => setNewRuleNextState(e.target.value)}
                         className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600 rounded"
-                        onChange={(e) => {
-                          const targetState = states.find(s => s.name === e.target.value);
-                          if (targetState) {
-                            const newRule = {
-                              id: Date.now(),
-                              condition: document.querySelector('input[placeholder="New rule condition"]').value,
-                              nextState: targetState.id
-                            };
-                            if (newRule.condition.trim()) {
+                      >
+                        <option value="">Select target state</option>
+                        {states.map(s => (
+                          <option key={s.id} value={s.name}>{s.name}</option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (newRuleCondition.trim() && newRuleNextState) {
+                            const targetState = states.find(s => s.name === newRuleNextState);
+                            if (targetState) {
+                              const newRule = {
+                                id: Date.now(),
+                                condition: newRuleCondition.trim(),
+                                nextState: targetState.id
+                              };
                               const updatedStates = states.map(s => {
                                 if (s.id === selectedState) {
                                   return {
@@ -951,20 +966,12 @@ const StateMachineVisualizer = () => {
                                 return s;
                               });
                               setStates(updatedStates);
-                              // Clear the input
-                              document.querySelector('input[placeholder="New rule condition"]').value = '';
+                              // Clear inputs after adding
+                              setNewRuleCondition("");
+                              setNewRuleNextState("");
                             }
                           }
                         }}
-                      >
-                        <option value="">Select target state</option>
-                        {states.map(s => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
-                        ))}
-                      </select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
                         className="p-1 h-8 text-blue-500 hover:text-blue-700 
                                   dark:text-blue-500 dark:hover:text-blue-400 
                                   hover:bg-gray-300 dark:hover:bg-gray-500
