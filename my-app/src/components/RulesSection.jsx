@@ -33,7 +33,7 @@ const RulesSection = ({
           ))}
         </select>
         <Button
-          variant="default"
+          variant="ghost"
           size="sm"
           onClick={() => {
             if (newRuleCondition.trim() && newRuleNextState) {
@@ -76,13 +76,15 @@ const RulesSection = ({
               }
             }
           }}
-          className="px-4 h-8 bg-blue-500 hover:bg-blue-600 text-white
-                    dark:bg-blue-600 dark:hover:bg-blue-700
-                    min-w-[40px] flex items-center justify-center
-                    shadow-sm transition-colors duration-200"
+          className="p-1 h-8 bg-gray-900 text-white
+                    hover:bg-blue-600 hover:text-white
+                    dark:bg-gray-900 dark:text-white
+                    dark:hover:bg-blue-600 dark:hover:text-white
+                    min-w-[32px] flex items-center justify-center gap-2
+                    transform transition-all duration-200 hover:scale-110"
         >
           <Plus className="w-4 h-4" />
-          <span className="ml-1">Add</span>
+          <span>Add</span>
         </Button>
       </div>
 
