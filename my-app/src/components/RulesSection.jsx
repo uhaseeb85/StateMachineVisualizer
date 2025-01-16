@@ -19,7 +19,7 @@ const RulesSection = ({
         <Input
           value={newRuleCondition}
           onChange={(e) => setNewRuleCondition(e.target.value)}
-          placeholder="New rule condition"
+          placeholder="Name"
           className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
         />
         <select
@@ -117,7 +117,7 @@ const RulesSection = ({
                   });
                   setStates(updatedStates);
                 }}
-                placeholder="Rule condition"
+                placeholder="Name"
                 className="text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
               />
               <button
@@ -133,7 +133,8 @@ const RulesSection = ({
                          flex items-center justify-between
                          transition-all duration-200 cursor-pointer
                          hover:bg-blue-100 dark:hover:bg-blue-900/30
-                         font-medium"
+                         font-medium
+                         dark:text-white dark:hover:text-white"
               >
                 <span>{states.find(s => s.id === rule.nextState)?.name}</span>
                 <span className="text-xs text-blue-500 dark:text-blue-400">
