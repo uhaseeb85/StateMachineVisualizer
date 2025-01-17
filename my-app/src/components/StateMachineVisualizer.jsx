@@ -672,6 +672,27 @@ const StateMachineVisualizer = () => {
     }
   };
 
+  const handleUndo = () => {
+    setSimulationState(prev => {
+      // If there's only one step or less, don't allow undo
+      if (prev.path.length <= 1) return prev;
+
+      // Remove the last step from the path
+      const newPath = prev.path.slice(0, -1);
+      const lastNode = newPath[newPath.length - 1];
+
+      // Set the current state and rule based on the last node
+      return {
+        ...prev,
+        currentState: lastNode.type === 'state' ? lastNode.id : prev.currentState,
+        currentRule: lastNode.type === 'rule' ? lastNode.id : null,
+        path: newPath,
+        // Set appropriate status based on last node type
+        status: lastNode.type === 'state' ? 'active' : 'evaluating'
+      };
+    });
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Joyride
@@ -961,16 +982,16 @@ const StateMachineVisualizer = () => {
                     Export Image
                   </Button>
                   <Button
-                    onClick={() => {
-                      setStartState(null);
-                      startSimulation();
-                    }}
-                    className="bg-gray-900 hover:bg-blue-600 text-white 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                     transition-colors duration-200"
+                    onClick={handleUndo}
+                    disabled={simulationState.path.length <= 1}
+                    className={`bg-gray-900 hover:bg-blue-600 text-white 
+                      dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                      transition-colors duration-200 ${
+                        simulationState.path.length <= 1 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
-                    Reset
+                    Undo
                   </Button>
                   <Button
                     onClick={() => setShowSimulation(false)}
