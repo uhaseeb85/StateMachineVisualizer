@@ -693,6 +693,18 @@ const StateMachineVisualizer = () => {
     });
   };
 
+  const resetSimulation = () => {
+    const initialStateId = startState || states[0].id;
+    const initialState = states.find(s => String(s.id) === String(initialStateId));
+    
+    setSimulationState({
+      currentState: initialState.id,
+      currentRule: null,
+      path: [{ type: 'state', id: initialState.id }],
+      status: 'active'
+    });
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Joyride
@@ -992,6 +1004,18 @@ const StateMachineVisualizer = () => {
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     Undo
+                  </Button>
+                  <Button
+                    onClick={resetSimulation}
+                    disabled={simulationState.path.length <= 1}
+                    className={`bg-gray-900 hover:bg-blue-600 text-white 
+                      dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                      transition-colors duration-200 ${
+                        simulationState.path.length <= 1 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset
                   </Button>
                   <Button
                     onClick={() => setShowSimulation(false)}
