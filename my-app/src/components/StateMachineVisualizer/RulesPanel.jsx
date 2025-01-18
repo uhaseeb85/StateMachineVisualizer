@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function RulesPanel({ states, selectedState, onStateSelect, setStates }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
+  const [ruleToDelete, setRuleToDelete] = useState(null);
 
   const currentState = states.find(s => s.id === selectedState);
 
@@ -51,6 +53,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
   };
 
   const deleteRule = (ruleId) => {
+    if (!confirm("Are you sure you want to delete this rule?")) {
+      return;
+    }
+
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
         return {
@@ -61,6 +67,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
       return state;
     });
     setStates(updatedStates);
+    toast.success("Rule deleted successfully");
   };
 
   const handleTargetStateClick = (stateId) => {
@@ -165,10 +172,12 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                   deleteRule(rule.id);
                 }}
                 className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 
-                         dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100
-                         transition-opacity"
+                         dark:hover:bg-red-900/20 opacity-100 hover:opacity-100
+                         transition-opacity flex items-center justify-center
+                         group"
+                title="Delete Rule"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3 h-3 group-hover:scale-110 transition-transform" />
               </Button>
             </div>
           );
