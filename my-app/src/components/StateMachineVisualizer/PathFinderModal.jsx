@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, ArrowRight, Loader2, FileDown, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Document, Page, Text, View, StyleSheet, PDFViewer, pdf } from '@react-pdf/renderer';
 
 export default function PathFinderModal({ states, onClose }) {
   const [selectedStartState, setSelectedStartState] = useState('');
@@ -16,6 +17,131 @@ export default function PathFinderModal({ states, onClose }) {
   const [currentPage, setCurrentPage] = useState(1);
   const pathsPerPage = 10;
   const [error, setError] = useState(null);
+
+  const pdfStyles = StyleSheet.create({
+    page: {
+      padding: 30,
+      backgroundColor: 'white',
+    },
+    title: {
+      fontSize: 24,
+      marginBottom: 20,
+      fontWeight: 'bold',
+      color: '#111827',
+    },
+    pathContainer: {
+      marginBottom: 16,
+      padding: 16,
+      backgroundColor: '#f9fafb',
+      borderRadius: 8,
+    },
+    stateContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
+    },
+    state: {
+      padding: '6px 12px',
+      backgroundColor: 'white',
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: '#e5e7eb',
+    },
+    stateText: {
+      fontSize: 14,
+      color: '#111827',
+    },
+    arrowContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    arrow: {
+      color: '#9ca3af',
+      fontSize: 14,
+    },
+    rulesContainer: {
+      gap: 4,
+    },
+    failedRule: {
+      padding: '4px 8px',
+      backgroundColor: '#fee2e2',
+      color: '#b91c1c',
+      borderRadius: 4,
+      fontSize: 14,
+      marginVertical: 2,
+    },
+    successRule: {
+      padding: '4px 8px',
+      backgroundColor: '#dcfce7',
+      color: '#15803d',
+      borderRadius: 4,
+      fontSize: 14,
+      marginVertical: 2,
+    },
+    pathInfo: {
+      fontSize: 12,
+      color: '#6b7280',
+      marginTop: 8,
+    },
+  });
+
+  const PathsDocument = () => (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <Text style={pdfStyles.title}>Found Paths</Text>
+        {paths.map((path, index) => (
+          <View key={index} style={pdfStyles.pathContainer}>
+            <View style={pdfStyles.stateContainer}>
+              {path.states.map((state, stateIndex) => (
+                <React.Fragment key={stateIndex}>
+                  <View style={pdfStyles.state}>
+                    <Text style={pdfStyles.stateText}>{state}</Text>
+                  </View>
+                  
+                  {stateIndex < path.states.length - 1 && (
+                    <>
+                      <View style={pdfStyles.rulesContainer}>
+                        {path.failedRules[stateIndex]?.map((rule, ruleIndex) => (
+                          <Text key={ruleIndex} style={pdfStyles.failedRule}>
+                            ❌ R{rule.split('R')[1]}
+                          </Text>
+                        ))}
+                        <Text style={pdfStyles.successRule}>
+                          ✓ {path.rules[stateIndex]}
+                        </Text>
+                      </View>
+                      <Text style={pdfStyles.arrow}>→</Text>
+                    </>
+                  )}
+                </React.Fragment>
+              ))}
+            </View>
+            <Text style={pdfStyles.pathInfo}>
+              Path length: {path.states.length} states, {path.rules.length} transitions
+            </Text>
+          </View>
+        ))}
+      </Page>
+    </Document>
+  );
+
+  const handleExportPDF = async () => {
+    try {
+      const blob = await pdf(<PathsDocument />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'paths.pdf';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
 
   const findPaths = useCallback(async (startStateId, endStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
@@ -248,9 +374,13 @@ export default function PathFinderModal({ states, onClose }) {
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     Found {paths.length} possible path{paths.length !== 1 ? 's' : ''}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Page {currentPage} of {totalPages}
-                  </div>
+                  <Button
+                    onClick={handleExportPDF}
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Export PDF
+                  </Button>
                 </div>
 
                 {currentPaths.map((path, index) => (
