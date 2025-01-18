@@ -20,34 +20,36 @@ export default function StatePanel({
   };
 
   return (
-    <div className="w-full lg:w-1/3 border border-gray-200/20 dark:border-gray-700/20 
-                    rounded-xl p-6 
-                    bg-white/40 dark:bg-gray-800/40 shadow-xl 
-                    hover:bg-white/50 dark:hover:bg-gray-800/50
-                    transition-all duration-300 backdrop-blur-sm">
-      <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 add-state-section">
-        <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">States</h2>
+    <div className="w-full lg:w-1/2 border border-gray-200/20 dark:border-gray-700/20 
+                    rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
+      </div>
+
+      <div className="mb-4">
         <div className="flex gap-2">
           <Input
-            type="text"
             value={newStateName}
             onChange={(e) => setNewStateName(e.target.value)}
             placeholder="Enter state name"
-            className="flex-1 text-sm h-8 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            className="state-input text-sm dark:bg-gray-700 dark:text-white"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddState();
+              }
+            }}
           />
-          <Button 
+          <Button
             onClick={handleAddState}
-            className="bg-gray-900 hover:bg-blue-600 text-white text-sm h-8
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                     transform transition-all duration-200 hover:scale-110"
+            disabled={!newStateName.trim()}
+            className="add-state-button bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <Plus className="w-3 h-3 mr-1" />
-            Add
+            <Plus className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="space-y-1 states-list">
+      <div className="states-list space-y-2">
         {states.map(state => (
           <div 
             key={state.id}
@@ -63,33 +65,20 @@ export default function StatePanel({
             `}
             onClick={() => onStateSelect(state.id)}
           >
-            <div className="flex items-center justify-between w-full">
-              <span className={`font-medium ${
-                selectedState === state.id 
-                  ? 'text-white dark:text-white'
-                  : 'text-gray-900 dark:text-white'
-              }`}>
-                {state.name}
-                <span className="text-xs ml-2 opacity-75">
-                  {state.rules.length} rule{state.rules.length !== 1 ? 's' : ''}
-                </span>
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStateDelete(state.id);
-                }}
-                className={`
-                  p-1 h-6 hover:bg-red-500/10
-                  text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300
-                  transform transition-all duration-200 hover:scale-110
-                `}
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </div>
+            <span>{state.name}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStateDelete(state.id);
+              }}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 
+                       dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100
+                       transition-opacity"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         ))}
       </div>

@@ -94,7 +94,7 @@ export default function TopActionBar({
         <div className="relative">
           <Button 
             onClick={() => document.getElementById('excel-import').click()}
-            className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+            className="excel-import-button import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
                      dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                      transform transition-all duration-200 hover:scale-110"
           >
