@@ -77,7 +77,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
   if (!selectedState) {
     return (
-      <div className="w-full lg:w-1/2 border border-gray-200/20 dark:border-gray-700/20 
+      <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
                       rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
         <div className="text-center text-gray-500 dark:text-gray-400 py-8">
           Select a state to manage its rules
@@ -87,7 +87,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
   }
 
   return (
-    <div className="w-full lg:w-1/2 border border-gray-200/20 dark:border-gray-700/20 
+    <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
                     rules-section">
       <div className="mb-4">
@@ -102,12 +102,12 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             value={newRuleCondition}
             onChange={(e) => setNewRuleCondition(e.target.value)}
             placeholder="Rule Name"
-            className="text-sm dark:bg-gray-700 dark:text-white"
+            className="text-sm h-7 dark:bg-gray-700 dark:text-white"
           />
           <select
             value={newRuleNextState}
             onChange={(e) => setNewRuleNextState(e.target.value)}
-            className="rounded-md border border-gray-300 dark:border-gray-600 
+            className="h-7 rounded-md border border-gray-300 dark:border-gray-600 
                      text-sm dark:bg-gray-700 dark:text-white"
           >
             <option value="">Select Target State</option>
@@ -120,41 +120,54 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
           <Button
             onClick={addRule}
             disabled={!newRuleCondition.trim() || !newRuleNextState}
-            className="bg-blue-500 hover:bg-blue-600 text-white"
+            className="h-7 bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3 h-3" />
           </Button>
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {currentState?.rules.map(rule => {
           const targetState = states.find(s => s.id === rule.nextState);
           return (
             <div 
               key={rule.id}
-              className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center 
-                       bg-white dark:bg-gray-700 p-2 rounded-lg"
+              className="h-7 grid grid-cols-[1fr,auto,1fr,auto] gap-2 items-center 
+                       bg-white dark:bg-gray-700 px-2 rounded-lg
+                       hover:bg-gray-50 dark:hover:bg-gray-600
+                       transform transition-all duration-200 hover:scale-[1.02]
+                       hover:shadow-sm cursor-pointer
+                       border border-transparent hover:border-gray-200 dark:hover:border-gray-500"
             >
-              <span className="text-sm text-gray-700 dark:text-gray-200">
+              <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
                 {rule.condition}
               </span>
+              
+              <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-500" />
+              
               <button
                 onClick={() => handleTargetStateClick(rule.nextState)}
                 className="text-sm text-blue-500 hover:text-blue-700 dark:text-blue-400 
-                         dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
+                         dark:hover:text-blue-300 flex items-center gap-1 transition-colors truncate
+                         group"
               >
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3 h-3 flex-shrink-0 transform transition-transform 
+                                   group-hover:translate-x-1" />
                 {targetState?.name || 'Unknown State'}
               </button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => deleteRule(rule.id)}
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 
-                         dark:hover:bg-red-900/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteRule(rule.id);
+                }}
+                className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 
+                         dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100
+                         transition-opacity"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3 h-3" />
               </Button>
             </div>
           );
