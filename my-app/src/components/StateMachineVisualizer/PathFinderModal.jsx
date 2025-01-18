@@ -1,24 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { X, ArrowRight } from 'lucide-react';
+import { X, ArrowRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function PathFinderModal({ states, onClose }) {
   const [selectedStartState, setSelectedStartState] = useState('');
   const [selectedEndState, setSelectedEndState] = useState('');
-  const [searchMode, setSearchMode] = useState('endStates'); // 'endStates' or 'specificState'
+  const [searchMode, setSearchMode] = useState('endStates');
   const [paths, setPaths] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [shouldCancel, setShouldCancel] = useState(false);
 
-  const findPaths = (startStateId, endStateId = null) => {
+  const findPaths = useCallback(async (startStateId, endStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
     if (!startState) return [];
 
     let allPaths = [];
+    let visited = new Set();
+    let totalStates = states.length;
+    let processedStates = 0;
 
-    const dfs = (currentState, currentPath = [], rulePath = []) => {
+    const dfs = async (currentState, currentPath = [], rulePath = []) => {
+      if (shouldCancel) {
+        throw new Error('Search cancelled');
+      }
+
       currentPath.push(currentState.name);
+      visited.add(currentState.id);
+      
+      processedStates++;
+      setProgress(Math.min((processedStates / (totalStates * 2)) * 100, 99));
+
+      // Add artificial delay to show progress
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       if (endStateId) {
-        // Specific state target mode
         if (currentState.id === endStateId) {
           allPaths.push({
             states: [...currentPath],
@@ -26,7 +43,6 @@ export default function PathFinderModal({ states, onClose }) {
           });
         }
       } else {
-        // End states mode
         if (currentState.rules.length === 0) {
           allPaths.push({
             states: [...currentPath],
@@ -38,29 +54,54 @@ export default function PathFinderModal({ states, onClose }) {
       for (const rule of currentState.rules) {
         const nextState = states.find(s => s.id === rule.nextState);
         if (nextState && !currentPath.includes(nextState.name)) {
-          dfs(nextState, [...currentPath], [...rulePath, rule.condition]);
+          await dfs(nextState, [...currentPath], [...rulePath, rule.condition]);
         }
       }
+
+      visited.delete(currentState.id);
     };
 
-    dfs(startState);
-    return allPaths;
+    try {
+      await dfs(startState);
+      setProgress(100);
+      return allPaths;
+    } catch (error) {
+      if (error.message === 'Search cancelled') {
+        return null;
+      }
+      throw error;
+    }
+  }, [states, shouldCancel]);
+
+  const handleFindPaths = async () => {
+    setIsSearching(true);
+    setShouldCancel(false);
+    setProgress(0);
+    setPaths([]);
+
+    try {
+      const foundPaths = await findPaths(
+        selectedStartState,
+        searchMode === 'specificState' ? selectedEndState : null
+      );
+      
+      if (foundPaths !== null) {
+        setPaths(foundPaths);
+        toast.success(`Found ${foundPaths.length} path${foundPaths.length !== 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      toast.error('An error occurred while finding paths');
+      console.error('Path finding error:', error);
+    } finally {
+      setIsSearching(false);
+      setShouldCancel(false);
+      setProgress(0);
+    }
   };
 
-  const handleFindPaths = () => {
-    if (searchMode === 'specificState') {
-      if (!selectedStartState || !selectedEndState) {
-        return;
-      }
-      const foundPaths = findPaths(selectedStartState, selectedEndState);
-      setPaths(foundPaths);
-    } else {
-      if (!selectedStartState) {
-        return;
-      }
-      const foundPaths = findPaths(selectedStartState);
-      setPaths(foundPaths);
-    }
+  const handleCancel = () => {
+    setShouldCancel(true);
+    toast.info('Cancelling path search...');
   };
 
   return (
@@ -144,12 +185,39 @@ export default function PathFinderModal({ states, onClose }) {
 
             <Button
               onClick={handleFindPaths}
-              disabled={!selectedStartState || (searchMode === 'specificState' && !selectedEndState)}
+              disabled={!selectedStartState || (searchMode === 'specificState' && !selectedEndState) || isSearching}
               className="bg-blue-500 hover:bg-blue-600 text-white whitespace-nowrap"
             >
+              {isSearching ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               Find Paths
             </Button>
+
+            {isSearching && (
+              <Button
+                onClick={handleCancel}
+                variant="destructive"
+                className="whitespace-nowrap"
+              >
+                Cancel
+              </Button>
+            )}
           </div>
+
+          {isSearching && (
+            <div className="space-y-2">
+              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                Searching... {Math.round(progress)}%
+              </div>
+            </div>
+          )}
 
           {paths.length > 0 && (
             <div className="space-y-2">
