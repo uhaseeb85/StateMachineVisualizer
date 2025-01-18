@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function StatePanel({ 
   states, 
@@ -13,10 +14,20 @@ export default function StatePanel({
   const [newStateName, setNewStateName] = useState('');
 
   const handleAddState = () => {
-    if (newStateName.trim()) {
-      onStateAdd(newStateName);
-      setNewStateName('');
+    if (!newStateName.trim()) return;
+
+    // Check for duplicate state name (case-insensitive)
+    const isDuplicate = states.some(
+      state => state.name.toLowerCase() === newStateName.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      toast.error("A state with this name already exists");
+      return;
     }
+
+    onStateAdd(newStateName);
+    setNewStateName('');
   };
 
   return (

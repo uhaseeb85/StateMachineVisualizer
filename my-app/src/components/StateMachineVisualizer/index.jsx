@@ -6,6 +6,7 @@ import TopActionBar from './TopActionBar';
 import useStateMachine from './hooks/useStateMachine';
 import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
+import { Toaster } from 'sonner';
 
 const StateMachineVisualizerContent = ({ startTour }) => {
   const {
@@ -42,6 +43,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+      <Toaster richColors />
       {showSaveNotification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
