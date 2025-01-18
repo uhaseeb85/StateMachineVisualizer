@@ -1,0 +1,175 @@
+import { useState, useEffect } from 'react';
+import { parseExcelFile, validateExcelData, generateId } from '../utils';
+
+export default function useStateMachine() {
+  const [states, setStates] = useState([]);
+  const [selectedState, setSelectedState] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showSaveNotification, setShowSaveNotification] = useState(false);
+
+  // Load saved states and dark mode preference
+  useEffect(() => {
+    const savedFlow = localStorage.getItem('ivrFlow');
+    if (savedFlow) {
+      setStates(JSON.parse(savedFlow));
+    }
+
+    const darkModePreference = localStorage.getItem('darkMode');
+    setIsDarkMode(darkModePreference === null ? false : darkModePreference === 'true');
+  }, []);
+
+  // Update dark mode
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('darkMode', isDarkMode);
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const saveFlow = () => {
+    localStorage.setItem('ivrFlow', JSON.stringify(states));
+    setShowSaveNotification(true);
+    setTimeout(() => setShowSaveNotification(false), 2000);
+  };
+
+  const addState = (name) => {
+    if (name.trim()) {
+      const newState = {
+        id: generateId(),
+        name: name.trim(),
+        rules: [],
+      };
+      setStates(prevStates => [...prevStates, newState]);
+    }
+  };
+
+  const deleteState = (stateId) => {
+    setStates(prevStates => prevStates.filter(state => state.id !== stateId));
+    if (selectedState === stateId) {
+      setSelectedState(null);
+    }
+  };
+
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (window.confirm('Are you sure you want to import? This will overwrite your current configuration.')) {
+          setStates(importedData);
+          localStorage.setItem('ivrFlow', JSON.stringify(importedData));
+          alert('Configuration imported successfully!');
+        }
+      } catch (error) {
+        alert('Error importing file. Please make sure it\'s a valid configuration file.');
+        console.error('Import error:', error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExcelImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const rows = await parseExcelFile(file);
+      const { sourceNodeIndex, destNodeIndex, ruleListIndex } = validateExcelData(rows);
+
+      const stateMap = new Map();
+      
+      // Process data rows (skip header)
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row.some(cell => cell)) continue;
+
+        const sourceNode = row[sourceNodeIndex]?.toString().trim();
+        const destNode = row[destNodeIndex]?.toString().trim();
+        const ruleList = row[ruleListIndex]?.toString().trim();
+
+        if (!sourceNode || !destNode || !ruleList) {
+          console.warn(`Skipping row ${i + 1} due to missing required data`);
+          continue;
+        }
+
+        // Create states if they don't exist
+        if (!stateMap.has(sourceNode)) {
+          stateMap.set(sourceNode, {
+            id: generateId(),
+            name: sourceNode,
+            rules: []
+          });
+        }
+        if (!stateMap.has(destNode)) {
+          stateMap.set(destNode, {
+            id: generateId(),
+            name: destNode,
+            rules: []
+          });
+        }
+
+        // Add rule
+        const sourceState = stateMap.get(sourceNode);
+        const targetState = stateMap.get(destNode);
+        
+        sourceState.rules.push({
+          id: generateId(),
+          condition: ruleList,
+          nextState: targetState.id
+        });
+      }
+
+      const newStates = Array.from(stateMap.values());
+      if (newStates.length === 0) {
+        throw new Error('No valid states could be created from the file');
+      }
+
+      setStates(newStates);
+      alert(`Import successful! Created ${newStates.length} states.`);
+
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Error importing file: ' + error.message);
+    }
+  };
+
+  const exportConfiguration = () => {
+    const defaultName = `state-machine-config-${new Date().toISOString().slice(0, 10)}`;
+    const fileName = window.prompt('Enter file name:', defaultName);
+    
+    if (!fileName) return;
+    
+    const finalFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
+    const configuration = JSON.stringify(states, null, 2);
+    const blob = new Blob([configuration], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = finalFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return {
+    states,
+    setStates,
+    selectedState,
+    setSelectedState,
+    isDarkMode,
+    toggleTheme,
+    showSaveNotification,
+    addState,
+    deleteState,
+    saveFlow,
+    handleImport,
+    handleExcelImport,
+    exportConfiguration
+  };
+} 
