@@ -23,7 +23,7 @@ export default function PathFinderModal({ states, onClose }) {
     let totalStates = states.length;
     let processedStates = 0;
 
-    const dfs = async (currentState, currentPath = [], rulePath = []) => {
+    const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = []) => {
       if (shouldCancel) {
         throw new Error('Search cancelled');
       }
@@ -44,22 +44,31 @@ export default function PathFinderModal({ states, onClose }) {
         if (currentState.id === endStateId) {
           allPaths.push({
             states: [...currentPath],
-            rules: [...rulePath]
+            rules: [...rulePath],
+            failedRules: [...failedRulesPath]
           });
         }
       } else {
         if (currentState.rules.length === 0) {
           allPaths.push({
             states: [...currentPath],
-            rules: [...rulePath]
+            rules: [...rulePath],
+            failedRules: [...failedRulesPath]
           });
         }
       }
 
-      for (const rule of currentState.rules) {
+      for (let i = 0; i < currentState.rules.length; i++) {
+        const rule = currentState.rules[i];
         const nextState = states.find(s => s.id === rule.nextState);
         if (nextState && !currentPath.includes(nextState.name)) {
-          await dfs(nextState, [...currentPath], [...rulePath, rule.condition]);
+          const failedRules = currentState.rules.slice(0, i).map(r => r.condition);
+          await dfs(
+            nextState, 
+            [...currentPath], 
+            [...rulePath, rule.condition],
+            [...failedRulesPath, failedRules]
+          );
         }
       }
 
@@ -293,10 +302,22 @@ export default function PathFinderModal({ states, onClose }) {
                             {stateIndex < path.states.length - 1 && (
                               <div className="flex items-center gap-2">
                                 <ArrowRight className="w-4 h-4 text-gray-400" />
-                                <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 
-                                             text-orange-700 dark:text-orange-300 rounded">
-                                  {path.rules[stateIndex]}
-                                </span>
+                                <div className="space-y-1">
+                                  {path.failedRules[stateIndex]?.length > 0 && (
+                                    <div className="space-y-1">
+                                      {path.failedRules[stateIndex].map((rule, ruleIndex) => (
+                                        <span key={ruleIndex} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 
+                                                         text-red-700 dark:text-red-300 rounded block">
+                                          ❌ {rule}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 
+                                                text-green-700 dark:text-green-300 rounded block">
+                                    ✓ {path.rules[stateIndex]}
+                                  </span>
+                                </div>
                                 <ArrowRight className="w-4 h-4 text-gray-400" />
                               </div>
                             )}
