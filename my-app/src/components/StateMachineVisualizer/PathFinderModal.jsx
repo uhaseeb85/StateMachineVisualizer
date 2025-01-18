@@ -15,10 +15,14 @@ export default function PathFinderModal({ states, onClose }) {
   const PATH_LIMIT = 100;
   const [currentPage, setCurrentPage] = useState(1);
   const pathsPerPage = 10;
+  const [error, setError] = useState(null);
 
   const findPaths = useCallback(async (startStateId, endStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
-    if (!startState) return [];
+    if (!startState) {
+      setError('Start state not found');
+      return;
+    }
 
     let allPaths = [];
     let visited = new Set();
@@ -28,10 +32,6 @@ export default function PathFinderModal({ states, onClose }) {
     const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = []) => {
       if (shouldCancel) {
         throw new Error('Search cancelled');
-      }
-
-      if (allPaths.length > PATH_LIMIT) {
-        throw new Error('Path limit exceeded');
       }
 
       currentPath.push(currentState.name);
@@ -44,19 +44,23 @@ export default function PathFinderModal({ states, onClose }) {
 
       if (endStateId) {
         if (currentState.id === endStateId) {
-          allPaths.push({
+          const newPath = {
             states: [...currentPath],
             rules: [...rulePath],
             failedRules: [...failedRulesPath]
-          });
+          };
+          allPaths.push(newPath);
+          setPaths([...allPaths]);
         }
       } else {
         if (currentState.rules.length === 0) {
-          allPaths.push({
+          const newPath = {
             states: [...currentPath],
             rules: [...rulePath],
             failedRules: [...failedRulesPath]
-          });
+          };
+          allPaths.push(newPath);
+          setPaths([...allPaths]);
         }
       }
 
@@ -78,53 +82,30 @@ export default function PathFinderModal({ states, onClose }) {
     };
 
     try {
+      setPaths([]);
+      setIsSearching(true);
       await dfs(startState);
       setProgress(100);
-      return allPaths;
     } catch (error) {
       if (error.message === 'Search cancelled') {
-        return null;
+        console.log('Search was cancelled');
+      } else {
+        console.error('Error during search:', error);
       }
-      if (error.message === 'Path limit exceeded') {
-        return allPaths;
-      }
-      throw error;
+    } finally {
+      setIsSearching(false);
     }
   }, [states, shouldCancel]);
 
   const handleFindPaths = async () => {
-    setIsSearching(true);
-    setShouldCancel(false);
-    setProgress(0);
-    setPaths([]);
-
+    if (!selectedStartState) return;
+    
     try {
-      const foundPaths = await findPaths(
-        selectedStartState,
-        searchMode === 'specificState' ? selectedEndState : null
-      );
-      
-      if (foundPaths === null) {
-        toast.info('Search cancelled');
-      } else if (foundPaths.length > PATH_LIMIT) {
-        setPaths(foundPaths.slice(0, PATH_LIMIT));
-        toast.warning(
-          'Path limit exceeded',
-          {
-            description: `Found more than ${PATH_LIMIT} paths. Showing first ${PATH_LIMIT} results.`
-          }
-        );
-      } else {
-        setPaths(foundPaths);
-        toast.success(`Found ${foundPaths.length} path${foundPaths.length !== 1 ? 's' : ''}`);
-      }
+      setError(null);
+      await findPaths(selectedStartState, selectedEndState);
     } catch (error) {
-      toast.error('An error occurred while finding paths');
       console.error('Path finding error:', error);
-    } finally {
-      setIsSearching(false);
-      setShouldCancel(false);
-      setProgress(0);
+      setError('An error occurred while finding paths');
     }
   };
 
