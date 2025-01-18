@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, ArrowRight, Loader2, FileDown, AlertTriangle } from 'lucide-react';
@@ -13,6 +13,8 @@ export default function PathFinderModal({ states, onClose }) {
   const [progress, setProgress] = useState(0);
   const [shouldCancel, setShouldCancel] = useState(false);
   const PATH_LIMIT = 100;
+  const [currentPage, setCurrentPage] = useState(1);
+  const pathsPerPage = 10;
 
   const findPaths = useCallback(async (startStateId, endStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
@@ -130,6 +132,15 @@ export default function PathFinderModal({ states, onClose }) {
     setShouldCancel(true);
     toast.info('Cancelling path search...');
   };
+
+  const indexOfLastPath = currentPage * pathsPerPage;
+  const indexOfFirstPath = indexOfLastPath - pathsPerPage;
+  const currentPaths = paths.slice(indexOfFirstPath, indexOfLastPath);
+  const totalPages = Math.ceil(paths.length / pathsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [paths]);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -251,85 +262,79 @@ export default function PathFinderModal({ states, onClose }) {
             )}
 
             {paths.length > 0 && (
-              <div className="space-y-2">
-                {paths.length === PATH_LIMIT && (
-                  <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 
-                               border border-yellow-200 dark:border-yellow-700 rounded-lg">
-                    <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                      Showing first {PATH_LIMIT} paths. The state machine may have more paths.
-                    </p>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Found {paths.length} possible path{paths.length !== 1 ? 's' : ''}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                </div>
+
+                {currentPaths.map((path, index) => (
+                  <div 
+                    key={index}
+                    className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg space-y-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      {path.states.map((state, stateIndex) => (
+                        <React.Fragment key={stateIndex}>
+                          <span className="px-3 py-1.5 bg-white dark:bg-gray-700 rounded-md
+                                       border border-gray-200 dark:border-gray-600">
+                            {state}
+                          </span>
+                          {stateIndex < path.states.length - 1 && (
+                            <div className="flex items-center gap-2">
+                              <ArrowRight className="w-4 h-4 text-gray-400" />
+                              <div className="space-y-1">
+                                {path.failedRules[stateIndex]?.length > 0 && (
+                                  <div className="space-y-1">
+                                    {path.failedRules[stateIndex].map((rule, ruleIndex) => (
+                                      <span key={ruleIndex} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 
+                                                       text-red-700 dark:text-red-300 rounded block">
+                                        ❌ {rule}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 
+                                              text-green-700 dark:text-green-300 rounded block">
+                                  ✓ {path.rules[stateIndex]}
+                                </span>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Path length: {path.states.length} states, {path.rules.length} transitions
+                    </div>
+                  </div>
+                ))}
+
+                {totalPages > 1 && (
+                  <div className="flex justify-center gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="text-sm"
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="text-sm"
+                    >
+                      Next
+                    </Button>
                   </div>
                 )}
-
-                <div className="flex items-center gap-4">
-                  <Button
-                    onClick={() => {
-                      setSearchMode('endStates');
-                      setSelectedEndState('');
-                      setPaths([]);
-                    }}
-                    variant={searchMode === 'endStates' ? 'default' : 'outline'}
-                    className={searchMode === 'endStates' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-                  >
-                    Find Paths to End States
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setSearchMode('specificState');
-                      setPaths([]);
-                    }}
-                    variant={searchMode === 'specificState' ? 'default' : 'outline'}
-                    className={searchMode === 'specificState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-                  >
-                    Find Paths Between States
-                  </Button>
-                </div>
-
-                <div className="space-y-3 overflow-y-auto pr-2">
-                  {paths.map((path, index) => (
-                    <div 
-                      key={index}
-                      className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg space-y-2"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        {path.states.map((state, stateIndex) => (
-                          <React.Fragment key={stateIndex}>
-                            <span className="px-3 py-1.5 bg-white dark:bg-gray-700 rounded-md
-                                         border border-gray-200 dark:border-gray-600">
-                              {state}
-                            </span>
-                            {stateIndex < path.states.length - 1 && (
-                              <div className="flex items-center gap-2">
-                                <ArrowRight className="w-4 h-4 text-gray-400" />
-                                <div className="space-y-1">
-                                  {path.failedRules[stateIndex]?.length > 0 && (
-                                    <div className="space-y-1">
-                                      {path.failedRules[stateIndex].map((rule, ruleIndex) => (
-                                        <span key={ruleIndex} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 
-                                                         text-red-700 dark:text-red-300 rounded block">
-                                          ❌ {rule}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 
-                                                text-green-700 dark:text-green-300 rounded block">
-                                    ✓ {path.rules[stateIndex]}
-                                  </span>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-gray-400" />
-                              </div>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Path length: {path.states.length} states, {path.rules.length} transitions
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
