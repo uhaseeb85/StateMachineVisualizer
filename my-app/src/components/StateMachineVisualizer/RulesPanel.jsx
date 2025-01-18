@@ -94,6 +94,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           Rules for {currentState?.name}
         </h2>
+        <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
       </div>
 
       <div className="mb-4">
