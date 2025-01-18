@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { X, ArrowRight, Loader2 } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { X, ArrowRight, Loader2, FileDown, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PathFinderModal({ states, onClose }) {
@@ -11,6 +12,7 @@ export default function PathFinderModal({ states, onClose }) {
   const [isSearching, setIsSearching] = useState(false);
   const [progress, setProgress] = useState(0);
   const [shouldCancel, setShouldCancel] = useState(false);
+  const PATH_LIMIT = 100;
 
   const findPaths = useCallback(async (startStateId, endStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
@@ -26,13 +28,16 @@ export default function PathFinderModal({ states, onClose }) {
         throw new Error('Search cancelled');
       }
 
+      if (allPaths.length > PATH_LIMIT) {
+        throw new Error('Path limit exceeded');
+      }
+
       currentPath.push(currentState.name);
       visited.add(currentState.id);
       
       processedStates++;
       setProgress(Math.min((processedStates / (totalStates * 2)) * 100, 99));
 
-      // Add artificial delay to show progress
       await new Promise(resolve => setTimeout(resolve, 50));
 
       if (endStateId) {
@@ -69,6 +74,9 @@ export default function PathFinderModal({ states, onClose }) {
       if (error.message === 'Search cancelled') {
         return null;
       }
+      if (error.message === 'Path limit exceeded') {
+        return allPaths;
+      }
       throw error;
     }
   }, [states, shouldCancel]);
@@ -85,7 +93,17 @@ export default function PathFinderModal({ states, onClose }) {
         searchMode === 'specificState' ? selectedEndState : null
       );
       
-      if (foundPaths !== null) {
+      if (foundPaths === null) {
+        toast.info('Search cancelled');
+      } else if (foundPaths.length > PATH_LIMIT) {
+        setPaths(foundPaths.slice(0, PATH_LIMIT));
+        toast.warning(
+          'Path limit exceeded',
+          {
+            description: `Found more than ${PATH_LIMIT} paths. Showing first ${PATH_LIMIT} results.`
+          }
+        );
+      } else {
         setPaths(foundPaths);
         toast.success(`Found ${foundPaths.length} path${foundPaths.length !== 1 ? 's' : ''}`);
       }
@@ -221,9 +239,40 @@ export default function PathFinderModal({ states, onClose }) {
 
           {paths.length > 0 && (
             <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Found {paths.length} path{paths.length !== 1 ? 's' : ''}:
+              {paths.length === PATH_LIMIT && (
+                <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 
+                             border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    Showing first {PATH_LIMIT} paths. The state machine may have more paths.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                <Button
+                  onClick={() => {
+                    setSearchMode('endStates');
+                    setSelectedEndState('');
+                    setPaths([]);
+                  }}
+                  variant={searchMode === 'endStates' ? 'default' : 'outline'}
+                  className={searchMode === 'endStates' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+                >
+                  Find Paths to End States
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSearchMode('specificState');
+                    setPaths([]);
+                  }}
+                  variant={searchMode === 'specificState' ? 'default' : 'outline'}
+                  className={searchMode === 'specificState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+                >
+                  Find Paths Between States
+                </Button>
               </div>
+
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                 {paths.map((path, index) => (
                   <div 
