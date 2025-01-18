@@ -30,6 +30,28 @@ export default function StatePanel({
     setNewStateName('');
   };
 
+  const handleDeleteState = (stateId) => {
+    const state = states.find(s => s.id === stateId);
+    if (!state) return;
+
+    // Check if any other states have rules pointing to this state
+    const hasIncomingRules = states.some(s => 
+      s.rules.some(r => r.nextState === stateId)
+    );
+
+    if (hasIncomingRules) {
+      toast.error("Cannot delete state: Other states have rules pointing to it");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete state "${state.name}"?`)) {
+      return;
+    }
+
+    onStateDelete(stateId);
+    toast.success("State deleted successfully");
+  };
+
   return (
     <div className="w-full lg:w-1/4 border border-gray-200/20 dark:border-gray-700/20 
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
@@ -55,7 +77,7 @@ export default function StatePanel({
             disabled={!newStateName.trim()}
             className="add-state-button bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3 h-3" />
           </Button>
         </div>
       </div>
@@ -66,29 +88,35 @@ export default function StatePanel({
             key={state.id}
             data-state-id={state.id}
             className={`
-              h-7 py-0.5 px-3 rounded-lg border transition-all duration-200 text-sm
+              h-7 rounded-lg border transition-all duration-200 text-sm
               ${selectedState === state.id 
                 ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white transform scale-105 shadow-lg'
                 : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hover:scale-105 hover:shadow-md'
               }
-              cursor-pointer flex justify-between items-center
-              transform transition-all duration-200
+              cursor-pointer flex justify-between items-center px-2
+              transform transition-all duration-200 group
             `}
-            onClick={() => onStateSelect(state.id)}
           >
-            <span className="truncate">{state.name}</span>
+            <span 
+              className="truncate flex-grow"
+              onClick={() => onStateSelect(state.id)}
+            >
+              {state.name}
+            </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onStateDelete(state.id);
+                handleDeleteState(state.id);
               }}
               className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 
-                       dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100
-                       transition-opacity"
+                       dark:hover:bg-red-900/20 opacity-100 hover:opacity-100
+                       transition-opacity flex items-center justify-center ml-2
+                       group"
+              title="Delete State"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3 h-3 group-hover:scale-110 transition-transform" />
             </Button>
           </div>
         ))}

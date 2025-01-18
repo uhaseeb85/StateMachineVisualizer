@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SimulationModal from './SimulationModal';
 import StatePanel from './StatePanel';
 import RulesPanel from './RulesPanel';
@@ -7,6 +7,7 @@ import useStateMachine from './hooks/useStateMachine';
 import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
+import PathFinderModal from './PathFinderModal';
 
 const StateMachineVisualizerContent = ({ startTour }) => {
   const {
@@ -41,6 +42,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     setShowStartModal
   } = useSimulation(states);
 
+  const [showPathFinder, setShowPathFinder] = useState(false);
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
@@ -74,6 +77,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onImport={handleImport}
           onExcelImport={handleExcelImport}
           onSimulate={() => setShowStartModal(true)}
+          onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
         />
 
@@ -156,6 +160,13 @@ const StateMachineVisualizerContent = ({ startTour }) => {
               </div>
             </div>
           </div>
+        )}
+
+        {showPathFinder && (
+          <PathFinderModal
+            states={states}
+            onClose={() => setShowPathFinder(false)}
+          />
         )}
       </div>
     </div>
