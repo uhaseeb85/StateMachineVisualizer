@@ -60,13 +60,13 @@ export default function StatePanel({
         </div>
       </div>
 
-      <div className="states-list space-y-2">
+      <div className="states-list space-y-1.5">
         {states.map(state => (
           <div 
             key={state.id}
             data-state-id={state.id}
             className={`
-              py-1 px-3 rounded-lg border transition-all duration-200 text-sm
+              h-7 py-0.5 px-3 rounded-lg border transition-all duration-200 text-sm
               ${selectedState === state.id 
                 ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white transform scale-105 shadow-lg'
                 : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hover:scale-105 hover:shadow-md'
@@ -76,7 +76,7 @@ export default function StatePanel({
             `}
             onClick={() => onStateSelect(state.id)}
           >
-            <span>{state.name}</span>
+            <span className="truncate">{state.name}</span>
             <Button
               variant="ghost"
               size="sm"
@@ -84,11 +84,11 @@ export default function StatePanel({
                 e.stopPropagation();
                 onStateDelete(state.id);
               }}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50 
+              className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 
                        dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100
                        transition-opacity"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3 h-3" />
             </Button>
           </div>
         ))}
