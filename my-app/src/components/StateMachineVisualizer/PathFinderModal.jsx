@@ -3,30 +3,42 @@ import { Button } from "@/components/ui/button";
 import { X, ArrowRight } from 'lucide-react';
 
 export default function PathFinderModal({ states, onClose }) {
-  const [selectedState, setSelectedState] = useState('');
+  const [selectedStartState, setSelectedStartState] = useState('');
+  const [selectedEndState, setSelectedEndState] = useState('');
+  const [searchMode, setSearchMode] = useState('endStates'); // 'endStates' or 'specificState'
   const [paths, setPaths] = useState([]);
 
-  const findAllPaths = (startStateId) => {
+  const findPaths = (startStateId, endStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
     if (!startState) return [];
 
-    const endStates = states.filter(s => s.rules.length === 0);
     let allPaths = [];
 
     const dfs = (currentState, currentPath = [], rulePath = []) => {
       currentPath.push(currentState.name);
 
-      if (currentState.rules.length === 0) {
-        allPaths.push({
-          states: [...currentPath],
-          rules: [...rulePath]
-        });
+      if (endStateId) {
+        // Specific state target mode
+        if (currentState.id === endStateId) {
+          allPaths.push({
+            states: [...currentPath],
+            rules: [...rulePath]
+          });
+        }
       } else {
-        for (const rule of currentState.rules) {
-          const nextState = states.find(s => s.id === rule.nextState);
-          if (nextState && !currentPath.includes(nextState.name)) {
-            dfs(nextState, [...currentPath], [...rulePath, rule.condition]);
-          }
+        // End states mode
+        if (currentState.rules.length === 0) {
+          allPaths.push({
+            states: [...currentPath],
+            rules: [...rulePath]
+          });
+        }
+      }
+
+      for (const rule of currentState.rules) {
+        const nextState = states.find(s => s.id === rule.nextState);
+        if (nextState && !currentPath.includes(nextState.name)) {
+          dfs(nextState, [...currentPath], [...rulePath, rule.condition]);
         }
       }
     };
@@ -36,8 +48,19 @@ export default function PathFinderModal({ states, onClose }) {
   };
 
   const handleFindPaths = () => {
-    const foundPaths = findAllPaths(selectedState);
-    setPaths(foundPaths);
+    if (searchMode === 'specificState') {
+      if (!selectedStartState || !selectedEndState) {
+        return;
+      }
+      const foundPaths = findPaths(selectedStartState, selectedEndState);
+      setPaths(foundPaths);
+    } else {
+      if (!selectedStartState) {
+        return;
+      }
+      const foundPaths = findPaths(selectedStartState);
+      setPaths(foundPaths);
+    }
   };
 
   return (
@@ -45,7 +68,7 @@ export default function PathFinderModal({ states, onClose }) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Find Paths to End States
+            Find Paths
           </h2>
           <Button
             onClick={onClose}
@@ -58,10 +81,34 @@ export default function PathFinderModal({ states, onClose }) {
         </div>
 
         <div className="space-y-6">
+          <div className="flex gap-4">
+            <Button
+              onClick={() => {
+                setSearchMode('endStates');
+                setSelectedEndState('');
+                setPaths([]);
+              }}
+              variant={searchMode === 'endStates' ? 'default' : 'outline'}
+              className={searchMode === 'endStates' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+            >
+              Find Paths to End States
+            </Button>
+            <Button
+              onClick={() => {
+                setSearchMode('specificState');
+                setPaths([]);
+              }}
+              variant={searchMode === 'specificState' ? 'default' : 'outline'}
+              className={searchMode === 'specificState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+            >
+              Find Paths Between States
+            </Button>
+          </div>
+
           <div className="flex gap-4 items-center">
             <select
-              value={selectedState}
-              onChange={(e) => setSelectedState(e.target.value)}
+              value={selectedStartState}
+              onChange={(e) => setSelectedStartState(e.target.value)}
               className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
                        text-sm dark:bg-gray-700 dark:text-white px-3"
             >
@@ -72,10 +119,27 @@ export default function PathFinderModal({ states, onClose }) {
                 </option>
               ))}
             </select>
+
+            {searchMode === 'specificState' && (
+              <select
+                value={selectedEndState}
+                onChange={(e) => setSelectedEndState(e.target.value)}
+                className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                         text-sm dark:bg-gray-700 dark:text-white px-3"
+              >
+                <option value="">Select Target State</option>
+                {states.map(state => (
+                  <option key={state.id} value={state.id}>
+                    {state.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <Button
               onClick={handleFindPaths}
-              disabled={!selectedState}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={!selectedStartState || (searchMode === 'specificState' && !selectedEndState)}
+              className="bg-blue-500 hover:bg-blue-600 text-white whitespace-nowrap"
             >
               Find Paths
             </Button>
@@ -121,9 +185,9 @@ export default function PathFinderModal({ states, onClose }) {
             </div>
           )}
 
-          {paths.length === 0 && selectedState && (
+          {paths.length === 0 && (selectedStartState && (searchMode === 'endStates' || selectedEndState)) && (
             <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-              No paths found to end states.
+              No paths found.
             </div>
           )}
         </div>

@@ -44,8 +44,8 @@ export default function TopActionBar({
 
         <Button 
           onClick={onSimulate}
-          className="simulate-button bg-green-500 hover:bg-green-600 text-white text-sm
-                   dark:bg-green-500 dark:text-white dark:hover:bg-green-600
+          className="simulation-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                    transform transition-all duration-200 hover:scale-110"
         >
           <Play className="w-4 h-4 mr-2" />
@@ -114,7 +114,7 @@ export default function TopActionBar({
 
         <Button
           onClick={onFindPaths}
-          className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+          className="find-paths-button bg-gray-900 hover:bg-blue-600 text-white text-sm
                    dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                    transform transition-all duration-200 hover:scale-110"
         >

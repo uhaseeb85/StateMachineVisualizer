@@ -21,7 +21,7 @@ export const tourSteps = [
     content: 'Once you select a state, you can add rules here to define transitions to other states',
   },
   {
-    target: '.simulate-button',
+    target: '.simulation-button',
     content: 'After adding states and rules, click here to simulate your state machine',
   },
   {
@@ -39,6 +39,10 @@ export const tourSteps = [
   {
     target: '.excel-import-button',
     content: 'You can also import states and rules from an Excel/CSV file. The file should have columns for Source Node, Destination Node, and Rule List.',
+  },
+  {
+    target: '.find-paths-button',
+    content: 'Analyze your state machine by finding all possible paths from any state to end states (states with no rules).',
   },
   {
     target: '.theme-toggle',
