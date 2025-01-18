@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route } from 'lucide-react';
+import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2 } from 'lucide-react';
 
 export default function TopActionBar({ 
   isDarkMode, 
@@ -44,8 +44,8 @@ export default function TopActionBar({
 
         <Button 
           onClick={onSimulate}
-          className="simulation-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+          className="simulation-button bg-green-500 hover:bg-green-600 text-white text-sm
+                   dark:bg-green-500 dark:text-white dark:hover:bg-green-600
                    transform transition-all duration-200 hover:scale-110"
         >
           <Play className="w-4 h-4 mr-2" />
@@ -68,7 +68,7 @@ export default function TopActionBar({
                    dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                    transform transition-all duration-200 hover:scale-110"
         >
-          <Upload className="w-4 h-4 mr-2" />
+          <Share2 className="w-4 h-4 mr-2" />
           Export
         </Button>
 

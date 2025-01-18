@@ -66,7 +66,7 @@ export default function PathFinderModal({ states, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Find Paths
           </h2>
@@ -78,6 +78,12 @@ export default function PathFinderModal({ states, onClose }) {
           >
             <X className="w-4 h-4" />
           </Button>
+        </div>
+
+        <div className="mb-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            ⚠️ Experimental Feature: This path finding functionality is currently in beta and may not work as expected for all state machine configurations.
+          </p>
         </div>
 
         <div className="space-y-6">
