@@ -114,14 +114,34 @@ export default function TopActionBar({
 
         <Button
           onClick={onFindPaths}
-          className="find-paths-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                   transform transition-all duration-200 hover:scale-110"
+          className="find-paths-button relative group overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 
+                     transform hover:scale-105 transition-all duration-200 ease-out
+                     animate-shimmer hover:animate-pulse"
         >
-          <Route className="w-4 h-4 mr-2" />
-          Find Paths
+          <div className="absolute inset-0 bg-white/20 skew-x-12 group-hover:skew-x-0 
+                            transition-transform duration-300 ease-out -translate-x-full group-hover:translate-x-full">
+          </div>
+          <div className="relative flex items-center gap-2">
+            <Route className="w-4 h-4 animate-bounce" />
+            Find Paths
+          </div>
         </Button>
       </div>
     </div>
   );
 } 
+
+<style jsx global>{`
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+  .animate-shimmer {
+    background-size: 200% auto;
+    animation: shimmer 3s linear infinite;
+  }
+`}</style> 
