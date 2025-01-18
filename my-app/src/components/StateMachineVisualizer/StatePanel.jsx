@@ -31,7 +31,7 @@ export default function StatePanel({
   };
 
   return (
-    <div className="w-full lg:w-1/2 border border-gray-200/20 dark:border-gray-700/20 
+    <div className="w-full lg:w-1/4 border border-gray-200/20 dark:border-gray-700/20 
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
