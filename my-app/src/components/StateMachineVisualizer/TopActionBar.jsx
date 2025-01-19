@@ -123,7 +123,7 @@ export default function TopActionBar({
           </div>
           <div className="relative flex items-center gap-2">
             <Route className="w-4 h-4 animate-bounce" />
-            Find Paths
+            PathFinder
           </div>
         </Button>
       </div>
