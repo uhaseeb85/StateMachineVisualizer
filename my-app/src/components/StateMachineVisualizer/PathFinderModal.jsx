@@ -8,6 +8,7 @@ import { Document, Page, Text, View, StyleSheet, PDFViewer, pdf } from '@react-p
 export default function PathFinderModal({ states, onClose }) {
   const [selectedStartState, setSelectedStartState] = useState('');
   const [selectedEndState, setSelectedEndState] = useState('');
+  const [selectedIntermediateState, setSelectedIntermediateState] = useState('');
   const [searchMode, setSearchMode] = useState('endStates');
   const [paths, setPaths] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -150,7 +151,7 @@ export default function PathFinderModal({ states, onClose }) {
     }
   };
 
-  const findPaths = useCallback(async (startStateId, endStateId = null) => {
+  const findPaths = useCallback(async (startStateId, endStateId = null, intermediateStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
     if (!startState) {
       setError('Start state not found');
@@ -162,7 +163,7 @@ export default function PathFinderModal({ states, onClose }) {
     let totalStates = states.length;
     let processedStates = 0;
 
-    const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = []) => {
+    const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = [], foundIntermediate = false) => {
       if (shouldCancel) {
         throw new Error('Search cancelled');
       }
@@ -175,7 +176,17 @@ export default function PathFinderModal({ states, onClose }) {
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      if (endStateId) {
+      if (intermediateStateId) {
+        if (currentState.id === endStateId && foundIntermediate) {
+          const newPath = {
+            states: [...currentPath],
+            rules: [...rulePath],
+            failedRules: [...failedRulesPath]
+          };
+          allPaths.push(newPath);
+          setPaths([...allPaths]);
+        }
+      } else if (endStateId) {
         if (currentState.id === endStateId) {
           const newPath = {
             states: [...currentPath],
@@ -201,12 +212,13 @@ export default function PathFinderModal({ states, onClose }) {
         const rule = currentState.rules[i];
         const nextState = states.find(s => s.id === rule.nextState);
         if (nextState && !currentPath.includes(nextState.name)) {
-          const failedRules = currentState.rules.slice(0, i).map(r => r.condition);
+          const hasFoundIntermediate = foundIntermediate || nextState.id === intermediateStateId;
           await dfs(
             nextState, 
             [...currentPath], 
             [...rulePath, rule.condition],
-            [...failedRulesPath, failedRules]
+            [...failedRulesPath, currentState.rules.slice(0, i).map(r => r.condition)],
+            hasFoundIntermediate
           );
         }
       }
@@ -235,7 +247,11 @@ export default function PathFinderModal({ states, onClose }) {
     
     try {
       setError(null);
-      await findPaths(selectedStartState, selectedEndState);
+      if (searchMode === 'intermediateState') {
+        await findPaths(selectedStartState, selectedEndState, selectedIntermediateState);
+      } else {
+        await findPaths(selectedStartState, selectedEndState);
+      }
     } catch (error) {
       console.error('Path finding error:', error);
       setError('An error occurred while finding paths');
@@ -289,6 +305,7 @@ export default function PathFinderModal({ states, onClose }) {
                 onClick={() => {
                   setSearchMode('endStates');
                   setSelectedEndState('');
+                  setSelectedIntermediateState('');
                   setPaths([]);
                 }}
                 variant={searchMode === 'endStates' ? 'default' : 'outline'}
@@ -299,12 +316,23 @@ export default function PathFinderModal({ states, onClose }) {
               <Button
                 onClick={() => {
                   setSearchMode('specificState');
+                  setSelectedIntermediateState('');
                   setPaths([]);
                 }}
                 variant={searchMode === 'specificState' ? 'default' : 'outline'}
                 className={searchMode === 'specificState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
               >
                 Find Paths Between States
+              </Button>
+              <Button
+                onClick={() => {
+                  setSearchMode('intermediateState');
+                  setPaths([]);
+                }}
+                variant={searchMode === 'intermediateState' ? 'default' : 'outline'}
+                className={searchMode === 'intermediateState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+              >
+                Find Paths Through State
               </Button>
             </div>
 
@@ -323,7 +351,7 @@ export default function PathFinderModal({ states, onClose }) {
                 ))}
               </select>
 
-              {searchMode === 'specificState' && (
+              {(searchMode === 'specificState' || searchMode === 'intermediateState') && (
                 <select
                   value={selectedEndState}
                   onChange={(e) => setSelectedEndState(e.target.value)}
@@ -331,6 +359,22 @@ export default function PathFinderModal({ states, onClose }) {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Target State</option>
+                  {states.map(state => (
+                    <option key={state.id} value={state.id}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {searchMode === 'intermediateState' && (
+                <select
+                  value={selectedIntermediateState}
+                  onChange={(e) => setSelectedIntermediateState(e.target.value)}
+                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                           text-sm dark:bg-gray-700 dark:text-white px-3"
+                >
+                  <option value="">Select Intermediate State</option>
                   {states.map(state => (
                     <option key={state.id} value={state.id}>
                       {state.name}
