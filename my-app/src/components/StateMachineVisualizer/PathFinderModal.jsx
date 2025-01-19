@@ -20,71 +20,77 @@ export default function PathFinderModal({ states, onClose }) {
 
   const pdfStyles = StyleSheet.create({
     page: {
-      padding: 30,
+      padding: 20,
       backgroundColor: 'white',
     },
     title: {
-      fontSize: 24,
-      marginBottom: 20,
+      fontSize: 18,
+      marginBottom: 12,
       fontWeight: 'bold',
       color: '#111827',
     },
     pathContainer: {
-      marginBottom: 16,
-      padding: 16,
+      marginBottom: 8,
+      padding: 8,
       backgroundColor: '#f9fafb',
-      borderRadius: 8,
+      borderRadius: 4,
     },
     stateContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 8,
-      marginBottom: 8,
+      gap: 4,
+      marginBottom: 4,
     },
     state: {
-      padding: '6px 12px',
+      padding: '3px 6px',
       backgroundColor: 'white',
-      borderRadius: 6,
+      borderRadius: 3,
       borderWidth: 1,
       borderColor: '#e5e7eb',
     },
     stateText: {
-      fontSize: 14,
+      fontSize: 10,
       color: '#111827',
     },
     arrowContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 4,
     },
     arrow: {
       color: '#9ca3af',
-      fontSize: 14,
+      fontSize: 10,
     },
     rulesContainer: {
-      gap: 4,
+      gap: 2,
     },
     failedRule: {
-      padding: '4px 8px',
+      padding: '2px 4px',
       backgroundColor: '#fee2e2',
       color: '#b91c1c',
-      borderRadius: 4,
-      fontSize: 14,
-      marginVertical: 2,
+      borderRadius: 2,
+      fontSize: 10,
+      marginVertical: 1,
     },
     successRule: {
-      padding: '4px 8px',
+      padding: '2px 4px',
       backgroundColor: '#dcfce7',
       color: '#15803d',
-      borderRadius: 4,
-      fontSize: 14,
-      marginVertical: 2,
+      borderRadius: 2,
+      fontSize: 10,
+      marginVertical: 1,
     },
     pathInfo: {
-      fontSize: 12,
+      fontSize: 8,
       color: '#6b7280',
-      marginTop: 8,
+      marginTop: 4,
+    },
+    pathNumber: {
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: '#6b7280',
+      marginBottom: 4,
     },
   });
 
@@ -94,6 +100,7 @@ export default function PathFinderModal({ states, onClose }) {
         <Text style={pdfStyles.title}>Found Paths</Text>
         {paths.map((path, index) => (
           <View key={index} style={pdfStyles.pathContainer}>
+            <Text style={pdfStyles.pathNumber}>Path {index + 1}</Text>
             <View style={pdfStyles.stateContainer}>
               {path.states.map((state, stateIndex) => (
                 <React.Fragment key={stateIndex}>
