@@ -277,7 +277,7 @@ export default function PathFinderModal({ states, onClose }) {
 
           <div className="mb-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⚠️ Experimental Feature: This path finding functionality is currently in beta and may not work as expected for all state machine configurations.
+              ⚠️ Experimental Feature: This path finding functionality is currently in beta.
             </p>
           </div>
         </div>
