@@ -386,7 +386,7 @@ export default function PathFinderModal({ states, onClose }) {
                     className="bg-blue-500 hover:bg-blue-600 text-white"
                   >
                     <FileDown className="w-4 h-4 mr-2" />
-                    Export PDF
+                    Export to PDF
                   </Button>
                 </div>
 
