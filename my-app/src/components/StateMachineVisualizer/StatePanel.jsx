@@ -97,12 +97,10 @@ export default function StatePanel({
               transform transition-all duration-200 group
             `}
           >
-            <span 
-              className="truncate flex-grow"
-              onClick={() => onStateSelect(state.id)}
-            >
-              {state.name}
-            </span>
+            <div className="flex items-center justify-between flex-grow" onClick={() => onStateSelect(state.id)}>
+              <span className="truncate">{state.name}</span>
+              <span className="text-xs opacity-75 ml-2">({state.rules?.length || 0})</span>
+            </div>
             <Button
               variant="ghost"
               size="sm"
