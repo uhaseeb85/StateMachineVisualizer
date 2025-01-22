@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { parseExcelFile, validateExcelData, generateId } from '../utils';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 
 export default function useStateMachine() {
   const [states, setStates] = useState([]);
@@ -157,6 +159,85 @@ export default function useStateMachine() {
     URL.revokeObjectURL(url);
   };
 
+  const handleRuleDictionaryImport = async (event) => {
+    try {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Validate file extension
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      if (!['xlsx', 'xls'].includes(fileExtension)) {
+        toast.error('Please upload a valid Excel file (.xlsx or .xls)');
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+          // Validate sheet structure
+          if (jsonData.length === 0) {
+            toast.error('The Excel file is empty');
+            return;
+          }
+
+          // Check if required columns exist
+          const firstRow = jsonData[0];
+          if (!('rule name' in firstRow) || !('rule description' in firstRow)) {
+            toast.error('Excel file must contain "rule name" and "rule description" columns');
+            return;
+          }
+
+          // Create a dictionary from the Excel data
+          const ruleDictionary = {};
+          let rulesUpdated = 0;
+          let hasValidData = false;
+
+          jsonData.forEach(row => {
+            if (row['rule name'] && row['rule description']) {
+              ruleDictionary[row['rule name']] = row['rule description'];
+              rulesUpdated++;
+              hasValidData = true;
+            }
+          });
+
+          if (!hasValidData) {
+            toast.error('No valid rules found in the Excel file');
+            return;
+          }
+
+          // Update states with rule descriptions
+          const updatedStates = states.map(state => ({
+            ...state,
+            rules: state.rules.map(rule => ({
+              ...rule,
+              description: ruleDictionary[rule.name] || rule.description || ''
+            }))
+          }));
+
+          setStates(updatedStates);
+          toast.success(`Rule dictionary imported successfully! Updated ${rulesUpdated} rules.`);
+        } catch (error) {
+          toast.error('Error processing Excel file: ' + error.message);
+        }
+      };
+
+      reader.onerror = () => {
+        toast.error('Error reading the file');
+      };
+
+      reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('Error importing rule dictionary:', error);
+      toast.error(`Error importing rule dictionary: ${error.message}`);
+    }
+  };
+
   return {
     states,
     setStates,
@@ -170,6 +251,7 @@ export default function useStateMachine() {
     saveFlow,
     handleImport,
     handleExcelImport,
-    exportConfiguration
+    exportConfiguration,
+    handleRuleDictionaryImport,
   };
 } 

@@ -3,7 +3,9 @@ import StateMachineVisualizer from './StateMachineVisualizer/index.jsx';
 
 function App() {
   return (
-    <StateMachineVisualizer />
+    <>
+      <StateMachineVisualizer />
+    </>
   );
 }
 

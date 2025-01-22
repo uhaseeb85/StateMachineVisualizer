@@ -23,7 +23,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     exportConfiguration,
     isDarkMode,
     toggleTheme,
-    showSaveNotification
+    showSaveNotification,
+    handleRuleDictionaryImport
   } = useStateMachine();
 
   const {
@@ -76,6 +77,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onExport={exportConfiguration}
           onImport={handleImport}
           onExcelImport={handleExcelImport}
+          onRuleDictionaryImport={handleRuleDictionaryImport}
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
