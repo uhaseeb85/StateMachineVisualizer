@@ -145,8 +145,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                        bg-white dark:bg-gray-700 px-2 rounded-lg
                        hover:bg-gray-50 dark:hover:bg-gray-600
                        transform transition-all duration-200 hover:scale-[1.02]
-                       hover:shadow-sm cursor-pointer
-                       border border-transparent hover:border-gray-200 dark:hover:border-gray-500"
+                       hover:shadow-sm cursor-pointer group
+                       border border-transparent hover:border-gray-200 dark:hover:border-gray-500
+                       relative"
+              title="Rule selected"
             >
               <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
                 {rule.condition}

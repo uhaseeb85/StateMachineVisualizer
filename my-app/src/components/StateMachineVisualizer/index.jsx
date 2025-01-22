@@ -24,7 +24,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     isDarkMode,
     toggleTheme,
     showSaveNotification,
-    handleRuleDictionaryImport
+    handleRuleDictionaryImport: originalHandleRuleDictionaryImport
   } = useStateMachine();
 
   const {
@@ -44,6 +44,23 @@ const StateMachineVisualizerContent = ({ startTour }) => {
   } = useSimulation(states);
 
   const [showPathFinder, setShowPathFinder] = useState(false);
+  const [loadedDictionary, setLoadedDictionary] = useState(null);
+
+  const handleRuleDictionaryImport = async (event) => {
+    console.log("Import started with file:", event);
+    try {
+      const result = await originalHandleRuleDictionaryImport(event);
+      console.log("Import result:", result);
+      if (result) {
+        setLoadedDictionary(result);
+        console.log("Dictionary state updated:", result);
+      } else {
+        console.log("No result from import");
+      }
+    } catch (error) {
+      console.error("Error importing dictionary:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
@@ -82,6 +99,41 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
         />
+
+        {/* Add Dictionary Display Section */}
+        {loadedDictionary && (
+          <div className="mb-8 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Loaded Rule Dictionary
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Rule Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Description
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {Object.entries(loadedDictionary).map(([ruleName, description], index) => (
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {ruleName}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+                        {description}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-8">
           <StatePanel
