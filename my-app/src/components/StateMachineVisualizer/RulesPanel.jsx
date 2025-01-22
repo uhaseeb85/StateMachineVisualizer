@@ -112,9 +112,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             />
             <label
               htmlFor="ruleDictionaryInput"
-              className="cursor-pointer inline-flex items-center px-3 py-1 text-sm
-                       bg-purple-500 hover:bg-purple-600 text-white rounded-md 
-                       transition-colors duration-200"
+              className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+                       bg-gray-900 hover:bg-blue-600 text-white
+                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                       rounded-md transform transition-all duration-200 hover:scale-110"
             >
               <Upload className="w-4 h-4 mr-2" />
               Load Rule Dictionary
