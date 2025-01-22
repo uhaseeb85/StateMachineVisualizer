@@ -14,70 +14,31 @@ export default function TopActionBar({
   startTour 
 }) {
   return (
-    <div className="mb-8 p-6 border border-gray-200/20 rounded-xl 
-                    bg-white/40 dark:bg-gray-800/40 shadow-xl backdrop-blur-sm
-                    hover:bg-white/50 dark:hover:bg-gray-800/50 
-                    transition-all duration-300">
-      <div className="flex flex-wrap gap-4 justify-center">
+    <div className="mb-8 flex flex-wrap gap-2 justify-between items-center">
+      <div className="flex flex-wrap gap-2">
         <Button
-          onClick={startTour}
-          className="getting-started-button bg-blue-500 hover:bg-blue-600 text-white text-sm
-                   transform transition-all duration-200 hover:scale-110"
-        >
-          <HelpCircle className="w-4 h-4 mr-2" />
-          Getting Started
-        </Button>
-
-        <Button
-          onClick={toggleTheme}
-          variant="ghost"
-          className="theme-toggle w-10 h-10 p-0 text-gray-900 
-                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                   transform transition-all duration-200 hover:scale-110"
-        >
-          {isDarkMode ? (
-            <Sun className="h-5 w-5 text-yellow-500" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-        </Button>
-
-        <Button 
-          onClick={onSimulate}
-          className="simulation-button bg-green-500 hover:bg-green-600 text-white text-sm
-                   dark:bg-green-500 dark:text-white dark:hover:bg-green-600
-                   transform transition-all duration-200 hover:scale-110"
-        >
-          <Play className="w-4 h-4 mr-2" />
-          Simulate
-        </Button>
-
-        <Button 
           onClick={onSave}
-          className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                   transform transition-all duration-200 hover:scale-110"
+          title="Save your current state machine configuration to browser storage"
+          className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm"
         >
           <Save className="w-4 h-4 mr-2" />
           Save Flow
         </Button>
 
-        <Button 
+        <Button
           onClick={onExport}
-          className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                   transform transition-all duration-200 hover:scale-110"
+          title="Export your state machine as a JSON file that can be shared or imported later"
+          className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm"
         >
-          <ArrowUpFromLine className="w-4 h-4 mr-2" />
+          <Upload className="w-4 h-4 mr-2" />
           Export
         </Button>
 
         <div className="relative">
-          <Button 
+          <Button
             onClick={() => document.getElementById('flow-import').click()}
-            className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                     transform transition-all duration-200 hover:scale-110"
+            title="Import a previously exported JSON state machine configuration"
+            className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm"
           >
             <Download className="w-4 h-4 mr-2" />
             Import JSON
@@ -93,11 +54,10 @@ export default function TopActionBar({
         </div>
 
         <div className="relative">
-          <Button 
+          <Button
             onClick={() => document.getElementById('excel-import').click()}
-            className="excel-import-button import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                     transform transition-all duration-200 hover:scale-110"
+            title="Import states and rules from an Excel/CSV file. File should have columns for Source State, Target State, and Rules"
+            className="excel-import-button bg-gray-900 hover:bg-blue-600 text-white text-sm"
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" />
             Import Excel/CSV
@@ -111,20 +71,50 @@ export default function TopActionBar({
             onClick={(e) => e.target.value = null}
           />
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={onSimulate}
+          title="Test your state machine by simulating state transitions based on your rules"
+          className="simulation-button bg-green-500 hover:bg-green-600 text-white text-sm"
+        >
+          <Play className="w-4 h-4 mr-2" />
+          Simulate
+        </Button>
 
         <Button
           onClick={onFindPaths}
-          className="find-paths-button relative group overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 
-                     transform hover:scale-105 transition-all duration-200 ease-out
-                     animate-shimmer hover:animate-pulse"
+          title="Analyze all possible paths between states in your state machine"
+          className="find-paths-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                     transition-all duration-300 ease-in-out
+                     hover:shadow-[0_0_15px_rgba(0,0,0,0.3)]
+                     hover:scale-[1.02]"
         >
-          <div className="absolute inset-0 bg-white/20 skew-x-12 group-hover:skew-x-0 
-                            transition-transform duration-300 ease-out -translate-x-full group-hover:translate-x-full">
-          </div>
-          <div className="relative flex items-center gap-2">
-            <Route className="w-4 h-4 animate-bounce" />
-            PathFinder
-          </div>
+          <Route className="w-4 h-4 mr-2" />
+          Path Finder
+        </Button>
+
+        <Button
+          onClick={startTour}
+          title="Take a guided tour of all features and functionality"
+          className="help-button bg-blue-500 hover:bg-blue-600 text-white text-sm"
+        >
+          <HelpCircle className="w-4 h-4 mr-2" />
+          Help
+        </Button>
+
+        <Button
+          onClick={toggleTheme}
+          title="Switch between light and dark mode"
+          className="theme-toggle bg-gray-900 hover:bg-blue-600 text-white text-sm"
+        >
+          {isDarkMode ? (
+            <Sun className="w-4 h-4 mr-2" />
+          ) : (
+            <Moon className="w-4 h-4 mr-2" />
+          )}
+          {isDarkMode ? 'Light Mode' : 'Dark Mode'}
         </Button>
       </div>
     </div>

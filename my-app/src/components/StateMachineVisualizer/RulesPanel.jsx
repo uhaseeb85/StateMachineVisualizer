@@ -111,9 +111,8 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
           />
           <Button
             onClick={() => document.getElementById('ruleDictionaryInput').click()}
-            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                     transform transition-all duration-200 hover:scale-105"
+            title="Import a dictionary of rule descriptions from Excel to document your rules"
+            className="bg-gray-900 hover:bg-blue-600 text-white text-sm"
           >
             Load Rules Dictionary
           </Button>
@@ -127,11 +126,13 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             value={newRuleCondition}
             onChange={(e) => setNewRuleCondition(e.target.value)}
             placeholder="Rule Name"
+            title="Enter a name or condition for your rule"
             className="text-sm h-7 dark:bg-gray-700 dark:text-white"
           />
           <select
             value={newRuleNextState}
             onChange={(e) => setNewRuleNextState(e.target.value)}
+            title="Select the state this rule will transition to"
             className="h-7 rounded-md border border-gray-300 dark:border-gray-600 
                      text-sm dark:bg-gray-700 dark:text-white"
           >
@@ -145,6 +146,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
           <Button
             onClick={addRule}
             disabled={!newRuleCondition.trim() || !newRuleNextState}
+            title="Add this rule to the current state"
             className="h-7 bg-blue-500 hover:bg-blue-600 text-white"
           >
             <Plus className="w-3 h-3" />
