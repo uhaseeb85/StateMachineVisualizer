@@ -8,6 +8,9 @@ import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import PathFinderModal from './PathFinderModal';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+
+const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
 const StateMachineVisualizerContent = ({ startTour }) => {
   const {
@@ -44,7 +47,11 @@ const StateMachineVisualizerContent = ({ startTour }) => {
   } = useSimulation(states);
 
   const [showPathFinder, setShowPathFinder] = useState(false);
-  const [loadedDictionary, setLoadedDictionary] = useState(null);
+  const [loadedDictionary, setLoadedDictionary] = useState(() => {
+    const savedDictionary = localStorage.getItem(DICTIONARY_STORAGE_KEY);
+    return savedDictionary ? JSON.parse(savedDictionary) : null;
+  });
+  const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
 
   const handleRuleDictionaryImport = async (event) => {
     console.log("Import started with file:", event);
@@ -53,13 +60,19 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       console.log("Import result:", result);
       if (result) {
         setLoadedDictionary(result);
-        console.log("Dictionary state updated:", result);
+        localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(result));
+        console.log("Dictionary state updated and saved:", result);
       } else {
         console.log("No result from import");
       }
     } catch (error) {
       console.error("Error importing dictionary:", error);
     }
+  };
+
+  const clearDictionary = () => {
+    setLoadedDictionary(null);
+    localStorage.removeItem(DICTIONARY_STORAGE_KEY);
   };
 
   return (
@@ -100,42 +113,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           startTour={startTour}
         />
 
-        {/* Add Dictionary Display Section */}
-        {loadedDictionary && (
-          <div className="mb-8 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Loaded Rule Dictionary
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Rule Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Description
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {Object.entries(loadedDictionary).map(([ruleName, description], index) => (
-                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {ruleName}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
-                        {description}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col lg:flex-row gap-8">
+        {/* States and Rules panels first */}
+        <div className="flex flex-col lg:flex-row gap-8 mb-8">
           <StatePanel
             states={states}
             selectedState={selectedState}
@@ -151,6 +130,59 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             setStates={setStates}
           />
         </div>
+
+        {/* Rule Dictionary moved below */}
+        {loadedDictionary && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+            <button
+              onClick={() => setIsDictionaryExpanded(!isDictionaryExpanded)}
+              className="w-full p-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors"
+            >
+              <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <span>Rule Dictionary</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  ({Object.keys(loadedDictionary).length} rules)
+                </span>
+              </h2>
+              {isDictionaryExpanded ? (
+                <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              )}
+            </button>
+            
+            {isDictionaryExpanded && (
+              <div className="p-4 pt-0">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Rule Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {Object.entries(loadedDictionary).map(([ruleName, description], index) => (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {ruleName}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+                            {description}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {showSimulation && (
           <SimulationModal
