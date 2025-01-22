@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates }) {
+export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
@@ -97,12 +97,29 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
                     rules-section">
-      <div className="mb-4">
+      <div className="mb-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           Rules for {currentState?.name}
         </h2>
-        <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
+        <div className="relative">
+          <input
+            type="file"
+            id="ruleDictionaryInput"
+            onChange={onRuleDictionaryImport}
+            className="hidden"
+            accept=".xlsx,.xls"
+          />
+          <Button
+            onClick={() => document.getElementById('ruleDictionaryInput').click()}
+            className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                     transform transition-all duration-200 hover:scale-105"
+          >
+            Load Rules Dictionary
+          </Button>
+        </div>
       </div>
+      <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
 
       <div className="mb-4">
         <div className="grid grid-cols-[1fr,1fr,auto] gap-2">
