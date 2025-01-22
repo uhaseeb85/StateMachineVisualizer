@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ArrowRight, Upload } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport }) {
+export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
-
-  const currentState = states.find(s => s.id === selectedState);
+  const currentState = states.find(state => state.id === selectedState);
+  const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
 
   const addRule = () => {
     if (!newRuleCondition.trim() || !newRuleNextState) return;
@@ -124,6 +124,40 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
         </div>
         <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
       </div>
+
+      {loadedDictionary && (
+        <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+          <button
+            onClick={() => setIsDictionaryExpanded(!isDictionaryExpanded)}
+            className="w-full p-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors"
+          >
+            <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+              <span>Rule Dictionary</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                ({Object.keys(loadedDictionary).length} rules)
+              </span>
+            </h2>
+            {isDictionaryExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            )}
+          </button>
+          {isDictionaryExpanded && (
+            <div className="p-3 border-t border-gray-100 dark:border-gray-700 max-h-60 overflow-y-auto">
+              {Object.entries(loadedDictionary).map(([key, value]) => (
+                <div 
+                  key={key}
+                  className="py-1.5 flex items-center justify-between text-sm border-b last:border-b-0 border-gray-100 dark:border-gray-700"
+                >
+                  <span className="text-gray-700 dark:text-gray-300">{key}</span>
+                  <span className="text-gray-500 dark:text-gray-400">{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mb-4">
         <div className="grid grid-cols-[1fr,1fr,auto] gap-2">

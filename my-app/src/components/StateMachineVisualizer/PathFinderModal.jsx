@@ -291,11 +291,34 @@ export default function PathFinderModal({ states, onClose }) {
 
         if (stack.has(currentState.id)) {
           const loopStartIndex = path.findIndex(p => p === currentState.name);
+          
+          // Create the complete loop cycle
+          const loopStates = [...path.slice(loopStartIndex), currentState.name];
+          const loopRules = [...rulePath.slice(loopStartIndex)];
+          const loopFailedRules = [...failedRulesPath.slice(loopStartIndex)];
+
+          // Find the rules that complete the loop (from last state back to start)
+          const lastState = states.find(s => s.name === path[path.length - 1]);
+          if (lastState) {
+            const rulesBackToStart = lastState.rules
+              .filter(rule => rule.nextState === states.find(s => s.name === loopStates[0])?.id)
+              .map(rule => rule.condition);
+            
+            if (rulesBackToStart.length > 0) {
+              loopRules.push(rulesBackToStart[0]); // Add the first rule that completes the loop
+              loopFailedRules.push(lastState.rules
+                .slice(0, lastState.rules.findIndex(r => rulesBackToStart.includes(r.condition)))
+                .map(r => r.condition)
+              );
+            }
+          }
+
           const loop = {
-            states: path.slice(loopStartIndex),
-            rules: rulePath.slice(loopStartIndex),
-            failedRules: failedRulesPath.slice(loopStartIndex)
+            states: loopStates,
+            rules: loopRules,
+            failedRules: loopFailedRules
           };
+          
           loops.push(loop);
           setPaths([...loops]);
           return;
