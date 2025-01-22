@@ -272,6 +272,82 @@ export default function PathFinderModal({ states, onClose }) {
     setCurrentPage(1);
   }, [paths]);
 
+  const handleDetectLoops = async () => {
+    try {
+      setError(null);
+      setIsSearching(true);
+      setPaths([]);
+      setShouldCancel(false);
+      setProgress(0);
+
+      const loops = [];
+      const visited = new Set();
+      const stack = new Set();
+
+      const dfs = async (currentState, path = [], rulePath = [], failedRulesPath = []) => {
+        if (shouldCancel) {
+          throw new Error('Search cancelled');
+        }
+
+        if (stack.has(currentState.id)) {
+          const loopStartIndex = path.findIndex(p => p === currentState.name);
+          const loop = {
+            states: path.slice(loopStartIndex),
+            rules: rulePath.slice(loopStartIndex),
+            failedRules: failedRulesPath.slice(loopStartIndex)
+          };
+          loops.push(loop);
+          setPaths([...loops]);
+          return;
+        }
+
+        visited.add(currentState.id);
+        stack.add(currentState.id);
+        path.push(currentState.name);
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        for (const rule of currentState.rules) {
+          const nextState = states.find(s => s.id === rule.nextState);
+          if (nextState) {
+            await dfs(
+              nextState,
+              [...path],
+              [...rulePath, rule.condition],
+              [...failedRulesPath, []]
+            );
+          }
+        }
+
+        stack.delete(currentState.id);
+      };
+
+      for (const state of states) {
+        visited.clear();
+        stack.clear();
+        await dfs(state);
+        setProgress((states.indexOf(state) + 1) / states.length * 100);
+      }
+
+      if (loops.length === 0) {
+        toast.info('No loops found in the state machine.');
+      } else {
+        toast.success(`Found ${loops.length} loop${loops.length === 1 ? '' : 's'} in the state machine.`);
+      }
+
+    } catch (error) {
+      if (error.message === 'Search cancelled') {
+        console.log('Search was cancelled');
+      } else {
+        console.error('Error during loop detection:', error);
+        setError('An error occurred while detecting loops');
+      }
+    } finally {
+      setIsSearching(false);
+      setProgress(100);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] 
@@ -333,6 +409,17 @@ export default function PathFinderModal({ states, onClose }) {
                 className={searchMode === 'intermediateState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
               >
                 Find Paths Through State
+              </Button>
+              <Button
+                onClick={() => {
+                  setSearchMode('detectLoops');
+                  setPaths([]);
+                  handleDetectLoops();
+                }}
+                variant={searchMode === 'detectLoops' ? 'default' : 'outline'}
+                className={searchMode === 'detectLoops' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+              >
+                Detect Loops
               </Button>
             </div>
 
