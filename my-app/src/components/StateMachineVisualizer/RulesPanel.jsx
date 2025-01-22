@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates }) {
+export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
@@ -98,9 +98,29 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
                     rules-section">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Rules for {currentState?.name}
-        </h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Rules for {currentState?.name}
+          </h2>
+          <div className="relative">
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={onRuleDictionaryImport}
+              className="hidden"
+              id="ruleDictionaryInput"
+            />
+            <label
+              htmlFor="ruleDictionaryInput"
+              className="cursor-pointer inline-flex items-center px-3 py-1 text-sm
+                       bg-purple-500 hover:bg-purple-600 text-white rounded-md 
+                       transition-colors duration-200"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Load Rule Dictionary
+            </label>
+          </div>
+        </div>
         <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
       </div>
 
