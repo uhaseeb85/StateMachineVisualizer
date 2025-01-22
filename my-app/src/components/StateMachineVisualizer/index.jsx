@@ -128,61 +128,10 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             onStateSelect={setSelectedState}
             setStates={setStates}
             onRuleDictionaryImport={handleRuleDictionaryImport}
+            loadedDictionary={loadedDictionary}
+            setLoadedDictionary={setLoadedDictionary}
           />
         </div>
-
-        {/* Rule Dictionary moved below */}
-        {loadedDictionary && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-            <button
-              onClick={() => setIsDictionaryExpanded(!isDictionaryExpanded)}
-              className="w-full p-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors"
-            >
-              <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                <span>Rule Dictionary</span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  ({Object.keys(loadedDictionary).length} rules)
-                </span>
-              </h2>
-              {isDictionaryExpanded ? (
-                <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-              )}
-            </button>
-            
-            {isDictionaryExpanded && (
-              <div className="p-4 pt-0">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Rule Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Description
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {Object.entries(loadedDictionary).map(([ruleName, description], index) => (
-                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {ruleName}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
-                            {description}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {showSimulation && (
           <SimulationModal
