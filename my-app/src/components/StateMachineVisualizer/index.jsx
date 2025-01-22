@@ -107,7 +107,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onExport={exportConfiguration}
           onImport={handleImport}
           onExcelImport={handleExcelImport}
-          onRuleDictionaryImport={handleRuleDictionaryImport}
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
@@ -128,6 +127,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             selectedState={selectedState}
             onStateSelect={setSelectedState}
             setStates={setStates}
+            onRuleDictionaryImport={handleRuleDictionaryImport}
           />
         </div>
 
