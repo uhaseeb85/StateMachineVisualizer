@@ -85,10 +85,23 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
   const handleRuleClick = (ruleId, condition) => {
     if (selectedRuleId === ruleId) {
-      setSelectedRuleId(null); // Close if already open
+      setSelectedRuleId(null);
     } else {
-      setSelectedRuleId(ruleId); // Open the clicked rule
+      setSelectedRuleId(ruleId);
     }
+  };
+
+  const getRuleDescriptions = (condition) => {
+    if (!condition) return [];
+    
+    // Split the condition by '+' and trim each part
+    const individualRules = condition.split('+').map(rule => rule.trim());
+    
+    // Get descriptions for each rule
+    return individualRules.map(rule => ({
+      rule,
+      description: loadedDictionary?.[rule]
+    })).filter(item => item.description); // Only include rules that have descriptions
   };
 
   if (!selectedState) {
@@ -202,7 +215,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
       <div className="space-y-1.5">
         {currentState?.rules.map(rule => {
           const targetState = states.find(s => s.id === rule.nextState);
-          const ruleDescription = loadedDictionary?.[rule.condition];
+          const ruleDescriptions = getRuleDescriptions(rule.condition);
           const isSelected = selectedRuleId === rule.id;
 
           return (
@@ -263,13 +276,20 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                 </Button>
               </div>
 
-              {/* Rule Description */}
-              {isSelected && ruleDescription && (
-                <div className="ml-2 p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
-                              text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
-                              border border-blue-100 dark:border-blue-800/30
-                              shadow-sm">
-                  {ruleDescription}
+              {/* Rule Descriptions */}
+              {isSelected && ruleDescriptions.length > 0 && (
+                <div className="ml-2 space-y-1">
+                  {ruleDescriptions.map((desc, index) => (
+                    <div 
+                      key={index}
+                      className="p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
+                                text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
+                                border border-blue-100 dark:border-blue-800/30
+                                shadow-sm"
+                    >
+                      <span className="font-medium">{desc.rule}:</span> {desc.description}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
