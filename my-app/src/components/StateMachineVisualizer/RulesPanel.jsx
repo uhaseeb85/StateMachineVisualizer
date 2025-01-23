@@ -97,10 +97,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     // Split the condition by '+' and trim each part
     const individualRules = condition.split('+').map(rule => rule.trim());
     
-    // Get descriptions for each rule
+    // Get descriptions for each rule, removing '!' prefix if present
     return individualRules.map(rule => ({
-      rule,
-      description: loadedDictionary?.[rule]
+      rule: rule,  // Keep original rule with ! for display
+      description: loadedDictionary?.[rule.replace(/^!/, '')] // Remove ! prefix when searching dictionary
     })).filter(item => item.description); // Only include rules that have descriptions
   };
 
@@ -287,7 +287,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                                 border border-blue-100 dark:border-blue-800/30
                                 shadow-sm"
                     >
-                      <span className="font-medium">{desc.rule}:</span> {desc.description}
+                      <span className="font-medium">
+                        {desc.rule}: {desc.rule.startsWith('!') && '<NOT>'} 
+                      </span> 
+                      {desc.description}
                     </div>
                   ))}
                 </div>
