@@ -265,8 +265,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
               {/* Rule Description */}
               {isSelected && ruleDescription && (
-                <div className="ml-2 p-1 bg-gray-50 dark:bg-gray-600/30 rounded-md
-                              text-sm text-gray-600 dark:text-gray-300 animate-fadeIn">
+                <div className="ml-2 p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
+                              text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
+                              border border-blue-100 dark:border-blue-800/30
+                              shadow-sm">
                   {ruleDescription}
                 </div>
               )}
