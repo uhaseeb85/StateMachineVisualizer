@@ -97,13 +97,16 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         </div>
       )}
 
-      <div className="container mx-auto p-4 max-w-full min-h-screen 
+       <div className="container mx-auto p-4 max-w-full min-h-screen 
                     bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
                     dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5 tracking-wide">
             State Machine Visualizer
           </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Design • Visualize • Validate
+          </p>
         </div>
 
         <TopActionBar

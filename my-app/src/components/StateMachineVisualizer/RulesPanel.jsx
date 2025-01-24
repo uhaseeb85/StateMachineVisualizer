@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary }) {
@@ -9,6 +9,8 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
   const [selectedRuleId, setSelectedRuleId] = useState(null);
+  const [editingRuleId, setEditingRuleId] = useState(null);
+  const [editingRuleCondition, setEditingRuleCondition] = useState("");
   const currentState = states.find(state => state.id === selectedState);
   const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
 
@@ -89,6 +91,44 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     } else {
       setSelectedRuleId(ruleId);
     }
+  };
+
+  const handleEditRule = (ruleId, currentCondition) => {
+    setEditingRuleId(ruleId);
+    setEditingRuleCondition(currentCondition);
+  };
+
+  const handleSaveEdit = (ruleId) => {
+    const trimmedCondition = editingRuleCondition.trim();
+    if (!trimmedCondition) {
+      toast.error("Rule condition cannot be empty");
+      return;
+    }
+
+    setStates(prevStates => 
+      prevStates.map(state => {
+        if (state.id === selectedState) {
+          return {
+            ...state,
+            rules: state.rules.map(rule => 
+              rule.id === ruleId 
+                ? { ...rule, condition: trimmedCondition }
+                : rule
+            )
+          };
+        }
+        return state;
+      })
+    );
+
+    setEditingRuleId(null);
+    setEditingRuleCondition("");
+    toast.success("Rule updated successfully");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRuleId(null);
+    setEditingRuleCondition("");
   };
 
   const getRuleDescriptions = (condition) => {
@@ -212,39 +252,46 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
         </div>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {currentState?.rules.map(rule => {
           const targetState = states.find(s => s.id === rule.nextState);
           const ruleDescriptions = getRuleDescriptions(rule.condition);
           const isSelected = selectedRuleId === rule.id;
+          const isEditing = editingRuleId === rule.id;
 
           return (
-            <div 
-              key={rule.id}
-              className="flex flex-col gap-1"
-            >
+            <div key={rule.id} className="flex flex-col gap-1">
               <div className="grid grid-cols-[1fr,auto,1fr,auto] gap-4 items-center 
                            bg-white dark:bg-gray-700 p-1 rounded-lg
                            hover:bg-gray-50 dark:hover:bg-gray-600
                            transform transition-all duration-200 hover:scale-[1.02]
                            hover:shadow-sm cursor-pointer group
                            border border-transparent hover:border-gray-200 dark:hover:border-gray-500
-                           relative"
-              >
+                           relative">
                 {/* Rule Column */}
                 <div 
-                  onClick={() => handleRuleClick(rule.id, rule.condition)}
+                  onClick={() => !isEditing && handleRuleClick(rule.id, rule.condition)}
                   className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md
-                             hover:bg-gray-100 dark:hover:bg-gray-500/50 cursor-pointer"
+                           hover:bg-gray-100 dark:hover:bg-gray-500/50 cursor-pointer
+                           flex items-center justify-between"
                 >
-                  <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
-                    {rule.condition}
-                  </span>
+                  {isEditing ? (
+                    <Input
+                      value={editingRuleCondition}
+                      onChange={(e) => setEditingRuleCondition(e.target.value)}
+                      className="text-sm"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
+                      {rule.condition}
+                    </span>
+                  )}
                 </div>
-                
+
                 {/* Divider */}
                 <div className="h-2 w-[1px] bg-gray-300 dark:bg-gray-500" />
-                
+
                 {/* State Column */}
                 <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
                   <button
@@ -259,24 +306,60 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                   </button>
                 </div>
 
-                {/* Delete Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteRule(rule.id);
-                  }}
-                  className="h-4 w-4 p-0 text-red-500 hover:text-red-700 
-                           hover:bg-red-50 dark:hover:bg-red-900/20
-                           transition-opacity flex items-center justify-center"
-                  title="Delete Rule"
-                >
-                  <Trash2 className="w-3 h-3 group-hover:scale-110 transition-transform" />
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex items-center gap-1">
+                  {isEditing ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSaveEdit(rule.id)}
+                        className="h-6 w-6 p-0 text-green-500 hover:text-green-700
+                                 hover:bg-green-50 dark:hover:bg-green-900/20"
+                      >
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700
+                                 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditRule(rule.id, rule.condition)}
+                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
+                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                                 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteRule(rule.id);
+                        }}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700
+                                 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 
+                                 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
-              {/* Rule Descriptions */}
+              {/* Rule Description */}
               {isSelected && ruleDescriptions.length > 0 && (
                 <div className="ml-2 space-y-1">
                   {ruleDescriptions.map((desc, index) => (
