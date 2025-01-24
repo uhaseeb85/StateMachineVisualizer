@@ -75,6 +75,12 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     localStorage.removeItem(DICTIONARY_STORAGE_KEY);
   };
 
+  // Add new state for state dictionary
+  const [loadedStateDictionary, setLoadedStateDictionary] = useState(() => {
+    const savedDictionary = localStorage.getItem('stateDictionary');
+    return savedDictionary ? JSON.parse(savedDictionary) : null;
+  });
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
@@ -120,6 +126,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             onStateSelect={setSelectedState}
             onStateAdd={addState}
             onStateDelete={deleteState}
+            loadedStateDictionary={loadedStateDictionary}
+            setLoadedStateDictionary={setLoadedStateDictionary}
           />
 
           <RulesPanel
