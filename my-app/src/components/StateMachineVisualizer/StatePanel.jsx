@@ -18,8 +18,19 @@ export default function StatePanel({
   const [selectedStateId, setSelectedStateId] = useState(null);
 
   const handleAddState = () => {
-    if (newStateName.trim()) {
-      onStateAdd(newStateName.trim());
+    const trimmedName = newStateName.trim();
+    if (trimmedName) {
+      // Check if state name already exists (case-insensitive)
+      const stateExists = states.some(
+        state => state.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+
+      if (stateExists) {
+        toast.error(`State "${trimmedName}" already exists!`);
+        return;
+      }
+
+      onStateAdd(trimmedName);
       setNewStateName('');
     }
   };
@@ -159,17 +170,28 @@ export default function StatePanel({
               `}
             >
               <span>{state.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStateDelete(state.id);
-                }}
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className={`
+                  text-xs px-1.5 rounded-full
+                  ${selectedState === state.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                  }
+                `}>
+                  {state.rules?.length || 0}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStateDelete(state.id);
+                  }}
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
             
             {/* State Description */}
