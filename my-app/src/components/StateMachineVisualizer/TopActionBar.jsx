@@ -130,7 +130,7 @@ export default function TopActionBar({
                        transform transition-all duration-200 hover:scale-110"
             >
               <Play className="w-4 h-4 mr-2" />
-              Run
+              Simulate
             </Button>
           </div>
         </div>
