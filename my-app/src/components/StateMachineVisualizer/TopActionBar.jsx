@@ -21,6 +21,16 @@ export default function TopActionBar({
       <div className="flex flex-wrap gap-4 justify-between">
         {/* Core Actions Group */}
         <div className="flex flex-wrap gap-4">
+          <Button 
+            onClick={onSave}
+            className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                     transform transition-all duration-200 hover:scale-110"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save
+          </Button>
+
           <Button
             onClick={toggleTheme}
             variant="ghost"
@@ -36,16 +46,6 @@ export default function TopActionBar({
           </Button>
 
           <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
-            <Button 
-              onClick={onSave}
-              className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-
             <Button 
               onClick={onExport}
               className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
