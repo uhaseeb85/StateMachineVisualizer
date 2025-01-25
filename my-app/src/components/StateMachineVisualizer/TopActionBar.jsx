@@ -115,8 +115,8 @@ export default function TopActionBar({
           <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
             <Button
               onClick={onFindPaths}
-              className="find-paths-button bg-green-500 hover:bg-green-600 text-white text-sm
-                       dark:bg-green-500 dark:text-white dark:hover:bg-green-600
+              className="find-paths-button bg-blue-500 hover:bg-blue-600 text-white text-sm
+                       dark:bg-blue-500 dark:text-white dark:hover:bg-blue-600
                        transform transition-all duration-200 hover:scale-110"
             >
               <Route className="w-4 h-4 mr-2" />
