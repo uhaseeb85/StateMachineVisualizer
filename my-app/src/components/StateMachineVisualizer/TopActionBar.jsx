@@ -23,6 +23,7 @@ export default function TopActionBar({
         <div className="flex flex-wrap gap-4">
           <Button 
             onClick={onSave}
+            title="Save your current state machine configuration"
             className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
                      dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                      transform transition-all duration-200 hover:scale-110"
@@ -33,6 +34,7 @@ export default function TopActionBar({
 
           <Button
             onClick={toggleTheme}
+            title="Toggle between light and dark mode"
             variant="ghost"
             className="theme-toggle w-10 h-10 p-0 text-gray-900 
                      dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
@@ -48,6 +50,7 @@ export default function TopActionBar({
           <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
             <Button 
               onClick={onExport}
+              title="Export your state machine as a JSON file"
               className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                        transform transition-all duration-200 hover:scale-110"
@@ -59,6 +62,7 @@ export default function TopActionBar({
             <div className="relative">
               <Button 
                 onClick={() => document.getElementById('flow-import').click()}
+                title="Import a previously exported JSON state machine file"
                 className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
                          dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          transform transition-all duration-200 hover:scale-110"
@@ -81,6 +85,7 @@ export default function TopActionBar({
             <div className="relative">
               <Button 
                 onClick={() => document.getElementById('excel-import').click()}
+                title="Import states and rules from a CSV file (Excel format)"
                 className="excel-import-button import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
                          dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          transform transition-all duration-200 hover:scale-110"
@@ -104,6 +109,7 @@ export default function TopActionBar({
         <div className="flex gap-4">
           <Button
             onClick={startTour}
+            title="Get a guided tour of all features and how to use them"
             variant="ghost"
             className="getting-started-button text-blue-500 hover:text-blue-600 text-sm
                      transform transition-all duration-200 hover:scale-110"
@@ -115,6 +121,7 @@ export default function TopActionBar({
           <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
             <Button
               onClick={onFindPaths}
+              title="Find all possible paths between any two states in your state machine"
               className="find-paths-button bg-blue-500 hover:bg-blue-600 text-white text-sm
                        dark:bg-blue-500 dark:text-white dark:hover:bg-blue-600
                        transform transition-all duration-200 hover:scale-110"
@@ -125,6 +132,7 @@ export default function TopActionBar({
 
             <Button 
               onClick={onSimulate}
+              title="Run a simulation of your state machine to test its behavior"
               className="simulation-button bg-green-500 hover:bg-green-600 text-white text-sm
                        dark:bg-green-500 dark:text-white dark:hover:bg-green-600
                        transform transition-all duration-200 hover:scale-110"
