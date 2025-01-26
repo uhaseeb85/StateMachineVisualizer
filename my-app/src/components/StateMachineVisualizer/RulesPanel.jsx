@@ -174,6 +174,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             />
             <label
               htmlFor="ruleDictionaryInput"
+              title="Import an Excel file containing predefined rules and their descriptions to enhance rule documentation"
               className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
                        bg-gray-900 hover:bg-blue-600 text-white
                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
