@@ -164,63 +164,36 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Rules for {currentState?.name}
           </h2>
-          <div className="relative">
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={onRuleDictionaryImport}
-              className="hidden"
-              id="ruleDictionaryInput"
-            />
-            <label
-              htmlFor="ruleDictionaryInput"
-              title="Import an Excel file containing predefined rules and their descriptions to enhance rule documentation"
-              className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
-                       bg-gray-900 hover:bg-blue-600 text-white
-                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                       rounded-md transform transition-all duration-200 hover:scale-110"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Load Rule Dictionary
-            </label>
+          <div className="flex items-center">
+            {loadedDictionary && (
+              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2.5">
+                {Object.keys(loadedDictionary).length} rules loaded
+              </span>
+            )}
+            <div className="relative">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={onRuleDictionaryImport}
+                className="hidden"
+                id="ruleDictionaryInput"
+              />
+              <label
+                htmlFor="ruleDictionaryInput"
+                title="Import an Excel file containing predefined rules and their descriptions to enhance rule documentation"
+                className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+                         bg-gray-900 hover:bg-blue-600 text-white
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                         rounded-md transform transition-all duration-200 hover:scale-110"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Load Rule Dictionary
+              </label>
+            </div>
           </div>
         </div>
         <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
       </div>
-
-      {loadedDictionary && (
-        <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-          <button
-            onClick={() => setIsDictionaryExpanded(!isDictionaryExpanded)}
-            className="w-full p-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors"
-          >
-            <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-              <span>Rule Dictionary</span>
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                ({Object.keys(loadedDictionary).length} rules)
-              </span>
-            </h2>
-            {isDictionaryExpanded ? (
-              <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            )}
-          </button>
-          {isDictionaryExpanded && (
-            <div className="p-3 border-t border-gray-100 dark:border-gray-700 max-h-60 overflow-y-auto">
-              {Object.entries(loadedDictionary).map(([key, value]) => (
-                <div 
-                  key={key}
-                  className="py-1.5 flex items-center justify-between text-sm border-b last:border-b-0 border-gray-100 dark:border-gray-700"
-                >
-                  <span className="text-gray-700 dark:text-gray-300">{key}</span>
-                  <span className="text-gray-500 dark:text-gray-400">{value}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="mb-4">
         <div className="grid grid-cols-[1fr,1fr,auto] gap-2">

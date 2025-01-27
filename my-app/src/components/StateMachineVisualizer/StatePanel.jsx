@@ -108,25 +108,32 @@ export default function StatePanel({
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
-          <div className="relative">
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleStateDictionaryImport}
-              className="hidden"
-              id="stateDictionaryInput"
-            />
-            <label
-              htmlFor="stateDictionaryInput"
-              title="Import an Excel file containing predefined states and their descriptions to enhance state documentation"
-              className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+          <div className="flex items-center">
+            {loadedStateDictionary && (
+              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2.5">
+                {Object.keys(loadedStateDictionary).length} states loaded
+              </span>
+            )}
+            <div className="relative">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleStateDictionaryImport}
+                className="hidden"
+                id="stateDictionaryInput"
+              />
+              <label
+                htmlFor="stateDictionaryInput"
+                title="Import an Excel file containing predefined states and their descriptions to enhance state documentation"
+                className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
                        bg-gray-900 hover:bg-blue-600 text-white
                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                        rounded-md transform transition-all duration-200 hover:scale-110"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Load State Dictionary
-            </label>
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Load State Dictionary
+              </label>
+            </div>
           </div>
         </div>
       </div>
