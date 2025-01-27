@@ -9,6 +9,8 @@ import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import PathFinderModal from './PathFinderModal';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import UserGuideModal from './UserGuideModal';
+import { Button } from "@/components/ui/button";
 
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
@@ -52,6 +54,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
   const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
+  const [showUserGuide, setShowUserGuide] = useState(false);
 
   const handleRuleDictionaryImport = async (event) => {
     console.log("Import started with file:", event);
@@ -215,6 +218,21 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           />
         )}
       </div>
+
+      {/* User Guide Button */}
+      <div className="fixed bottom-6 right-6">
+        <Button
+          onClick={() => setShowUserGuide(true)}
+          className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg"
+        >
+          User Guide
+        </Button>
+      </div>
+
+      {/* User Guide Modal */}
+      {showUserGuide && (
+        <UserGuideModal onClose={() => setShowUserGuide(false)} />
+      )}
     </div>
   );
 };
