@@ -11,6 +11,7 @@ import PathFinderModal from './PathFinderModal';
 import { ChevronDown, ChevronUp, Book } from 'lucide-react';
 import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
+import VersionInfo from './VersionInfo';
 
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
@@ -236,6 +237,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       {showUserGuide && (
         <UserGuideModal onClose={() => setShowUserGuide(false)} />
       )}
+
+      <VersionInfo />
     </div>
   );
 };
