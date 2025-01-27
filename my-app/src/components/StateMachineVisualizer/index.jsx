@@ -8,7 +8,7 @@ import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import PathFinderModal from './PathFinderModal';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Book } from 'lucide-react';
 import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
 
@@ -223,8 +223,11 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       <div className="fixed bottom-6 right-6">
         <Button
           onClick={() => setShowUserGuide(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg"
+          className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                   transform transition-all duration-200 hover:scale-110"
         >
+          <Book className="w-4 h-4 mr-2" />
           User Guide
         </Button>
       </div>

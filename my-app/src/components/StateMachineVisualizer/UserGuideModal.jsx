@@ -138,6 +138,118 @@ export default function UserGuideModal({ onClose }) {
                 <li>Document complex rules using the dictionary feature</li>
               </ul>
             </section>
+
+            {/* Adding new detailed sections for Simulation and Pathfinder */}
+            <section className="space-y-8">
+              {/* Simulation Feature */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+                  🎮 Using the Simulation Feature
+                </h3>
+                <div className="space-y-4 text-gray-600 dark:text-gray-300">
+                  <p>The Simulation feature allows you to test your state machine's behavior in real-time.</p>
+                  
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">How to Run a Simulation:</h4>
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li>Click the "Simulate" button in the top toolbar</li>
+                      <li>In the simulation modal:
+                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                          <li>Select your starting state</li>
+                          <li>Choose which rules are "active" by toggling them</li>
+                          <li>Watch the state transitions happen based on your active rules</li>
+                        </ul>
+                      </li>
+                      <li>The simulation will show:
+                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                          <li>Current state (highlighted)</li>
+                          <li>Available transitions based on active rules</li>
+                          <li>Next possible states</li>
+                        </ul>
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Tips for Effective Simulation:</h4>
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>Start with a simple set of active rules to understand basic flows</li>
+                      <li>Gradually activate more rules to test complex scenarios</li>
+                      <li>Use simulation to verify that:
+                        <ul className="list-disc list-inside ml-6 mt-1">
+                          <li>States transition as expected</li>
+                          <li>No unwanted state transitions occur</li>
+                          <li>Dead ends are intentional</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pathfinder Feature */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+                  🔍 Using the Pathfinder Feature
+                </h3>
+                <div className="space-y-4 text-gray-600 dark:text-gray-300">
+                  <p>The Pathfinder helps you discover and analyze all possible paths between states in your state machine.</p>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">How to Use Pathfinder:</h4>
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li>Click the "Pathfinder" button in the top toolbar</li>
+                      <li>In the pathfinder modal:
+                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                          <li>Select your source (starting) state</li>
+                          <li>Select your target (ending) state</li>
+                          <li>Click "Find Paths" to analyze</li>
+                        </ul>
+                      </li>
+                      <li>Understanding the results:
+                        <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                          <li>Green checkmarks (✓) show successful rules that allow the transition</li>
+                          <li>Red crosses (❌) show rules that were evaluated but didn't pass</li>
+                          <li>Arrows (→) show the direction of state transitions</li>
+                          <li>Each path shows the complete sequence of states and rules</li>
+                        </ul>
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Key Benefits of Pathfinder:</h4>
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>Identify all possible ways to reach a target state</li>
+                      <li>Debug complex state machines by understanding:
+                        <ul className="list-disc list-inside ml-6 mt-1">
+                          <li>Which rules are preventing transitions</li>
+                          <li>Whether unwanted paths exist</li>
+                          <li>If states are unreachable</li>
+                        </ul>
+                      </li>
+                      <li>Optimize state transitions by finding:
+                        <ul className="list-disc list-inside ml-6 mt-1">
+                          <li>Shortest paths between states</li>
+                          <li>Redundant rules or transitions</li>
+                          <li>Missing connections</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Pro Tips:</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Use Pathfinder before implementing your state machine to validate the design</li>
+                      <li>Regularly check paths after adding new states or rules</li>
+                      <li>Look for unexpected paths that might indicate logic errors</li>
+                      <li>Use the results to document all possible flows in your system</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
