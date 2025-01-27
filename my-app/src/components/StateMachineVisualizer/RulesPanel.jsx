@@ -167,7 +167,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
           <div className="flex items-center">
             {loadedDictionary && (
               <span className="text-sm text-gray-600 dark:text-gray-400 mr-2.5">
-                {Object.keys(loadedDictionary).length} rules loaded
+                {Object.keys(loadedDictionary).length} rules
               </span>
             )}
             <div className="relative">
