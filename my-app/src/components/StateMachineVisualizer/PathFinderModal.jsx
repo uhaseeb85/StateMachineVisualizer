@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, ArrowRight, Loader2, FileDown, AlertTriangle } from 'lucide-react';
@@ -18,6 +18,7 @@ export default function PathFinderModal({ states, onClose }) {
   const [currentPage, setCurrentPage] = useState(1);
   const pathsPerPage = 10;
   const [error, setError] = useState(null);
+  const shouldContinueRef = useRef(true);
 
   const pdfStyles = StyleSheet.create({
     page: {
@@ -164,7 +165,7 @@ export default function PathFinderModal({ states, onClose }) {
     let processedStates = 0;
 
     const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = [], foundIntermediate = false) => {
-      if (shouldCancel) {
+      if (!shouldContinueRef.current) {
         throw new Error('Search cancelled');
       }
 
@@ -240,7 +241,7 @@ export default function PathFinderModal({ states, onClose }) {
     } finally {
       setIsSearching(false);
     }
-  }, [states, shouldCancel]);
+  }, [states, shouldContinueRef]);
 
   const handleFindPaths = async () => {
     if (!selectedStartState) return;
@@ -259,8 +260,8 @@ export default function PathFinderModal({ states, onClose }) {
   };
 
   const handleCancel = () => {
-    setShouldCancel(true);
-    toast.info('Cancelling path search...');
+    shouldContinueRef.current = false;
+    setIsSearching(false);
   };
 
   const indexOfLastPath = currentPage * pathsPerPage;
@@ -285,7 +286,7 @@ export default function PathFinderModal({ states, onClose }) {
       const stack = new Set();
 
       const dfs = async (currentState, path = [], rulePath = [], failedRulesPath = []) => {
-        if (shouldCancel) {
+        if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
         }
 
