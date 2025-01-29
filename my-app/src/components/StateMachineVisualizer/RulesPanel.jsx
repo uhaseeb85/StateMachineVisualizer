@@ -73,16 +73,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     toast.success("Rule deleted successfully");
   };
 
-  const handleTargetStateClick = (stateId) => {
-    onStateSelect(stateId);
-    const stateElement = document.querySelector(`[data-state-id="${stateId}"]`);
-    if (stateElement) {
-      stateElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      stateElement.classList.add('highlight-pulse');
-      setTimeout(() => {
-        stateElement.classList.remove('highlight-pulse');
-      }, 1500);
-    }
+  const handleTargetStateClick = (stateId, e) => {
+    e.preventDefault();  // Prevent default behavior
+    e.stopPropagation(); // Stop event propagation
+    onStateSelect(stateId, false); // Pass false to indicate no scrolling needed
   };
 
   const handleRuleClick = (ruleId, condition) => {
@@ -268,16 +262,16 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
                 {/* State Column */}
                 <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
-                  <button
-                    onClick={() => handleTargetStateClick(rule.nextState)}
-                    className="text-sm text-blue-500 hover:text-blue-700 dark:text-blue-400 
-                             dark:hover:text-blue-300 flex items-center gap-1 transition-colors
-                             group"
-                  >
-                    <ArrowRight className="w-3 h-3 flex-shrink-0 transform transition-transform 
-                                       group-hover:translate-x-1" />
-                    {targetState?.name || 'Unknown State'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <button
+                      onClick={(e) => handleTargetStateClick(rule.nextState, e)}
+                      className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
+                               rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      {targetState?.name}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Action Buttons */}

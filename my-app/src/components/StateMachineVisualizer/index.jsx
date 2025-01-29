@@ -85,6 +85,18 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
 
+  const handleStateSelect = (stateId, shouldScroll = true) => {
+    setSelectedState(stateId);
+    
+    // Only scroll if shouldScroll is true
+    if (shouldScroll) {
+      const stateElement = document.querySelector(`[data-state-id="${stateId}"]`);
+      if (stateElement) {
+        stateElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
@@ -130,7 +142,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           <StatePanel
             states={states}
             selectedState={selectedState}
-            onStateSelect={setSelectedState}
+            onStateSelect={handleStateSelect}
             onStateAdd={addState}
             onStateDelete={deleteState}
             loadedStateDictionary={loadedStateDictionary}
@@ -140,7 +152,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           <RulesPanel
             states={states}
             selectedState={selectedState}
-            onStateSelect={setSelectedState}
+            onStateSelect={handleStateSelect}
             setStates={setStates}
             onRuleDictionaryImport={handleRuleDictionaryImport}
             loadedDictionary={loadedDictionary}
