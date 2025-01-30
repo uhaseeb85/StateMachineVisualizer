@@ -33,7 +33,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     showSaveNotification,
     handleRuleDictionaryImport: originalHandleRuleDictionaryImport,
     changeLog,
-    setChangeLog
+    setChangeLog,
+    addToChangeLog
   } = useStateMachine();
 
   const {
@@ -162,6 +163,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             loadedDictionary={loadedDictionary}
             setLoadedDictionary={setLoadedDictionary}
             setChangeLog={setChangeLog}
+            addToChangeLog={addToChangeLog}
           />
         </div>
 

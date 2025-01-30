@@ -1,17 +1,15 @@
 import React from 'react';
-import { X, Download, Trash2 } from 'lucide-react';
+import { X, ArrowUpFromLine, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export default function ChangeLog({ changeLog, isOpen, onClose, setChangeLog }) {
   if (!isOpen) return null;
 
   const exportToFile = () => {
-    // Create text content with timestamps
-    const content = changeLog.map((log, index) => 
-      `${index + 1}. ${log}`
+    const content = changeLog.map((entry, index) => 
+      `${index + 1}. [${entry.timestamp}] ${entry.message}`
     ).join('\n');
 
-    // Create blob and download
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -45,20 +43,24 @@ export default function ChangeLog({ changeLog, isOpen, onClose, setChangeLog }) 
           <div className="flex gap-2 mr-[25px]">
             <Button
               onClick={exportToFile}
-              className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-md flex items-center gap-2"
+              className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                        transform transition-all duration-200 hover:scale-110"
               disabled={!changeLog?.length}
               title="Export history to file"
             >
-              <Download className="w-4 h-4" />
+              <ArrowUpFromLine className="w-4 h-4 mr-2" />
               Export
             </Button>
             <Button
               onClick={resetHistory}
-              className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-2 rounded-md flex items-center gap-2"
+              className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                        transform transition-all duration-200 hover:scale-110"
               disabled={!changeLog?.length}
               title="Clear history"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4 mr-2" />
               Clear
             </Button>
           </div>
@@ -66,12 +68,15 @@ export default function ChangeLog({ changeLog, isOpen, onClose, setChangeLog }) 
         
         {changeLog && changeLog.length > 0 ? (
           <ul className="space-y-2">
-            {changeLog.map((log, index) => (
+            {changeLog.map((entry, index) => (
               <li 
                 key={index}
                 className="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md"
               >
-                {index + 1}. {log}
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  [{entry.timestamp}]
+                </span>{' '}
+                {entry.message}
               </li>
             ))}
           </ul>

@@ -5,7 +5,7 @@ import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown, Edit2, Check,
 import { toast } from 'sonner';
 import ChangeLog from './ChangeLog';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary, setChangeLog }) {
+export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary, addToChangeLog }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
@@ -20,7 +20,6 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
-        // Check if a rule with the same condition already exists
         const existingRuleIndex = state.rules.findIndex(
           rule => rule.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
         );
@@ -33,27 +32,22 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             nextState: newRuleNextState
           };
           
-          // Log the change
-          setChangeLog(prev => [...prev, `Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`]);
+          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
           
           return {
             ...state,
             rules: updatedRules
           };
         } else {
-          // Add new rule
-          const newRule = {
-            id: Date.now(),
-            condition: newRuleCondition.trim(),
-            nextState: newRuleNextState,
-          };
-          
-          // Log the change
-          setChangeLog(prev => [...prev, `Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`]);
+          addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
           
           return {
             ...state,
-            rules: [...state.rules, newRule],
+            rules: [...state.rules, {
+              id: Date.now(),
+              condition: newRuleCondition.trim(),
+              nextState: newRuleNextState,
+            }],
           };
         }
       }
@@ -70,8 +64,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
       if (state.id === selectedState) {
         const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
         
-        // Log the change
-        setChangeLog(prev => [...prev, `Deleted rule from state "${state.name}": ${ruleToDelete.condition}`]);
+        addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition}`);
         
         return {
           ...state,
@@ -117,15 +110,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
               nextState: newRuleNextState
             };
 
-            // Log the change
-            const oldTargetState = states.find(s => s.id === oldRule.nextState)?.name;
-            const newTargetState = states.find(s => s.id === newRuleNextState)?.name;
-            setChangeLog(prev => [...prev, 
-              `Edited rule in state "${state.name}": 
-              "${oldRule.condition} → ${oldTargetState}" 
+            addToChangeLog(`Edited rule in state "${state.name}": 
+              "${oldRule.condition} → ${states.find(s => s.id === oldRule.nextState)?.name}" 
               changed to 
-              "${newRule.condition} → ${newTargetState}"`
-            ]);
+              "${newRule.condition} → ${states.find(s => s.id === newRuleNextState)?.name}"`);
 
             return newRule;
           }

@@ -40,11 +40,17 @@ export default function useStateMachine() {
     setIsDarkMode(!isDarkMode);
   };
 
+  // Helper function to add timestamped entries to the change log
+  const addToChangeLog = (message) => {
+    const timestamp = new Date().toLocaleString();
+    setChangeLog(prev => [...prev, { timestamp, message }]);
+  };
+
   const saveFlow = () => {
     localStorage.setItem('ivrFlow', JSON.stringify(states));
     setShowSaveNotification(true);
     setTimeout(() => setShowSaveNotification(false), 2000);
-    setChangeLog(prev => [...prev, `Saved state machine configuration`]);
+    addToChangeLog('Saved state machine configuration');
   };
 
   const addState = (name) => {
@@ -55,7 +61,7 @@ export default function useStateMachine() {
         rules: [],
       };
       setStates(prevStates => [...prevStates, newState]);
-      setChangeLog(prev => [...prev, `Added state: ${name.trim()}`]);
+      addToChangeLog(`Added state: ${name.trim()}`);
     }
   };
 
@@ -65,7 +71,7 @@ export default function useStateMachine() {
     if (selectedState === stateId) {
       setSelectedState(null);
     }
-    setChangeLog(prev => [...prev, `Deleted state: ${stateName || stateId}`]);
+    addToChangeLog(`Deleted state: ${stateName || stateId}`);
   };
 
   const handleImport = (event) => {
@@ -277,6 +283,7 @@ export default function useStateMachine() {
     exportConfiguration,
     handleRuleDictionaryImport,
     changeLog,
-    setChangeLog
+    setChangeLog,
+    addToChangeLog,
   };
 } 
