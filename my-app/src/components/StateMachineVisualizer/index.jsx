@@ -42,7 +42,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     handleRuleClick,
     handleOutcome,
     resetSimulation,
-    handleUndo,
     startState,
     setStartState,
     showStartModal,
@@ -167,7 +166,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             onStateClick={handleStateClick}
             onRuleClick={handleRuleClick}
             onOutcome={handleOutcome}
-            onUndo={handleUndo}
             onReset={resetSimulation}
             onClose={() => setShowSimulation(false)}
           />

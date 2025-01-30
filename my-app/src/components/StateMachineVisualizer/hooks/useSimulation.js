@@ -115,23 +115,6 @@ export default function useSimulation(states) {
     }
   };
 
-  const handleUndo = () => {
-    setSimulationState(prev => {
-      if (prev.path.length <= 1) return prev;
-
-      const newPath = prev.path.slice(0, -1);
-      const lastNode = newPath[newPath.length - 1];
-
-      return {
-        ...prev,
-        currentState: lastNode.type === 'state' ? lastNode.id : prev.currentState,
-        currentRule: lastNode.type === 'rule' ? lastNode.id : null,
-        path: newPath,
-        status: lastNode.type === 'state' ? 'active' : 'evaluating'
-      };
-    });
-  };
-
   const resetSimulation = () => {
     const initialStateId = startState || states[0].id;
     const initialState = states.find(s => String(s.id) === String(initialStateId));
@@ -156,7 +139,6 @@ export default function useSimulation(states) {
     handleStateClick,
     handleRuleClick,
     handleOutcome,
-    handleUndo,
     resetSimulation
   };
 } 
