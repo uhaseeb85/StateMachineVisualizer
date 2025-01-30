@@ -111,7 +111,7 @@ export default function StatePanel({
           <div className="flex items-center">
             {loadedStateDictionary && (
               <span className="text-sm text-gray-600 dark:text-gray-400 mr-2.5">
-                {Object.keys(loadedStateDictionary).length} states loaded
+                {Object.keys(loadedStateDictionary).length} states
               </span>
             )}
             <div className="relative">

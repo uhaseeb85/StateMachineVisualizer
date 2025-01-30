@@ -9,7 +9,6 @@ export default function SimulationModal({
   onStateClick,
   onRuleClick,
   onOutcome,
-  onUndo,
   onReset,
   onClose
 }) {
@@ -160,14 +159,7 @@ export default function SimulationModal({
               <Camera className="w-4 h-4 mr-2" />
               Export Image
             </Button>
-            <Button
-              onClick={onUndo}
-              disabled={simulationState.path.length <= 1}
-              className="bg-gray-900 hover:bg-blue-600 text-white"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Undo
-            </Button>
+            
             <Button
               onClick={onReset}
               disabled={simulationState.path.length <= 1}

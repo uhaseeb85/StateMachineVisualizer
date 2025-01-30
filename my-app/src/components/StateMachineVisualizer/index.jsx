@@ -8,9 +8,11 @@ import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import PathFinderModal from './PathFinderModal';
-import { ChevronDown, ChevronUp, Book } from 'lucide-react';
+import { ChevronDown, ChevronUp, Book, History } from 'lucide-react';
 import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
+import VersionInfo from './VersionInfo';
+import ChangeLog from './ChangeLog';
 
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
@@ -29,7 +31,10 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     isDarkMode,
     toggleTheme,
     showSaveNotification,
-    handleRuleDictionaryImport: originalHandleRuleDictionaryImport
+    handleRuleDictionaryImport: originalHandleRuleDictionaryImport,
+    changeLog,
+    setChangeLog,
+    addToChangeLog
   } = useStateMachine();
 
   const {
@@ -41,7 +46,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     handleRuleClick,
     handleOutcome,
     resetSimulation,
-    handleUndo,
     startState,
     setStartState,
     showStartModal,
@@ -55,6 +59,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
   });
   const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
+  const [showChangeLog, setShowChangeLog] = useState(false);
+  const [isPathFinderOpen, setIsPathFinderOpen] = useState(false);
 
   const handleRuleDictionaryImport = async (event) => {
     console.log("Import started with file:", event);
@@ -83,6 +89,22 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     const savedDictionary = localStorage.getItem('stateDictionary');
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
+
+  const handleStateSelect = (stateId, shouldScroll = true) => {
+    setSelectedState(stateId);
+    
+    // Only scroll if shouldScroll is true
+    if (shouldScroll) {
+      const stateElement = document.querySelector(`[data-state-id="${stateId}"]`);
+      if (stateElement) {
+        stateElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  };
+
+  const onFindPaths = () => {
+    setIsPathFinderOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
@@ -120,8 +142,9 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onImport={handleImport}
           onExcelImport={handleExcelImport}
           onSimulate={() => setShowStartModal(true)}
-          onFindPaths={() => setShowPathFinder(true)}
+          onFindPaths={onFindPaths}
           startTour={startTour}
+          onShowChangeLog={() => setShowChangeLog(true)}
         />
 
         {/* States and Rules panels first */}
@@ -129,7 +152,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           <StatePanel
             states={states}
             selectedState={selectedState}
-            onStateSelect={setSelectedState}
+            onStateSelect={handleStateSelect}
             onStateAdd={addState}
             onStateDelete={deleteState}
             loadedStateDictionary={loadedStateDictionary}
@@ -139,11 +162,13 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           <RulesPanel
             states={states}
             selectedState={selectedState}
-            onStateSelect={setSelectedState}
+            onStateSelect={handleStateSelect}
             setStates={setStates}
             onRuleDictionaryImport={handleRuleDictionaryImport}
             loadedDictionary={loadedDictionary}
             setLoadedDictionary={setLoadedDictionary}
+            setChangeLog={setChangeLog}
+            addToChangeLog={addToChangeLog}
           />
         </div>
 
@@ -154,7 +179,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             onStateClick={handleStateClick}
             onRuleClick={handleRuleClick}
             onOutcome={handleOutcome}
-            onUndo={handleUndo}
             onReset={resetSimulation}
             onClose={() => setShowSimulation(false)}
           />
@@ -211,21 +235,38 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           </div>
         )}
 
-        {showPathFinder && (
-          <PathFinderModal
-            states={states}
-            onClose={() => setShowPathFinder(false)}
-          />
-        )}
+        <PathFinderModal 
+          isOpen={isPathFinderOpen} 
+          onClose={() => setIsPathFinderOpen(false)} 
+          states={states} 
+        />
+
+        <ChangeLog 
+          changeLog={changeLog}
+          isOpen={showChangeLog}
+          onClose={() => setShowChangeLog(false)}
+          setChangeLog={setChangeLog}
+        />
       </div>
 
-      {/* User Guide Button */}
-      <div className="fixed bottom-6 right-6">
+      {/* Bottom right buttons - moved 25px to the left */}
+      <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
+        <Button
+          onClick={() => setShowChangeLog(true)}
+          className="bg-gray-900 hover:bg-blue-600 text-white text-sm
+                    dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                    transform transition-all duration-200 hover:scale-110"
+          title="View Local History"
+        >
+          <History className="w-4 h-4 mr-2" />
+          Local History
+        </Button>
+
         <Button
           onClick={() => setShowUserGuide(true)}
           className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                   dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                   transform transition-all duration-200 hover:scale-110"
+                    dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                    transform transition-all duration-200 hover:scale-110"
         >
           <Book className="w-4 h-4 mr-2" />
           User Guide
@@ -236,6 +277,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       {showUserGuide && (
         <UserGuideModal onClose={() => setShowUserGuide(false)} />
       )}
+
+      <VersionInfo />
     </div>
   );
 };
