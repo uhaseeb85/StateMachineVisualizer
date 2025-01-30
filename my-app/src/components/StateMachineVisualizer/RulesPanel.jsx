@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
+import ChangeLog from './ChangeLog';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary }) {
+export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary, setChangeLog }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
@@ -31,19 +32,28 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             ...updatedRules[existingRuleIndex],
             nextState: newRuleNextState
           };
+          
+          // Log the change
+          setChangeLog(prev => [...prev, `Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`]);
+          
           return {
             ...state,
             rules: updatedRules
           };
         } else {
           // Add new rule
+          const newRule = {
+            id: Date.now(),
+            condition: newRuleCondition.trim(),
+            nextState: newRuleNextState,
+          };
+          
+          // Log the change
+          setChangeLog(prev => [...prev, `Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`]);
+          
           return {
             ...state,
-            rules: [...state.rules, {
-              id: Date.now(),
-              condition: newRuleCondition.trim(),
-              nextState: newRuleNextState,
-            }],
+            rules: [...state.rules, newRule],
           };
         }
       }
@@ -56,21 +66,21 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
   };
 
   const deleteRule = (ruleId) => {
-    if (!confirm("Are you sure you want to delete this rule?")) {
-      return;
-    }
-
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
+        const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
+        
+        // Log the change
+        setChangeLog(prev => [...prev, `Deleted rule from state "${state.name}": ${ruleToDelete.condition}`]);
+        
         return {
           ...state,
-          rules: state.rules.filter(rule => rule.id !== ruleId),
+          rules: state.rules.filter(rule => rule.id !== ruleId)
         };
       }
       return state;
     });
     setStates(updatedStates);
-    toast.success("Rule deleted successfully");
   };
 
   const handleTargetStateClick = (stateId, e) => {

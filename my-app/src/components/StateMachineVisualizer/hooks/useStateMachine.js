@@ -8,6 +8,7 @@ export default function useStateMachine() {
   const [selectedState, setSelectedState] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [changeLog, setChangeLog] = useState([]);
 
   // Load saved states and dark mode preference
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function useStateMachine() {
     localStorage.setItem('ivrFlow', JSON.stringify(states));
     setShowSaveNotification(true);
     setTimeout(() => setShowSaveNotification(false), 2000);
+    setChangeLog(prev => [...prev, `Saved state machine configuration`]);
   };
 
   const addState = (name) => {
@@ -44,14 +46,17 @@ export default function useStateMachine() {
         rules: [],
       };
       setStates(prevStates => [...prevStates, newState]);
+      setChangeLog(prev => [...prev, `Added state: ${name.trim()}`]);
     }
   };
 
   const deleteState = (stateId) => {
+    const stateName = states.find(s => s.id === stateId)?.name;
     setStates(prevStates => prevStates.filter(state => state.id !== stateId));
     if (selectedState === stateId) {
       setSelectedState(null);
     }
+    setChangeLog(prev => [...prev, `Deleted state: ${stateName || stateId}`]);
   };
 
   const handleImport = (event) => {
@@ -262,5 +267,7 @@ export default function useStateMachine() {
     handleExcelImport,
     exportConfiguration,
     handleRuleDictionaryImport,
+    changeLog,
+    setChangeLog
   };
 } 
