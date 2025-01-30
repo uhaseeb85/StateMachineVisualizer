@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, ArrowRight, Loader2, FileDown, AlertTriangle } from 'lucide-react';
@@ -16,8 +16,9 @@ export default function PathFinderModal({ states, onClose }) {
   const [shouldCancel, setShouldCancel] = useState(false);
   const PATH_LIMIT = 100;
   const [currentPage, setCurrentPage] = useState(1);
-  const pathsPerPage = 10;
+  const pathsPerPage = 250;
   const [error, setError] = useState(null);
+  const shouldContinueRef = useRef(true);
 
   const pdfStyles = StyleSheet.create({
     page: {
@@ -164,7 +165,7 @@ export default function PathFinderModal({ states, onClose }) {
     let processedStates = 0;
 
     const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = [], foundIntermediate = false) => {
-      if (shouldCancel) {
+      if (!shouldContinueRef.current) {
         throw new Error('Search cancelled');
       }
 
@@ -240,7 +241,7 @@ export default function PathFinderModal({ states, onClose }) {
     } finally {
       setIsSearching(false);
     }
-  }, [states, shouldCancel]);
+  }, [states, shouldContinueRef]);
 
   const handleFindPaths = async () => {
     if (!selectedStartState) return;
@@ -259,8 +260,8 @@ export default function PathFinderModal({ states, onClose }) {
   };
 
   const handleCancel = () => {
-    setShouldCancel(true);
-    toast.info('Cancelling path search...');
+    shouldContinueRef.current = false;
+    setIsSearching(false);
   };
 
   const indexOfLastPath = currentPage * pathsPerPage;
@@ -285,7 +286,7 @@ export default function PathFinderModal({ states, onClose }) {
       const stack = new Set();
 
       const dfs = async (currentState, path = [], rulePath = [], failedRulesPath = []) => {
-        if (shouldCancel) {
+        if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
         }
 
@@ -371,23 +372,150 @@ export default function PathFinderModal({ states, onClose }) {
     }
   };
 
+  const exportResults = () => {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>State Machine Paths</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            max-width: 95%;
+            margin: 20px auto;
+            padding: 20px;
+            font-size: 75%;
+          }
+          .path {
+            background-color: #f9fafb;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+          }
+          .path-number {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background-color: #4b5563;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+          }
+          .state {
+            background-color: white;
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            display: inline-block;
+            white-space: nowrap;
+          }
+          .arrow {
+            color: #9ca3af;
+            margin: 0 4px;
+          }
+          .rules-container {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+          }
+          .success-rule {
+            background-color: #d1fae5;
+            color: #047857;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 2px 0;
+            display: inline-block;
+            white-space: nowrap;
+          }
+          .failed-rule {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 2px 0;
+            display: inline-block;
+            white-space: nowrap;
+          }
+          h1 {
+            font-size: 1.5em;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>State Machine Paths</h1>
+        ${currentPaths.map((path, index) => `
+          <div class="path">
+            <div class="path-number">${index + 1}</div>
+            ${path.states.map((state, stateIndex) => `
+              <span class="state">${state}</span>
+              ${stateIndex < path.states.length - 1 ? `
+                <span class="arrow">→</span>
+                <div class="rules-container">
+                  ${path.failedRules[stateIndex]?.length > 0 ? 
+                    path.failedRules[stateIndex].map(rule => 
+                      `<span class="failed-rule">❌ ${rule.replace('LR', 'R')}</span>`
+                    ).join('') : ''
+                  }
+                  <span class="success-rule">✓ ${path.rules[stateIndex]}</span>
+                </div>
+                <span class="arrow">→</span>
+              ` : ''}
+            `).join('')}
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const defaultName = `state-machine-paths-${new Date().toISOString().slice(0, 10)}`;
+    const fileName = window.prompt('Enter file name:', defaultName);
+    
+    if (!fileName) {
+      URL.revokeObjectURL(url);
+      return;
+    }
+    
+    const finalFileName = fileName.endsWith('.html') ? fileName : `${fileName}.html`;
+    link.href = url;
+    link.download = finalFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] 
-                    flex flex-col overflow-hidden">
-        <div className="p-6 flex-shrink-0">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Find Paths
-            </h2>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              size="sm"
-              className="w-8 h-8 p-0"
-            >
-              <X className="w-4 h-4" />
-            </Button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Find Paths</h2>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={exportResults}
+                disabled={currentPaths.length === 0}
+              >
+                Export Results
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
           </div>
 
           <div className="mb-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
@@ -535,13 +663,6 @@ export default function PathFinderModal({ states, onClose }) {
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     Found {paths.length} possible path{paths.length !== 1 ? 's' : ''}
                   </div>
-                  <Button
-                    onClick={handleExportPDF}
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Export to PDF
-                  </Button>
                 </div>
 
                 {currentPaths.map((path, index) => (
