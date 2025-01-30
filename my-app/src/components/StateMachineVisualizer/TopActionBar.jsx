@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
+import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine, History } from 'lucide-react';
 
 export default function TopActionBar({ 
   isDarkMode, 
@@ -11,7 +11,7 @@ export default function TopActionBar({
   onExcelImport,
   onSimulate,
   onFindPaths,
-  startTour 
+  startTour
 }) {
   return (
     <div className="mb-8 p-6 border border-gray-200/20 rounded-xl 

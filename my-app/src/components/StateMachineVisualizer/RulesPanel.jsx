@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
+import ChangeLog from './ChangeLog';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary }) {
+export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary, addToChangeLog }) {
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
@@ -19,7 +20,6 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
-        // Check if a rule with the same condition already exists
         const existingRuleIndex = state.rules.findIndex(
           rule => rule.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
         );
@@ -31,12 +31,16 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             ...updatedRules[existingRuleIndex],
             nextState: newRuleNextState
           };
+          
+          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+          
           return {
             ...state,
             rules: updatedRules
           };
         } else {
-          // Add new rule
+          addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+          
           return {
             ...state,
             rules: [...state.rules, {
@@ -56,21 +60,20 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
   };
 
   const deleteRule = (ruleId) => {
-    if (!confirm("Are you sure you want to delete this rule?")) {
-      return;
-    }
-
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
+        const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
+        
+        addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition}`);
+        
         return {
           ...state,
-          rules: state.rules.filter(rule => rule.id !== ruleId),
+          rules: state.rules.filter(rule => rule.id !== ruleId)
         };
       }
       return state;
     });
     setStates(updatedStates);
-    toast.success("Rule deleted successfully");
   };
 
   const handleTargetStateClick = (stateId, e) => {
@@ -87,37 +90,44 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     }
   };
 
-  const handleEditRule = (ruleId, currentCondition) => {
+  const handleEditRule = (ruleId) => {
+    const currentState = states.find(state => state.id === selectedState);
+    const rule = currentState.rules.find(r => r.id === ruleId);
     setEditingRuleId(ruleId);
-    setEditingRuleCondition(currentCondition);
+    setEditingRuleCondition(rule.condition);
+    setNewRuleNextState(rule.nextState);
   };
 
-  const handleSaveEdit = (ruleId) => {
-    const trimmedCondition = editingRuleCondition.trim();
-    if (!trimmedCondition) {
-      toast.error("Rule condition cannot be empty");
-      return;
-    }
+  const saveEditedRule = () => {
+    const updatedStates = states.map(state => {
+      if (state.id === selectedState) {
+        const updatedRules = state.rules.map(rule => {
+          if (rule.id === editingRuleId) {
+            const oldRule = { ...rule };
+            const newRule = {
+              ...rule,
+              condition: editingRuleCondition.trim(),
+              nextState: newRuleNextState
+            };
 
-    setStates(prevStates => 
-      prevStates.map(state => {
-        if (state.id === selectedState) {
-          return {
-            ...state,
-            rules: state.rules.map(rule => 
-              rule.id === ruleId 
-                ? { ...rule, condition: trimmedCondition }
-                : rule
-            )
-          };
-        }
-        return state;
-      })
-    );
+            addToChangeLog(`Edited rule in state "${state.name}": 
+              "${oldRule.condition} → ${states.find(s => s.id === oldRule.nextState)?.name}" 
+              changed to 
+              "${newRule.condition} → ${states.find(s => s.id === newRuleNextState)?.name}"`);
 
+            return newRule;
+          }
+          return rule;
+        });
+        return { ...state, rules: updatedRules };
+      }
+      return state;
+    });
+
+    setStates(updatedStates);
     setEditingRuleId(null);
     setEditingRuleCondition("");
-    toast.success("Rule updated successfully");
+    setNewRuleNextState("");
   };
 
   const handleCancelEdit = () => {
@@ -282,7 +292,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleSaveEdit(rule.id)}
+                        onClick={saveEditedRule}
                         className="h-6 w-6 p-0 text-green-500 hover:text-green-700
                                  hover:bg-green-50 dark:hover:bg-green-900/20"
                       >
@@ -303,7 +313,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditRule(rule.id, rule.condition)}
+                        onClick={() => handleEditRule(rule.id)}
                         className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
                                  hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
                                  group-hover:opacity-100 transition-opacity"

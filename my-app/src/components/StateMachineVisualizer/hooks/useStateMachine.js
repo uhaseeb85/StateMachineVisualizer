@@ -8,6 +8,16 @@ export default function useStateMachine() {
   const [selectedState, setSelectedState] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+  const [changeLog, setChangeLog] = useState(() => {
+    // Initialize changeLog from localStorage
+    const savedChangeLog = localStorage.getItem('changeLog');
+    return savedChangeLog ? JSON.parse(savedChangeLog) : [];
+  });
+
+  // Save changeLog to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('changeLog', JSON.stringify(changeLog));
+  }, [changeLog]);
 
   // Load saved states and dark mode preference
   useEffect(() => {
@@ -30,10 +40,17 @@ export default function useStateMachine() {
     setIsDarkMode(!isDarkMode);
   };
 
+  // Helper function to add timestamped entries to the change log
+  const addToChangeLog = (message) => {
+    const timestamp = new Date().toLocaleString();
+    setChangeLog(prev => [...prev, { timestamp, message }]);
+  };
+
   const saveFlow = () => {
     localStorage.setItem('ivrFlow', JSON.stringify(states));
     setShowSaveNotification(true);
     setTimeout(() => setShowSaveNotification(false), 2000);
+    addToChangeLog('Saved state machine configuration');
   };
 
   const addState = (name) => {
@@ -44,14 +61,17 @@ export default function useStateMachine() {
         rules: [],
       };
       setStates(prevStates => [...prevStates, newState]);
+      addToChangeLog(`Added state: ${name.trim()}`);
     }
   };
 
   const deleteState = (stateId) => {
+    const stateName = states.find(s => s.id === stateId)?.name;
     setStates(prevStates => prevStates.filter(state => state.id !== stateId));
     if (selectedState === stateId) {
       setSelectedState(null);
     }
+    addToChangeLog(`Deleted state: ${stateName || stateId}`);
   };
 
   const handleImport = (event) => {
@@ -262,5 +282,8 @@ export default function useStateMachine() {
     handleExcelImport,
     exportConfiguration,
     handleRuleDictionaryImport,
+    changeLog,
+    setChangeLog,
+    addToChangeLog,
   };
 } 
