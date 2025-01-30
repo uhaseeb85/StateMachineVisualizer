@@ -381,15 +381,35 @@ export default function PathFinderModal({ states, onClose }) {
         <style>
           body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 95%;
             margin: 20px auto;
             padding: 20px;
+            font-size: 75%;
           }
           .path {
             background-color: #f9fafb;
             padding: 16px;
             margin-bottom: 16px;
             border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+          }
+          .path-number {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background-color: #4b5563;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
           }
           .state {
             background-color: white;
@@ -397,26 +417,38 @@ export default function PathFinderModal({ states, onClose }) {
             border: 1px solid #e5e7eb;
             border-radius: 6px;
             display: inline-block;
+            white-space: nowrap;
           }
           .arrow {
             color: #9ca3af;
-            margin: 0 8px;
+            margin: 0 4px;
+          }
+          .rules-container {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
           }
           .success-rule {
             background-color: #d1fae5;
             color: #047857;
             padding: 4px 8px;
             border-radius: 4px;
-            margin: 4px 0;
+            margin: 2px 0;
             display: inline-block;
+            white-space: nowrap;
           }
           .failed-rule {
             background-color: #fee2e2;
             color: #b91c1c;
             padding: 4px 8px;
             border-radius: 4px;
-            margin: 4px 0;
-            display: block;
+            margin: 2px 0;
+            display: inline-block;
+            white-space: nowrap;
+          }
+          h1 {
+            font-size: 1.5em;
           }
         </style>
       </head>
@@ -424,11 +456,12 @@ export default function PathFinderModal({ states, onClose }) {
         <h1>State Machine Paths</h1>
         ${currentPaths.map((path, index) => `
           <div class="path">
+            <div class="path-number">${index + 1}</div>
             ${path.states.map((state, stateIndex) => `
               <span class="state">${state}</span>
               ${stateIndex < path.states.length - 1 ? `
                 <span class="arrow">→</span>
-                <div style="display: inline-block;">
+                <div class="rules-container">
                   ${path.failedRules[stateIndex]?.length > 0 ? 
                     path.failedRules[stateIndex].map(rule => 
                       `<span class="failed-rule">❌ ${rule.replace('LR', 'R')}</span>`
