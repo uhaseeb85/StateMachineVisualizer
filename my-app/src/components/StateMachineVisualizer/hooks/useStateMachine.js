@@ -8,7 +8,16 @@ export default function useStateMachine() {
   const [selectedState, setSelectedState] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
-  const [changeLog, setChangeLog] = useState([]);
+  const [changeLog, setChangeLog] = useState(() => {
+    // Initialize changeLog from localStorage
+    const savedChangeLog = localStorage.getItem('changeLog');
+    return savedChangeLog ? JSON.parse(savedChangeLog) : [];
+  });
+
+  // Save changeLog to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('changeLog', JSON.stringify(changeLog));
+  }, [changeLog]);
 
   // Load saved states and dark mode preference
   useEffect(() => {

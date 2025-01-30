@@ -239,11 +239,12 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           changeLog={changeLog}
           isOpen={showChangeLog}
           onClose={() => setShowChangeLog(false)}
+          setChangeLog={setChangeLog}
         />
       </div>
 
-      {/* Bottom right buttons */}
-      <div className="fixed bottom-4 right-4 flex flex-col gap-2">
+      {/* Bottom right buttons - moved 25px to the left */}
+      <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
         <Button
           onClick={() => setShowChangeLog(true)}
           className="bg-gray-900 hover:bg-blue-600 text-white text-sm

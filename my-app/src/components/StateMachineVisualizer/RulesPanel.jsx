@@ -97,37 +97,49 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     }
   };
 
-  const handleEditRule = (ruleId, currentCondition) => {
+  const handleEditRule = (ruleId) => {
+    const currentState = states.find(state => state.id === selectedState);
+    const rule = currentState.rules.find(r => r.id === ruleId);
     setEditingRuleId(ruleId);
-    setEditingRuleCondition(currentCondition);
+    setEditingRuleCondition(rule.condition);
+    setNewRuleNextState(rule.nextState);
   };
 
-  const handleSaveEdit = (ruleId) => {
-    const trimmedCondition = editingRuleCondition.trim();
-    if (!trimmedCondition) {
-      toast.error("Rule condition cannot be empty");
-      return;
-    }
+  const saveEditedRule = () => {
+    const updatedStates = states.map(state => {
+      if (state.id === selectedState) {
+        const updatedRules = state.rules.map(rule => {
+          if (rule.id === editingRuleId) {
+            const oldRule = { ...rule };
+            const newRule = {
+              ...rule,
+              condition: editingRuleCondition.trim(),
+              nextState: newRuleNextState
+            };
 
-    setStates(prevStates => 
-      prevStates.map(state => {
-        if (state.id === selectedState) {
-          return {
-            ...state,
-            rules: state.rules.map(rule => 
-              rule.id === ruleId 
-                ? { ...rule, condition: trimmedCondition }
-                : rule
-            )
-          };
-        }
-        return state;
-      })
-    );
+            // Log the change
+            const oldTargetState = states.find(s => s.id === oldRule.nextState)?.name;
+            const newTargetState = states.find(s => s.id === newRuleNextState)?.name;
+            setChangeLog(prev => [...prev, 
+              `Edited rule in state "${state.name}": 
+              "${oldRule.condition} → ${oldTargetState}" 
+              changed to 
+              "${newRule.condition} → ${newTargetState}"`
+            ]);
 
+            return newRule;
+          }
+          return rule;
+        });
+        return { ...state, rules: updatedRules };
+      }
+      return state;
+    });
+
+    setStates(updatedStates);
     setEditingRuleId(null);
     setEditingRuleCondition("");
-    toast.success("Rule updated successfully");
+    setNewRuleNextState("");
   };
 
   const handleCancelEdit = () => {
@@ -292,7 +304,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleSaveEdit(rule.id)}
+                        onClick={saveEditedRule}
                         className="h-6 w-6 p-0 text-green-500 hover:text-green-700
                                  hover:bg-green-50 dark:hover:bg-green-900/20"
                       >
@@ -313,7 +325,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditRule(rule.id, rule.condition)}
+                        onClick={() => handleEditRule(rule.id)}
                         className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
                                  hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
                                  group-hover:opacity-100 transition-opacity"
