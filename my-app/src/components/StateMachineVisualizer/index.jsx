@@ -60,6 +60,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
   const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
+  const [isPathFinderOpen, setIsPathFinderOpen] = useState(false);
 
   const handleRuleDictionaryImport = async (event) => {
     console.log("Import started with file:", event);
@@ -101,6 +102,10 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     }
   };
 
+  const onFindPaths = () => {
+    setIsPathFinderOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
@@ -137,7 +142,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onImport={handleImport}
           onExcelImport={handleExcelImport}
           onSimulate={() => setShowStartModal(true)}
-          onFindPaths={() => setShowPathFinder(true)}
+          onFindPaths={onFindPaths}
           startTour={startTour}
           onShowChangeLog={() => setShowChangeLog(true)}
         />
@@ -230,12 +235,11 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           </div>
         )}
 
-        {showPathFinder && (
-          <PathFinderModal
-            states={states}
-            onClose={() => setShowPathFinder(false)}
-          />
-        )}
+        <PathFinderModal 
+          isOpen={isPathFinderOpen} 
+          onClose={() => setIsPathFinderOpen(false)} 
+          states={states} 
+        />
 
         <ChangeLog 
           changeLog={changeLog}
