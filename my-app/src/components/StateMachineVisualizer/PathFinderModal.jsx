@@ -16,7 +16,7 @@ export default function PathFinderModal({ states, onClose }) {
   const [shouldCancel, setShouldCancel] = useState(false);
   const PATH_LIMIT = 100;
   const [currentPage, setCurrentPage] = useState(1);
-  const pathsPerPage = 10;
+  const pathsPerPage = 250;
   const [error, setError] = useState(null);
   const shouldContinueRef = useRef(true);
 
