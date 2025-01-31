@@ -278,7 +278,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                       onClick={(e) => handleTargetStateClick(rule.nextState, e)}
                       className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
                                rounded hover:bg-gray-200 dark:hover:bg-gray-600
-                               text-blue-500"
+                               text-blue-500 dark:text-white"
                     >
                       {targetState?.name}
                     </button>
