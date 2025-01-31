@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera, RotateCcw } from 'lucide-react';
 import { exportToImage } from './utils';
@@ -10,9 +10,12 @@ export default function SimulationModal({
   onRuleClick,
   onOutcome,
   onReset,
-  onClose
+  onClose,
+  onUndo,
+  canUndo
 }) {
   const [isVerticalLayout, setIsVerticalLayout] = useState(false);
+  const containerRef = useRef(null);
 
   const handleExportImage = async () => {
     try {
@@ -159,7 +162,14 @@ export default function SimulationModal({
               <Camera className="w-4 h-4 mr-2" />
               Export Image
             </Button>
-            
+            <Button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="bg-gray-900 hover:bg-blue-600 text-white"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Undo
+            </Button>
             <Button
               onClick={onReset}
               disabled={simulationState.path.length <= 1}

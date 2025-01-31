@@ -41,15 +41,17 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     showSimulation,
     setShowSimulation,
     simulationState,
+    startState,
+    setStartState,
+    showStartModal,
+    setShowStartModal,
     startSimulation,
     handleStateClick,
     handleRuleClick,
     handleOutcome,
     resetSimulation,
-    startState,
-    setStartState,
-    showStartModal,
-    setShowStartModal
+    canUndo,
+    undo
   } = useSimulation(states);
 
   const [showPathFinder, setShowPathFinder] = useState(false);
@@ -176,6 +178,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             onOutcome={handleOutcome}
             onReset={resetSimulation}
             onClose={() => setShowSimulation(false)}
+            onUndo={undo}
+            canUndo={canUndo}
           />
         )}
 
