@@ -137,21 +137,6 @@ export default function PathFinderModal({ states, onClose }) {
     </Document>
   );
 
-  const handleExportPDF = async () => {
-    try {
-      const blob = await pdf(<PathsDocument />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'paths.pdf';
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
-    }
-  };
-
   const findPaths = useCallback(async (startStateId, endStateId = null, intermediateStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
     if (!startState) {
@@ -500,7 +485,7 @@ export default function PathFinderModal({ states, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Find Paths</h2>
