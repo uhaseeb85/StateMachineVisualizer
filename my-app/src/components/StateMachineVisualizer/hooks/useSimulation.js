@@ -11,6 +11,41 @@ export default function useSimulation(states) {
     status: 'initial'
   });
 
+  const canUndo = simulationState.path.length > 1;
+
+  const undo = () => {
+    if (!canUndo) return;
+
+    // Remove only the last item from the path
+    const newPath = simulationState.path.slice(0, -1);
+    
+    // Get the last state from the path
+    const lastItem = newPath[newPath.length - 1];
+    
+    // If last item is a state, use that. If it's a rule, find the state it belongs to
+    let lastStateId;
+    if (lastItem.type === 'state') {
+      lastStateId = lastItem.id;
+    } else if (lastItem.type === 'rule') {
+      // Find the state that contains this rule
+      const stateWithRule = states.find(s => s.rules.some(r => r.id === lastItem.id));
+      lastStateId = stateWithRule?.id;
+    }
+
+    // Determine the new status
+    let newStatus = 'active';
+    if (lastItem.type === 'rule') {
+      newStatus = 'evaluating';
+    }
+
+    setSimulationState({
+      currentState: lastStateId,
+      currentRule: lastItem.type === 'rule' ? lastItem.id : null,
+      path: newPath,
+      status: newStatus
+    });
+  };
+
   const startSimulation = () => {
     if (states.length === 0) {
       alert("Please add at least one state to simulate");
@@ -139,6 +174,8 @@ export default function useSimulation(states) {
     handleStateClick,
     handleRuleClick,
     handleOutcome,
-    resetSimulation
+    resetSimulation,
+    canUndo,
+    undo
   };
 } 
