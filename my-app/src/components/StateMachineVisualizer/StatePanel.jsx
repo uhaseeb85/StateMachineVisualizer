@@ -109,11 +109,6 @@ export default function StatePanel({
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
           <div className="flex items-center">
-            {loadedStateDictionary && (
-              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2.5">
-                {Object.keys(loadedStateDictionary).length} states
-              </span>
-            )}
             <div className="relative">
               <input
                 type="file"
@@ -132,6 +127,11 @@ export default function StatePanel({
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Load State Dictionary
+                {loadedStateDictionary && (
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 dark:bg-blue-600 text-white rounded-full text-xs">
+                    {Object.keys(loadedStateDictionary).length}
+                  </span>
+                )}
               </label>
             </div>
           </div>
@@ -216,4 +216,4 @@ export default function StatePanel({
       </div>
     </div>
   );
-} 
+}
