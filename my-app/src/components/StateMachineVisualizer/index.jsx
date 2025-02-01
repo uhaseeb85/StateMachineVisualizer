@@ -68,9 +68,9 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     try {
       const result = await originalHandleRuleDictionaryImport(event);
       console.log("Import result:", result);
-      if (result) {
-        setLoadedDictionary(result);
-        localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(result));
+      if (result?.dictionary) {
+        setLoadedDictionary(result.dictionary);
+        localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(result.dictionary));
         console.log("Dictionary state updated and saved:", result);
       } else {
         console.log("No result from import");
@@ -291,4 +291,4 @@ const StateMachineVisualizer = () => {
   );
 };
 
-export default StateMachineVisualizer; 
+export default StateMachineVisualizer;

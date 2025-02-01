@@ -183,7 +183,8 @@ export default function useStateMachine() {
 
       const reader = new FileReader();
 
-      reader.onload = (e) => {
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
@@ -205,13 +206,11 @@ export default function useStateMachine() {
 
           // Create a dictionary from the Excel data
           const ruleDictionary = {};
-          let rulesUpdated = 0;
           let hasValidData = false;
 
           jsonData.forEach(row => {
             if (row['rule name'] && row['rule description']) {
               ruleDictionary[row['rule name']] = row['rule description'];
-              rulesUpdated++;
               hasValidData = true;
             }
           });
@@ -221,27 +220,27 @@ export default function useStateMachine() {
             return;
           }
 
-          // Update states with rule descriptions
-          const updatedStates = states.map(state => ({
-            ...state,
-            rules: state.rules.map(rule => ({
-              ...rule,
-              description: ruleDictionary[rule.name] || rule.description || ''
-            }))
-          }));
+          const rulesCount = Object.keys(ruleDictionary).length;
 
-          setStates(updatedStates);
-          toast.success(`Rule dictionary imported successfully! Updated ${rulesUpdated} rules.`);
+          // Show success notification and return the result
+          toast.success(`Rule dictionary imported successfully! Updated ${rulesCount} rules.`);
+          resolve({
+            dictionary: ruleDictionary,
+            rulesCount: rulesCount
+          });
         } catch (error) {
           toast.error('Error processing Excel file: ' + error.message);
+          reject(error);
         }
-      };
+        };
 
-      reader.onerror = () => {
-        toast.error('Error reading the file');
-      };
+        reader.onerror = () => {
+          toast.error('Error reading the file');
+          reject(new Error('Failed to read file'));
+        };
 
-      reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(file);
+      });
     } catch (error) {
       console.error('Error importing rule dictionary:', error);
       toast.error(`Error importing rule dictionary: ${error.message}`);
@@ -268,4 +267,4 @@ export default function useStateMachine() {
     setChangeLog,
     addToChangeLog
   };
-} 
+}

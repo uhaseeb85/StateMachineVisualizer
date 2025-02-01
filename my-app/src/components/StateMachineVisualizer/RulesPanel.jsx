@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown, Edit2, Check, X } from 'lucide-react';
@@ -14,6 +14,28 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
   const [editingRuleCondition, setEditingRuleCondition] = useState("");
   const currentState = states.find(state => state.id === selectedState);
   const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
+
+  // Initialize loadedDictionary from localStorage
+  useEffect(() => {
+    const savedDictionary = localStorage.getItem('ruleDictionary');
+    if (savedDictionary) {
+      setLoadedDictionary(JSON.parse(savedDictionary));
+    }
+  }, [setLoadedDictionary]);
+
+  const handleDictionaryImport = async (event) => {
+    try {
+      const result = await onRuleDictionaryImport(event);
+      if (result?.dictionary) {
+        const dictionary = result.dictionary;
+        console.log('Setting dictionary:', dictionary, 'with length:', Object.keys(dictionary).length);
+        setLoadedDictionary(dictionary);
+        localStorage.setItem('ruleDictionary', JSON.stringify(dictionary));
+      }
+    } catch (error) {
+      console.error('Error importing dictionary:', error);
+    }
+  };
 
   const addRule = () => {
     if (!newRuleCondition.trim() || !newRuleNextState) return;
@@ -169,16 +191,11 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             Rules for {currentState?.name}
           </h2>
           <div className="flex items-center">
-            {loadedDictionary && (
-              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2.5">
-                {Object.keys(loadedDictionary).length} rules
-              </span>
-            )}
             <div className="relative">
               <input
                 type="file"
                 accept=".xlsx,.xls"
-                onChange={onRuleDictionaryImport}
+                onChange={handleDictionaryImport}
                 className="hidden"
                 id="ruleDictionaryInput"
               />
@@ -192,6 +209,15 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Load Rule Dictionary
+                {loadedDictionary && (
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 dark:bg-blue-600 text-white rounded-full text-xs">
+                    {Object.keys(loadedDictionary).length}
+                  </span>
+                )}
+                {/* For debugging */}
+                <span className="hidden">
+                  {console.log('Dictionary:', loadedDictionary)}
+                </span>
               </label>
             </div>
           </div>
