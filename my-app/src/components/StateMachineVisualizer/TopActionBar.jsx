@@ -110,8 +110,8 @@ export default function TopActionBar({
           <Button
             onClick={startTour}
             title="Get a guided tour of all features and how to use them"
-            variant="ghost"
-            className="getting-started-button text-blue-500 hover:text-blue-600 text-sm
+            className="getting-started-button bg-gray-200 hover:bg-gray-300 text-blue-500 hover:text-blue-600 text-sm
+                     dark:bg-gray-700 dark:hover:bg-gray-600
                      transform transition-all duration-200 hover:scale-110"
           >
             <HelpCircle className="w-4 h-4 mr-2" />
@@ -160,4 +160,4 @@ export default function TopActionBar({
     background-size: 200% auto;
     animation: shimmer 3s linear infinite;
   }
-`}</style> 
+`}</style>
