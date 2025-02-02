@@ -233,6 +233,7 @@ export default function PathFinderModal({ states, onClose }) {
     
     try {
       setError(null);
+      shouldContinueRef.current = true;
       if (searchMode === 'intermediateState') {
         await findPaths(selectedStartState, selectedEndState, selectedIntermediateState);
       } else {
@@ -264,6 +265,7 @@ export default function PathFinderModal({ states, onClose }) {
       setIsSearching(true);
       setPaths([]);
       setShouldCancel(false);
+      shouldContinueRef.current = true;
       setProgress(0);
 
       const loops = [];
@@ -355,6 +357,17 @@ export default function PathFinderModal({ states, onClose }) {
       setIsSearching(false);
       setProgress(100);
     }
+  };
+
+  const handleModeSwitch = (newMode) => {
+    setSearchMode(newMode);
+    setSelectedEndState('');
+    setSelectedIntermediateState('');
+    setPaths([]);
+    setIsSearching(false);
+    setProgress(0);
+    setError(null);
+    shouldContinueRef.current = true;
   };
 
   const exportResults = () => {
@@ -514,33 +527,21 @@ export default function PathFinderModal({ states, onClose }) {
           <div className="space-y-6">
             <div className="flex gap-4">
               <Button
-                onClick={() => {
-                  setSearchMode('endStates');
-                  setSelectedEndState('');
-                  setSelectedIntermediateState('');
-                  setPaths([]);
-                }}
+                onClick={() => handleModeSwitch('endStates')}
                 variant={searchMode === 'endStates' ? 'default' : 'outline'}
                 className={searchMode === 'endStates' ? 'bg-blue-500 hover:bg-blue-600' : ''}
               >
                 Find Paths to End States
               </Button>
               <Button
-                onClick={() => {
-                  setSearchMode('specificState');
-                  setSelectedIntermediateState('');
-                  setPaths([]);
-                }}
+                onClick={() => handleModeSwitch('specificState')}
                 variant={searchMode === 'specificState' ? 'default' : 'outline'}
                 className={searchMode === 'specificState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
               >
                 Find Paths Between States
               </Button>
               <Button
-                onClick={() => {
-                  setSearchMode('intermediateState');
-                  setPaths([]);
-                }}
+                onClick={() => handleModeSwitch('intermediateState')}
                 variant={searchMode === 'intermediateState' ? 'default' : 'outline'}
                 className={searchMode === 'intermediateState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
               >
@@ -548,8 +549,7 @@ export default function PathFinderModal({ states, onClose }) {
               </Button>
               <Button
                 onClick={() => {
-                  setSearchMode('detectLoops');
-                  setPaths([]);
+                  handleModeSwitch('detectLoops');
                   handleDetectLoops();
                 }}
                 variant={searchMode === 'detectLoops' ? 'default' : 'outline'}
