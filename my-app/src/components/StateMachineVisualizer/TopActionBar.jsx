@@ -110,12 +110,17 @@ export default function TopActionBar({
           <Button
             onClick={startTour}
             title="Get a guided tour of all features and how to use them"
-            className="getting-started-button bg-gray-200 hover:bg-gray-300 text-blue-500 hover:text-blue-600 text-sm
-                     dark:bg-gray-700 dark:hover:bg-gray-600
-                     transform transition-all duration-200 hover:scale-110"
+            className="getting-started-button text-white text-sm
+            bg-gradient-to-r from-gray-900 via-black to-gray-900
+            dark:from-white dark:via-gray-100 dark:to-white
+            dark:text-gray-900
+            animate-shimmer
+            transform transition-all duration-200 hover:scale-110
+            hover:from-gray-800 hover:via-gray-900 hover:to-gray-800
+            dark:hover:from-gray-100 dark:hover:via-white dark:hover:to-gray-100"
           >
             <HelpCircle className="w-4 h-4 mr-2" />
-            Help
+            Getting Started
           </Button>
 
           <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
