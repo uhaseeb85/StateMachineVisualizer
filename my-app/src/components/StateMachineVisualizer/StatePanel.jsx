@@ -119,11 +119,10 @@ export default function StatePanel({
               />
               <label
                 htmlFor="stateDictionaryInput"
-                title="Import an Excel file containing predefined states and their descriptions to enhance state documentation"
-                className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
-                       bg-gray-900 hover:bg-blue-600 text-white
-                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                       rounded-md transform transition-all duration-200 hover:scale-110"
+                className="load-state-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+                         bg-gray-900 hover:bg-blue-600 text-white
+                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                         rounded-md transform transition-all duration-200 hover:scale-110"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Load State Dictionary

@@ -5,6 +5,10 @@ export const tourSteps = [
     disableBeacon: true,
   },
   {
+    target: '.load-state-dictionary-button',
+    content: 'Load a state dictionary from Excel to add descriptions to your states. The Excel file should have "state" and "description" columns.',
+  },
+  {
     target: '.state-input',
     content: 'Start by adding a state name here',
   },
@@ -15,6 +19,10 @@ export const tourSteps = [
   {
     target: '.states-list',
     content: 'Your states will appear here. Click on a state to manage its rules',
+  },
+  {
+    target: '.load-rule-dictionary-button',
+    content: 'Load a rule dictionary from Excel to add descriptions to your rules. The Excel file should have "rule name" and "rule description" columns.',
   },
   {
     target: '.rules-section',
