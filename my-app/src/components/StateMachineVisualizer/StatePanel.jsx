@@ -140,22 +140,17 @@ export default function StatePanel({
       <div className="mb-4">
         <div className="flex gap-2">
           <Input
+            type="text"
             value={newStateName}
             onChange={(e) => setNewStateName(e.target.value)}
             placeholder="Enter state name"
-            className="state-input text-sm dark:bg-gray-700 dark:text-white"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleAddState();
-              }
-            }}
+            className="flex-1"
           />
           <Button
             onClick={handleAddState}
             disabled={!newStateName.trim()}
-            className="add-state-button bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <Plus className="w-3 h-3" />
+            Add State
           </Button>
         </div>
       </div>

@@ -226,21 +226,21 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
       </div>
 
       <div className="mb-4">
-        <div className="grid grid-cols-[1fr,1fr,auto] gap-2">
+        <div className="flex gap-2">
           <Input
+            type="text"
             value={newRuleCondition}
             onChange={(e) => setNewRuleCondition(e.target.value)}
-            placeholder="Rule Name"
-            className="text-sm h-7 dark:bg-gray-700 dark:text-white"
+            placeholder="Enter rule condition"
+            className="flex-1"
           />
           <select
             value={newRuleNextState}
             onChange={(e) => setNewRuleNextState(e.target.value)}
-            className="h-7 rounded-md border border-gray-300 dark:border-gray-600 
-                     text-sm dark:bg-gray-700 dark:text-white"
+            className="px-3 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
-            <option value="">Select Target State</option>
-            {states.map(state => (
+            <option value="">Select target state</option>
+            {states.map((state) => (
               <option key={state.id} value={state.id}>
                 {state.name}
               </option>
@@ -249,9 +249,8 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
           <Button
             onClick={addRule}
             disabled={!newRuleCondition.trim() || !newRuleNextState}
-            className="h-7 bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <Plus className="w-3 h-3" />
+            Add Rule
           </Button>
         </div>
       </div>
