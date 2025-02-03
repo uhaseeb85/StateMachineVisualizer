@@ -14,6 +14,8 @@ export default function useStateMachine() {
     return savedChangeLog ? JSON.parse(savedChangeLog) : [];
   });
 
+  const MAX_HISTORY_ENTRIES = 2000;
+
   // Save changeLog to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('changeLog', JSON.stringify(changeLog));
@@ -43,7 +45,10 @@ export default function useStateMachine() {
   // Helper function to add timestamped entries to the change log
   const addToChangeLog = (message) => {
     const timestamp = new Date().toLocaleString();
-    setChangeLog(prev => [...prev, { timestamp, message }]);
+    setChangeLog(prev => {
+      const newLog = [{ timestamp, message }, ...prev];
+      return newLog.slice(0, MAX_HISTORY_ENTRIES);
+    });
   };
 
   const saveFlow = () => {
