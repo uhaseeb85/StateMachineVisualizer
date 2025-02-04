@@ -103,6 +103,16 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     }
   };
 
+  // First, add the button style as a constant (same as in TopActionBar)
+  const buttonClass = "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md \
+                      bg-transparent \
+                      text-gray-700 dark:text-gray-200 \
+                      border border-gray-300 dark:border-gray-600 \
+                      hover:bg-gray-50/50 dark:hover:bg-gray-700/50 \
+                      hover:text-gray-900 dark:hover:text-white \
+                      transition-all duration-200 ease-in-out \
+                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400";
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
@@ -253,10 +263,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
         <Button
           onClick={() => setShowChangeLog(true)}
-          className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                    dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                    transform transition-all duration-200 hover:scale-110"
           title="View Local History"
+          className={buttonClass}
         >
           <History className="w-4 h-4 mr-2" />
           Local History
@@ -264,9 +272,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
 
         <Button
           onClick={() => setShowUserGuide(true)}
-          className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                    dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                    transform transition-all duration-200 hover:scale-110"
+          className={buttonClass}
         >
           <Book className="w-4 h-4 mr-2" />
           User Guide
