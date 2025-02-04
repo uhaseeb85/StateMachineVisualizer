@@ -120,14 +120,15 @@ export default function StatePanel({
               <label
                 htmlFor="stateDictionaryInput"
                 className="load-state-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
-                         bg-gray-900 hover:bg-blue-600 text-white
+                         bg-white hover:bg-blue-600 text-gray-900 hover:text-white
                          dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                         rounded-md transform transition-all duration-200 hover:scale-110"
+                         rounded-md transform transition-all duration-200 hover:scale-110
+                         border border-gray-200 shadow-sm"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Load State Dictionary
                 {loadedStateDictionary && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 dark:bg-blue-600 text-white rounded-full text-xs">
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
                     {Object.keys(loadedStateDictionary).length}
                   </span>
                 )}

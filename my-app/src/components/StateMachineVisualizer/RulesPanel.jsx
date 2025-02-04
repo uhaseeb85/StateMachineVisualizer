@@ -203,21 +203,18 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                 htmlFor="ruleDictionaryInput"
                 title="Import an Excel file containing predefined rules and their descriptions to enhance rule documentation"
                 className="load-rule-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
-                         bg-gray-900 hover:bg-blue-600 text-white
+                         bg-white hover:bg-blue-600 text-gray-900 hover:text-white
                          dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                         rounded-md transform transition-all duration-200 hover:scale-110"
+                         rounded-md transform transition-all duration-200 hover:scale-110
+                         border border-gray-200 shadow-sm"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Load Rule Dictionary
                 {loadedDictionary && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 dark:bg-blue-600 text-white rounded-full text-xs">
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
                     {Object.keys(loadedDictionary).length}
                   </span>
                 )}
-                {/* For debugging */}
-                <span className="hidden">
-                  {console.log('Dictionary:', loadedDictionary)}
-                </span>
               </label>
             </div>
           </div>
