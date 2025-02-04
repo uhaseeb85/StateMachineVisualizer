@@ -1,59 +1,81 @@
 export const tourSteps = [
   {
     target: '.getting-started-button',
-    content: 'Welcome to State Machine Visualizer! This tour will help you get started.',
+    content: 'Welcome to State Machine Visualizer! This interactive tour will help you understand all the features available.',
+    title: '👋 Welcome',
     disableBeacon: true,
-  },
-  {
-    target: '.load-state-dictionary-button',
-    content: 'Load a state dictionary from Excel to add descriptions to your states. The Excel file should have "state" and "description" columns.',
-  },
-  {
-    target: '.state-input',
-    content: 'Start by adding a state name here',
-  },
-  {
-    target: '.add-state-button',
-    content: 'Click this button to add your state',
-  },
-  {
-    target: '.states-list',
-    content: 'Your states will appear here. Click on a state to manage its rules',
-  },
-  {
-    target: '.load-rule-dictionary-button',
-    content: 'Load a rule dictionary from Excel to add descriptions to your rules. The Excel file should have "rule name" and "rule description" columns.',
-  },
-  {
-    target: '.rules-section',
-    content: 'Once you select a state, you can add rules here to define transitions to other states',
-  },
-  {
-    target: '.simulation-button',
-    content: 'After adding states and rules, click here to simulate your state machine',
+    placement: 'bottom',
   },
   {
     target: '.save-button',
-    content: 'Save your work at any time',
-  },
-  {
-    target: '.export-button',
-    content: 'Export your state machine configuration as JSON',
-  },
-  {
-    target: '.import-button',
-    content: 'Import a previously saved JSON configuration',
-  },
-  {
-    target: '.excel-import-button',
-    content: 'You can also import states and rules from an Excel/CSV file. The file should have columns for Source Node, Destination Node, and Rule List.',
-  },
-  {
-    target: '.find-paths-button',
-    content: 'Analyze your state machine by finding all possible paths from any state to end states (states with no rules).',
+    content: 'Save your state machine configuration to browser storage. Your work is automatically preserved between sessions.',
+    title: '💾 Save',
+    placement: 'bottom',
   },
   {
     target: '.theme-toggle',
-    content: 'Toggle between light and dark mode',
+    content: 'Toggle between light and dark mode for comfortable viewing in any environment.',
+    title: '🌓 Theme Toggle',
+    placement: 'bottom',
+  },
+  {
+    target: '.export-button',
+    content: 'Export your state machine as a JSON file that you can share or import later.',
+    title: '📤 Export',
+    placement: 'bottom',
+  },
+  {
+    target: '.import-button',
+    content: 'Import a previously exported JSON state machine configuration.',
+    title: '📥 Import',
+    placement: 'bottom',
+  },
+  {
+    target: '.excel-import-button',
+    content: 'Import states and rules from an Excel/CSV file. The file should include columns for Source State, Destination State, and Rules.',
+    title: '📊 Excel Import',
+    placement: 'bottom',
+  },
+  {
+    target: '.load-state-dictionary-button',
+    content: 'Load descriptions for your states from an Excel file. This helps document what each state represents.',
+    title: '📖 State Dictionary',
+    placement: 'bottom',
+  },
+  {
+    target: '.load-rule-dictionary-button',
+    content: 'Load descriptions for your rules from an Excel file. This helps document what each rule means and does.',
+    title: '📝 Rule Dictionary',
+    placement: 'bottom',
+  },
+  {
+    target: '.simulation-button',
+    content: 'Test your state machine by running an interactive simulation. You can see how states transition based on your rules.',
+    title: '▶️ Simulation',
+    placement: 'bottom',
+  },
+  {
+    target: '.find-paths-button',
+    content: 'Analyze your state machine by finding all possible paths between states. This helps validate your flow and identify potential issues.',
+    title: '🔍 Pathfinder',
+    placement: 'bottom',
+  },
+  {
+    target: '.state-input',
+    content: 'Create new states by entering a name here and clicking the + button.',
+    title: '➕ Add States',
+    placement: 'bottom',
+  },
+  {
+    target: '.states-list',
+    content: 'Your states appear here. Click a state to select it and manage its rules. The number shows how many rules each state has.',
+    title: '📋 States List',
+    placement: 'bottom',
+  },
+  {
+    target: '.rules-section',
+    content: 'After selecting a state, add rules here to define when and where it can transition to other states.',
+    title: '⚡ Rules Management',
+    placement: 'bottom',
   }
 ]; 
