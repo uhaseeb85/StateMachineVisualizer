@@ -29,39 +29,34 @@ export default function ChangeLog({ changeLog, isOpen, onClose, setChangeLog }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-[1350px] mx-4 max-h-[80vh] overflow-y-auto relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Local History</h2>
-          <div className="flex gap-2 mr-[25px]">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Local History</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Stores up to 2000 most recent actions
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <Button
               onClick={exportToFile}
-              className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                        transform transition-all duration-200 hover:scale-110"
-              disabled={!changeLog?.length}
-              title="Export history to file"
+              className="flex items-center gap-2"
+              variant="outline"
             >
-              <ArrowUpFromLine className="w-4 h-4 mr-2" />
+              <ArrowUpFromLine className="w-4 h-4" />
               Export
             </Button>
             <Button
               onClick={resetHistory}
-              className="bg-gray-900 hover:bg-blue-600 text-white text-sm
-                        dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                        transform transition-all duration-200 hover:scale-110"
-              disabled={!changeLog?.length}
-              title="Clear history"
+              className="flex items-center gap-2"
+              variant="outline"
             >
-              <Trash2 className="w-4 h-4 mr-2" />
+              <Trash2 className="w-4 h-4" />
               Clear
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
