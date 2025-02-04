@@ -30,7 +30,7 @@ export default function ChangeLog({ changeLog, isOpen, onClose, setChangeLog }) 
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Local History</h2>
@@ -60,26 +60,28 @@ export default function ChangeLog({ changeLog, isOpen, onClose, setChangeLog }) 
             </Button>
           </div>
         </div>
-        
-        {changeLog && changeLog.length > 0 ? (
-          <ul className="space-y-2">
-            {changeLog.map((entry, index) => (
-              <li 
-                key={index}
-                className="flex items-center gap-4 text-sm bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md"
-              >
-                <span className="min-w-[180px] text-xs font-mono bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                  {entry.timestamp}
-                </span>
-                <span className="text-gray-900 dark:text-gray-100 flex-1">
-                  {entry.message}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400">No changes recorded yet.</p>
-        )}
+
+        <div className="flex-1 overflow-y-auto">
+          {changeLog && changeLog.length > 0 ? (
+            <ul className="space-y-2">
+              {changeLog.map((entry, index) => (
+                <li 
+                  key={index}
+                  className="flex items-center gap-4 text-sm bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md"
+                >
+                  <span className="min-w-[180px] text-xs font-mono bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                    {entry.timestamp}
+                  </span>
+                  <span className="text-gray-900 dark:text-gray-100 flex-1">
+                    {entry.message}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">No changes recorded yet.</p>
+          )}
+        </div>
       </div>
     </div>
   );
