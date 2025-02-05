@@ -13,6 +13,7 @@ import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
 import VersionInfo from './VersionInfo';
 import ChangeLog from './ChangeLog';
+import * as XLSX from 'xlsx';
 
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
@@ -113,6 +114,29 @@ const StateMachineVisualizerContent = ({ startTour }) => {
                       transition-all duration-200 ease-in-out \
                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400";
 
+  const handleExportCSV = () => {
+    // Create array for CSV data with the specified format
+    const csvData = states.flatMap(sourceState => 
+      sourceState.rules.map(rule => {
+        // Find the destination state object to get its name
+        const destinationState = states.find(state => state.id === rule.nextState);
+        return {
+          'Source Node': sourceState.name,
+          'Destination Node': destinationState ? destinationState.name : rule.nextState,
+          'Rule List': rule.condition
+        };
+      })
+    );
+
+    // Create workbook and add sheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(csvData);
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+    // Generate and download file
+    XLSX.writeFile(wb, 'state_machine_export.csv');
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
@@ -152,6 +176,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
           onShowChangeLog={() => setShowChangeLog(true)}
+          onExportCSV={handleExportCSV}
         />
 
         {/* States and Rules panels first */}
