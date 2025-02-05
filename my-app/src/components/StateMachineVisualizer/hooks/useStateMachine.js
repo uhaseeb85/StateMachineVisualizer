@@ -98,10 +98,30 @@ export default function useStateMachine() {
       if (!file) return;
 
       const rows = await parseExcelFile(file);
-      const { sourceNodeIndex, destNodeIndex, ruleListIndex } = validateExcelData(rows);
+      
+      // Store complete original data
+      const headers = rows[0];
+      const jsonData = rows.slice(1).map(row => {
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = row[index] || '';
+        });
+        return obj;
+      });
+      localStorage.setItem('lastImportedCSV', JSON.stringify(jsonData));
 
+      // Process only required columns for the application
       const stateMap = new Map();
       
+      // Find required column indices
+      const sourceNodeIndex = headers.indexOf('Source Node');
+      const destNodeIndex = headers.indexOf('Destination Node');
+      const ruleListIndex = headers.indexOf('Rule List');
+
+      if (sourceNodeIndex === -1 || destNodeIndex === -1 || ruleListIndex === -1) {
+        throw new Error('Required columns not found: "Source Node", "Destination Node", "Rule List"');
+      }
+
       // Process data rows (skip header)
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -111,10 +131,7 @@ export default function useStateMachine() {
         const destNode = row[destNodeIndex]?.toString().trim();
         const ruleList = row[ruleListIndex]?.toString().trim();
 
-        if (!sourceNode || !destNode || !ruleList) {
-          console.warn(`Skipping row ${i + 1} due to missing required data`);
-          continue;
-        }
+        if (!sourceNode || !destNode || !ruleList) continue;
 
         // Create states if they don't exist
         if (!stateMap.has(sourceNode)) {
@@ -135,7 +152,6 @@ export default function useStateMachine() {
         // Add rule
         const sourceState = stateMap.get(sourceNode);
         const targetState = stateMap.get(destNode);
-        
         sourceState.rules.push({
           id: generateId(),
           condition: ruleList,
@@ -145,16 +161,15 @@ export default function useStateMachine() {
 
       const newStates = Array.from(stateMap.values());
       if (newStates.length === 0) {
-        throw new Error('No valid states could be created from the file');
+        throw new Error('No valid states found in the file');
       }
 
       setStates(newStates);
-      addToChangeLog(`Imported state machine configuration from Excel: ${event.target.files[0].name}`);
-      alert(`Import successful! Created ${newStates.length} states.`);
+      toast.success(`Import successful! Created ${newStates.length} states.`);
 
     } catch (error) {
       console.error('Import error:', error);
-      alert('Error importing file: ' + error.message);
+      toast.error('Error importing file: ' + error.message);
     }
   };
 
