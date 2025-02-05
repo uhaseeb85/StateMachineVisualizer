@@ -6,12 +6,11 @@ export default function TopActionBar({
   isDarkMode, 
   toggleTheme, 
   onSave, 
-  onExport, 
-  onImport, 
   onExcelImport,
   onSimulate,
   onFindPaths,
-  startTour
+  startTour,
+  onExportCSV
 }) {
   return (
     <div className="mb-8 p-6 
@@ -40,13 +39,14 @@ export default function TopActionBar({
           <Button
             onClick={startTour}
             title="Get a guided tour of all features and how to use them"
-            className="getting-started-button bg-transparent text-gray-900 text-sm
-                       dark:text-white
-                       hover:bg-blue-600 hover:text-white hover:border-blue-500
-                       dark:hover:bg-blue-600 dark:hover:border-blue-500
-                       transition-all duration-200 ease-in-out
-                       border-2 border-black dark:border-white
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            className="getting-started-button bg-gray-900 text-white text-sm
+                     dark:bg-gray-800 dark:text-gray-100
+                     hover:bg-blue-600 hover:scale-105
+                     dark:hover:bg-blue-600
+                     transform transition-all duration-200 ease-in-out
+                     border border-gray-800 dark:border-gray-700
+                     hover:border-blue-500 dark:hover:border-blue-500
+                     flex items-center gap-2 px-3 py-1.5 rounded-md"
           >
             <HelpCircle className="w-4 h-4" />
             Getting Started
@@ -60,58 +60,50 @@ export default function TopActionBar({
             <Button 
               onClick={onSave}
               title="Save your current state machine configuration"
-              className="save-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                       transform transition-all duration-200 hover:scale-110"
+              className="save-button bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
-              <Save className="w-4 h-4 mr-2" />
+              <Save className="w-4 h-4" />
               Save
             </Button>
 
             <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
               <Button 
-                onClick={onExport}
-                title="Export your state machine as a JSON file"
-                className="export-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                         transform transition-all duration-200 hover:scale-110"
+                onClick={onExportCSV}
+                title="Export your state machine as a CSV file"
+                className="export-csv-button bg-gray-900 text-white text-sm
+                         dark:bg-gray-800 dark:text-gray-100
+                         hover:bg-blue-600 hover:scale-105
+                         dark:hover:bg-blue-600
+                         transform transition-all duration-200 ease-in-out
+                         border border-gray-800 dark:border-gray-700
+                         hover:border-blue-500 dark:hover:border-blue-500
+                         flex items-center gap-2 px-3 py-1.5 rounded-md"
               >
-                <ArrowUpFromLine className="w-4 h-4 mr-2" />
-                Export
+                <FileSpreadsheet className="w-4 h-4" />
+                Export CSV
               </Button>
 
               <div className="relative">
                 <Button 
-                  onClick={() => document.getElementById('flow-import').click()}
-                  title="Import a previously exported JSON state machine file"
-                  className="import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                           dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                           transform transition-all duration-200 hover:scale-110"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Import
-                </Button>
-                <input
-                  type="file"
-                  id="flow-import"
-                  className="hidden"
-                  accept=".json"
-                  onChange={onImport}
-                  onClick={(e) => e.target.value = null}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
-              <div className="relative">
-                <Button 
                   onClick={() => document.getElementById('excel-import').click()}
                   title="Import states and rules from a CSV file (Excel format)"
-                  className="excel-import-button import-button bg-gray-900 hover:bg-blue-600 text-white text-sm
-                           dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                           transform transition-all duration-200 hover:scale-110"
+                  className="excel-import-button bg-gray-900 text-white text-sm
+                           dark:bg-gray-800 dark:text-gray-100
+                           hover:bg-blue-600 hover:scale-105
+                           dark:hover:bg-blue-600
+                           transform transition-all duration-200 ease-in-out
+                           border border-gray-800 dark:border-gray-700
+                           hover:border-blue-500 dark:hover:border-blue-500
+                           flex items-center gap-2 px-3 py-1.5 rounded-md"
                 >
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  <FileSpreadsheet className="w-4 h-4" />
                   Import CSV
                 </Button>
                 <input
@@ -129,29 +121,31 @@ export default function TopActionBar({
 
         {/* Tools Group */}
         <div className="flex gap-4">
-          <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
-            <Button
-              onClick={onFindPaths}
-              title="Find all possible paths between any two states in your state machine"
-              className="find-paths-button bg-blue-500 hover:bg-blue-600 text-white text-sm
-                       dark:bg-blue-500 dark:text-white dark:hover:bg-blue-600
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              <Route className="w-4 h-4 mr-2" />
-              Pathfinder
-            </Button>
+          <Button
+            onClick={onFindPaths}
+            title="Find all possible paths between any two states in your state machine"
+            className="find-paths-button bg-blue-600 text-white text-sm
+                     hover:bg-blue-500 hover:scale-105
+                     dark:bg-blue-700 dark:hover:bg-blue-600
+                     transform transition-all duration-200
+                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+          >
+            <Route className="w-4 h-4" />
+            Pathfinder
+          </Button>
 
-            <Button 
-              onClick={onSimulate}
-              title="Run a simulation of your state machine to test its behavior"
-              className="simulation-button bg-green-500 hover:bg-green-600 text-white text-sm
-                       dark:bg-green-500 dark:text-white dark:hover:bg-green-600
-                       transform transition-all duration-200 hover:scale-110"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Simulate
-            </Button>
-          </div>
+          <Button 
+            onClick={onSimulate}
+            title="Run a simulation of your state machine to test its behavior"
+            className="simulation-button bg-green-600 text-white text-sm
+                     hover:bg-green-500 hover:scale-105
+                     dark:bg-green-700 dark:hover:bg-green-600
+                     transform transition-all duration-200
+                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+          >
+            <Play className="w-4 h-4" />
+            Simulate
+          </Button>
         </div>
       </div>
     </div>
