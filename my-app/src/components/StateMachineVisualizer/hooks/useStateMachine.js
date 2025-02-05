@@ -70,13 +70,25 @@ export default function useStateMachine() {
     }
   };
 
-  const deleteState = (stateId) => {
-    const stateName = states.find(s => s.id === stateId)?.name;
-    setStates(prevStates => prevStates.filter(state => state.id !== stateId));
-    if (selectedState === stateId) {
-      setSelectedState(null);
+  const handleDeleteState = (stateId) => {
+    // Find the state we want to delete
+    const stateToDelete = states.find(s => s.id === stateId);
+    if (!stateToDelete) return;
+
+    // Check if any other state has a rule pointing to this state
+    const referencingStates = states.filter(state => 
+      state.id !== stateId && // Don't check the state's own rules
+      state.rules.some(rule => rule.nextState === stateId)
+    );
+
+    if (referencingStates.length > 0) {
+      toast.error(`Cannot delete state "${stateToDelete.name}" because it is used as a target state in other rules`);
+      return;
     }
-    addToChangeLog(`Deleted state: ${stateName || stateId}`);
+
+    // If not referenced, proceed with deletion
+    setStates(currentStates => currentStates.filter(state => state.id !== stateId));
+    addToChangeLog(`Deleted state: ${stateToDelete.name}`);
   };
 
   const handleImport = async (event) => {
@@ -277,7 +289,7 @@ export default function useStateMachine() {
     toggleTheme,
     showSaveNotification,
     addState,
-    deleteState,
+    handleDeleteState,
     saveFlow,
     handleImport,
     handleExcelImport,

@@ -35,7 +35,8 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     handleRuleDictionaryImport: originalHandleRuleDictionaryImport,
     changeLog,
     setChangeLog,
-    addToChangeLog
+    addToChangeLog,
+    handleDeleteState
   } = useStateMachine();
 
   const {
@@ -222,7 +223,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             selectedState={selectedState}
             onStateSelect={handleStateSelect}
             onStateAdd={addState}
-            onStateDelete={deleteState}
+            onStateDelete={handleDeleteState}
             loadedStateDictionary={loadedStateDictionary}
             setLoadedStateDictionary={setLoadedStateDictionary}
           />
