@@ -13,7 +13,7 @@ import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
 import VersionInfo from './VersionInfo';
 import ChangeLog from './ChangeLog';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 

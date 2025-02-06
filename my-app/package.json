@@ -24,7 +24,7 @@
     "react-joyride": "^2.9.3",
     "sonner": "^1.7.2",
     "tailwind-merge": "^2.2.1",
-    "xlsx": "^0.18.5"
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

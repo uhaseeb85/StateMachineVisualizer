@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { parseExcelFile, validateExcelData, generateId } from '../utils';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { toast } from 'sonner';
 
 export default function useStateMachine() {

@@ -1,5 +1,5 @@
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 export const generateId = () => {
   return 'id_' + Math.random().toString(36).substr(2, 9);
