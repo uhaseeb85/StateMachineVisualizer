@@ -21,7 +21,7 @@ A modern, interactive web application for designing, visualizing, and simulating
 ### Setup Steps
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/state-machine-visualizer.git
+git clone https://github.com/uhaseeb85/state-machine-visualizer.git
 cd state-machine-visualizer
 ```
 
