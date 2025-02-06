@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine, History } from 'lucide-react';
+import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine, History, Settings, Search } from 'lucide-react';
+import SplunkConfig from './SplunkConfig';
+import LogAnalyzer from './LogAnalyzer';
 
 export default function TopActionBar({ 
   isDarkMode, 
@@ -12,6 +14,9 @@ export default function TopActionBar({
   startTour,
   onExportCSV
 }) {
+  const [showSplunkConfig, setShowSplunkConfig] = useState(false);
+  const [showLogAnalyzer, setShowLogAnalyzer] = useState(false);
+
   return (
     <div className="mb-8 p-6 
                     bg-gray-100 dark:bg-gray-900
@@ -147,7 +152,53 @@ export default function TopActionBar({
             Simulate
           </Button>
         </div>
+
+        <Button
+          onClick={() => setShowSplunkConfig(true)}
+          className="save-button bg-gray-900 text-white text-sm
+                   dark:bg-gray-800 dark:text-gray-100
+                   hover:bg-blue-600 hover:scale-105
+                   dark:hover:bg-blue-600
+                   transform transition-all duration-200 ease-in-out
+                   border border-gray-800 dark:border-gray-700
+                   hover:border-blue-500 dark:hover:border-blue-500
+                   flex items-center gap-2 px-3 py-1.5 rounded-md"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Splunk Config
+        </Button>
+
+        <Button
+          onClick={() => setShowLogAnalyzer(true)}
+          className="save-button bg-gray-900 text-white text-sm
+                   dark:bg-gray-800 dark:text-gray-100
+                   hover:bg-blue-600 hover:scale-105
+                   dark:hover:bg-blue-600
+                   transform transition-all duration-200 ease-in-out
+                   border border-gray-800 dark:border-gray-700
+                   hover:border-blue-500 dark:hover:border-blue-500
+                   flex items-center gap-2 px-3 py-1.5 rounded-md"
+        >
+          <Search className="w-4 h-4 mr-2" />
+          Analyze Logs
+        </Button>
       </div>
+
+      {showSplunkConfig && (
+        <SplunkConfig
+          onClose={() => setShowSplunkConfig(false)}
+          onSave={(config) => {
+            // Handle config save
+            setShowSplunkConfig(false);
+          }}
+        />
+      )}
+
+      {showLogAnalyzer && (
+        <LogAnalyzer
+          onClose={() => setShowLogAnalyzer(false)}
+        />
+      )}
     </div>
   );
 } 
