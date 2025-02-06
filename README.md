@@ -2,129 +2,184 @@
 
 A modern, interactive web application for designing, visualizing, and simulating state machines. Built with React and Tailwind CSS, this tool provides an intuitive interface for creating and managing state machines with a focus on user experience.
 
-## Features
+## Table of Contents
+- [Installation](#installation)
+- [Features](#features)
+- [Usage Guide](#usage-guide)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-- **Interactive State Management**
-  - Create and delete states
-  - Define transition rules between states
-  - Visual representation of state relationships
-
-- **Real-time Simulation**
-  - Test your state machine configurations
-  - Visualize state transitions
-  - Validate rule conditions
-
-- **Data Persistence**
-  - Local storage saving
-  - Import/Export functionality
-  - Configuration backup and sharing
-
-- **User Interface**
-  - Dark/Light mode toggle
-  - Responsive design
-  - Intuitive controls
-  - Real-time feedback
-
-- **Additional Features**
-  - User guide documentation
-  - Feedback submission
-  - Error handling
-  - Troubleshooting support
-
-## Getting Started
+## Installation
 
 ### Prerequisites
-
 - Node.js (v14.0.0 or higher)
-- npm or yarn package manager
+- npm (v6.0.0 or higher)
+- Modern web browser (Chrome, Firefox, Safari, or Edge)
+
+### Setup Steps
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/state-machine-visualizer.git
+cd state-machine-visualizer
+```
+
+2. Install dependencies
+```bash
+npm install
+```
+
+3. Start the development server
+```bash
+npm run dev
+```
+
+4. Open your browser and navigate to `http://localhost:5173`
+
+## Features
+
+### Core Functionality
+- Create, edit, and delete states
+- Define transition rules between states
+- Visual representation of state relationships
+- Real-time state machine simulation
+- Path finding and loop detection
+
+### Data Management
+- CSV/Excel import and export
+- Local storage persistence
+- Configuration backup and sharing
+- Rule dictionary support
+
+### User Interface
+- Dark/Light mode toggle
+- Responsive design
+- Interactive visualization
+- Real-time feedback
+- User guide and tooltips
 
 ## Usage Guide
 
-### Creating States
+### State Management
+1. **Creating States**
+   - Enter state name in input field
+   - Click "Add" or press Enter
+   - States appear in left panel
 
-1. Enter a state name in the input field
-2. Click "Add" to create a new state
-3. States appear in the left panel
+2. **Managing Rules**
+   - Select a state to view/edit rules
+   - Add rules with conditions and target states
+   - Delete or modify existing rules
 
-### Managing Rules
+### Data Import/Export
+1. **CSV Import**
+   - Required columns:
+     - "Source Node"
+     - "Destination Node"
+     - "Rule List"
+   - Additional columns are preserved
 
-1. Select a state to view/edit its rules
-2. Click "Add Rule" to create a new transition rule
-3. Define:
-   - Condition: When this rule should trigger
-   - Next State: Where to transition when triggered
-
-### Saving and Loading
-
-- **Save Flow**: Click to save current configuration
-- **Export**: Download configuration as JSON
-- **Import**: Load a previously exported configuration
+2. **CSV Export**
+   - Exports current configuration
+   - Maintains additional columns from import
+   - Preserves rule relationships
 
 ### Simulation
+1. Click "Simulate" button
+2. Select starting state
+3. Follow state transitions
+4. Use undo for step-back
+5. View transition history
 
-1. Click "Simulate" to enter simulation mode
-2. Test your state machine's behavior
-3. Observe state transitions based on rules
+### Pathfinder
+1. Access via "Pathfinder" button
+2. Select source and destination
+3. View all possible paths
+4. Analyze transition rules
 
-### Theme Toggle
+## Development
 
-- Click the sun/moon icon to switch between light and dark modes
+### Project Structure
+```
+src/
+  ├── components/
+  │   ├── StateMachineVisualizer/
+  │   │   ├── hooks/          # Custom React hooks
+  │   │   ├── components/     # UI components
+  │   │   └── utils/          # Utility functions
+  │   └── ui/                 # Shared UI components
+  ├── lib/                    # Third-party integrations
+  └── utils/                  # Global utility functions
+```
+
+### Commands
+```bash
+# Development
+npm run dev          # Start development server
+
+# Production
+npm run build        # Build for production
+npm run preview      # Preview production build
+
+# Testing
+npm run test         # Run tests
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Lost Configuration**
-   - Use the Import feature to restore from backup
-   - Check local storage in browser
+1. **Port Conflicts**
+   ```bash
+   # Find process using port 5173
+   lsof -i :5173
+   # Kill the process
+   kill -9 <PID>
+   ```
 
-2. **States Not Saving**
-   - Ensure clicking "Save Flow" after changes
-   - Check browser storage permissions
+2. **Installation Issues**
+   ```bash
+   # Clear npm cache
+   npm cache clean --force
+   # Reinstall dependencies
+   npm install
+   ```
 
-3. **Import Issues**
-   - Verify JSON format matches export structure
-   - Check file permissions
+3. **Node Version**
+   ```bash
+   # Check version
+   node --version
+   # Should be v14.0.0 or higher
+   ```
 
-### Best Practices
-
-1. **Regular Backups**
-   - Export configurations regularly
-   - Keep backup files organized
-
-2. **State Naming**
-   - Use descriptive names
-   - Maintain consistent naming conventions
-
-3. **Rule Management**
-   - Keep conditions clear and specific
-   - Verify all transitions are valid
+### Known Limitations
+- Large state machines may experience performance impacts
+- CSV imports must follow specified column structure
+- Some features require modern browser support
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create feature branch
+   ```bash
+   git checkout -b feature/YourFeature
+   ```
+3. Commit changes
+   ```bash
+   git commit -m 'Add YourFeature'
+   ```
+4. Push to branch
+   ```bash
+   git push origin feature/YourFeature
+   ```
+5. Open Pull Request
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
-## Acknowledgments
-
-- Built with [React](https://reactjs.org/)
-- Styled with [Tailwind CSS](https://tailwindcss.com/)
-- Icons from [Lucide](https://lucide.dev/)
-
-## Support
+---
 
 For support, feedback, or suggestions:
-- Use the in-app feedback form
 - Open an issue in the repository
-- Contact the development team
-
-## Project Status
-
-Active development - Regular updates and improvements
