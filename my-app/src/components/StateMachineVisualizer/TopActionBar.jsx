@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine, History, Settings, Search } from 'lucide-react';
-import SplunkConfig from './SplunkConfig';
+import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine, History, Search } from 'lucide-react';
 import LogAnalyzer from './LogAnalyzer';
 
 export default function TopActionBar({ 
@@ -14,7 +13,6 @@ export default function TopActionBar({
   startTour,
   onExportCSV
 }) {
-  const [showSplunkConfig, setShowSplunkConfig] = useState(false);
   const [showLogAnalyzer, setShowLogAnalyzer] = useState(false);
 
   return (
@@ -124,75 +122,56 @@ export default function TopActionBar({
           </div>
         </div>
 
-        {/* Tools Group */}
-        <div className="flex gap-4">
+        {/* Right side buttons */}
+        <div className="flex items-center gap-4">
           <Button
-            onClick={onFindPaths}
-            title="Find all possible paths between any two states in your state machine"
-            className="find-paths-button bg-blue-600 text-white text-sm
-                     hover:bg-blue-500 hover:scale-105
-                     dark:bg-blue-700 dark:hover:bg-blue-600
-                     transform transition-all duration-200
+            onClick={() => setShowLogAnalyzer(true)}
+            className="save-button bg-gray-900 text-white text-sm
+                     dark:bg-gray-800 dark:text-gray-100
+                     hover:bg-blue-600 hover:scale-105
+                     dark:hover:bg-blue-600
+                     transform transition-all duration-200 ease-in-out
+                     border border-gray-800 dark:border-gray-700
+                     hover:border-blue-500 dark:hover:border-blue-500
                      flex items-center gap-2 px-3 py-1.5 rounded-md"
           >
-            <Route className="w-4 h-4" />
-            Pathfinder
+            <Search className="w-4 h-4 mr-2" />
+            Analyze Logs
           </Button>
 
-          <Button 
-            onClick={onSimulate}
-            title="Run a simulation of your state machine to test its behavior"
-            className="simulation-button bg-green-600 text-white text-sm
-                     hover:bg-green-500 hover:scale-105
-                     dark:bg-green-700 dark:hover:bg-green-600
-                     transform transition-all duration-200
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
-          >
-            <Play className="w-4 h-4" />
-            Simulate
-          </Button>
+          {/* Separator */}
+          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+
+          {/* Tools Group */}
+          <div className="flex gap-4">
+            <Button
+              onClick={onFindPaths}
+              title="Find all possible paths between any two states in your state machine"
+              className="find-paths-button bg-blue-600 text-white text-sm
+                       hover:bg-blue-500 hover:scale-105
+                       dark:bg-blue-700 dark:hover:bg-blue-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Route className="w-4 h-4" />
+              Pathfinder
+            </Button>
+
+            <Button 
+              onClick={onSimulate}
+              title="Run a simulation of your state machine to test its behavior"
+              className="simulation-button bg-green-600 text-white text-sm
+                       hover:bg-green-500 hover:scale-105
+                       dark:bg-green-700 dark:hover:bg-green-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Play className="w-4 h-4" />
+              Simulate
+            </Button>
+          </div>
         </div>
-
-        <Button
-          onClick={() => setShowSplunkConfig(true)}
-          className="save-button bg-gray-900 text-white text-sm
-                   dark:bg-gray-800 dark:text-gray-100
-                   hover:bg-blue-600 hover:scale-105
-                   dark:hover:bg-blue-600
-                   transform transition-all duration-200 ease-in-out
-                   border border-gray-800 dark:border-gray-700
-                   hover:border-blue-500 dark:hover:border-blue-500
-                   flex items-center gap-2 px-3 py-1.5 rounded-md"
-        >
-          <Settings className="w-4 h-4 mr-2" />
-          Splunk Config
-        </Button>
-
-        <Button
-          onClick={() => setShowLogAnalyzer(true)}
-          className="save-button bg-gray-900 text-white text-sm
-                   dark:bg-gray-800 dark:text-gray-100
-                   hover:bg-blue-600 hover:scale-105
-                   dark:hover:bg-blue-600
-                   transform transition-all duration-200 ease-in-out
-                   border border-gray-800 dark:border-gray-700
-                   hover:border-blue-500 dark:hover:border-blue-500
-                   flex items-center gap-2 px-3 py-1.5 rounded-md"
-        >
-          <Search className="w-4 h-4 mr-2" />
-          Analyze Logs
-        </Button>
       </div>
-
-      {showSplunkConfig && (
-        <SplunkConfig
-          onClose={() => setShowSplunkConfig(false)}
-          onSave={(config) => {
-            // Handle config save
-            setShowSplunkConfig(false);
-          }}
-        />
-      )}
 
       {showLogAnalyzer && (
         <LogAnalyzer

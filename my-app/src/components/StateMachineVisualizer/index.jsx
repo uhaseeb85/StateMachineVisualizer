@@ -8,12 +8,13 @@ import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import PathFinderModal from './PathFinderModal';
-import { ChevronDown, ChevronUp, Book, History } from 'lucide-react';
+import { ChevronDown, ChevronUp, Book, History, Settings } from 'lucide-react';
 import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
 import VersionInfo from './VersionInfo';
 import ChangeLog from './ChangeLog';
 import * as XLSX from 'xlsx-js-style';
+import SplunkConfig from './SplunkConfig';
 
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
@@ -64,6 +65,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
   const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
+  const [showSplunkConfig, setShowSplunkConfig] = useState(false);
 
   const handleRuleDictionaryImport = async (event) => {
     console.log("Import started with file:", event);
@@ -324,6 +326,15 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       {/* Bottom right buttons - moved 25px to the left */}
       <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
         <Button
+          onClick={() => setShowSplunkConfig(true)}
+          title="Configure Splunk Settings"
+          className={buttonClass}
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Splunk Config
+        </Button>
+
+        <Button
           onClick={() => setShowChangeLog(true)}
           title="View Local History"
           className={buttonClass}
@@ -344,6 +355,17 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       {/* User Guide Modal */}
       {showUserGuide && (
         <UserGuideModal onClose={() => setShowUserGuide(false)} />
+      )}
+
+      {/* Splunk Config Modal */}
+      {showSplunkConfig && (
+        <SplunkConfig
+          onClose={() => setShowSplunkConfig(false)}
+          onSave={(config) => {
+            // Handle config save
+            setShowSplunkConfig(false);
+          }}
+        />
       )}
 
       <VersionInfo />
