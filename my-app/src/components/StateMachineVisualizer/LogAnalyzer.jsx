@@ -35,7 +35,16 @@ export default function LogAnalyzer({ onClose }) {
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+      
+      // Clear any existing results when loading a new dictionary
+      setResults(null);
+      
+      // Clear the existing dictionary from sessionStorage before setting new one
+      sessionStorage.removeItem('logDictionary');
       setLogDictionary(jsonData);
+      
+      // Reset the file input
+      event.target.value = '';
     };
     
     reader.readAsArrayBuffer(file);
@@ -100,10 +109,28 @@ export default function LogAnalyzer({ onClose }) {
     try {
       const text = await logFile.text();
       console.log('Analyzing log file with content length:', text.length);
-      const logs = text.split('\n')
-        .filter(line => line.trim())
-        .map(line => ({ message: line.trim() }));
-      console.log('Found', logs.length, 'log entries to analyze');
+      const allLines = text.split('\n').map(line => line.trim());
+      
+      // Create groups of three lines with overlap
+      const logs = [];
+      for (let i = 0; i < allLines.length; i++) {
+        // Get three lines for the pattern matching
+        const threeLines = allLines.slice(i, i + 3).join('\n');
+        if (threeLines) {
+          logs.push({
+            message: threeLines,
+            lineNumber: i + 1,
+            context: {
+              before: allLines.slice(Math.max(0, i - 2), i),
+              after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
+            },
+            // Store the individual lines that make up this group
+            matchedLines: allLines.slice(i, i + 3)
+          });
+        }
+      }
+      
+      console.log('Created', logs.length, 'three-line groups to analyze');
       processLogs(logs);
     } catch (error) {
       console.error('Error analyzing log file:', error);
@@ -115,34 +142,60 @@ export default function LogAnalyzer({ onClose }) {
 
   const processLogs = (logs) => {
     console.log('Processing logs with dictionary patterns:', logDictionary.length);
-    // Process each log entry against the dictionary patterns
-    const matches = logs.map(log => {
-      const matchingPatterns = logDictionary
-        .map(pattern => {
-          try {
-            const regex = new RegExp(pattern.regex_pattern);
-            const isMatch = regex.test(log.message);
-            console.log('Testing pattern:', pattern.regex_pattern, 'against log:', log.message, 'result:', isMatch);
-            return isMatch ? {
-              category: pattern.category,
-              cause: pattern.cause,
-              severity: pattern.severity,
-              suggestions: pattern.suggestions
-            } : null;
-          } catch (error) {
-            console.warn(`Invalid regex pattern: ${pattern.regex_pattern}`, error);
-            return null;
+    
+    // Create a map to group matches by pattern
+    const matchGroups = new Map(); // key: pattern_id, value: array of matches
+
+    logs.forEach(log => {
+      logDictionary.forEach(pattern => {
+        try {
+          const regex = new RegExp(pattern.regex_pattern, 'gm'); // Add multiline flag
+          const isMatch = regex.test(log.message);
+          
+          if (isMatch) {
+            const patternKey = pattern.regex_pattern; // Use regex pattern as key
+            if (!matchGroups.has(patternKey)) {
+              matchGroups.set(patternKey, {
+                pattern: {
+                  category: pattern.category,
+                  cause: pattern.cause,
+                  severity: pattern.severity,
+                  suggestions: pattern.suggestions,
+                  regex_pattern: pattern.regex_pattern
+                },
+                matches: [],
+                count: 0
+              });
+            }
+            
+            const group = matchGroups.get(patternKey);
+            group.count++;
+            
+            // Only store the first match details
+            if (group.matches.length === 0) {
+              group.matches.push({
+                log: log.message,
+                matchedLines: log.matchedLines,
+                context: log.context
+              });
+            }
           }
-        })
-        .filter(match => match !== null);
+        } catch (error) {
+          console.warn(`Invalid regex pattern: ${pattern.regex_pattern}`, error);
+        }
+      });
+    });
 
-      return {
-        log: log.message,
-        matches: matchingPatterns
-      };
-    }).filter(result => result.matches.length > 0); // Only include logs with matches
+    // Convert map to array and filter out empty groups
+    const matches = Array.from(matchGroups.values())
+      .filter(group => group.matches.length > 0)
+      .map(group => ({
+        pattern: group.pattern,
+        firstMatch: group.matches[0],
+        totalMatches: group.count
+      }));
 
-    console.log('Found matches:', matches.length);
+    console.log('Found match groups:', matches.length);
     setResults(matches);
 
     // Show feedback if no matches were found
@@ -180,6 +233,12 @@ export default function LogAnalyzer({ onClose }) {
     const ws = XLSX.utils.json_to_sheet(sampleData);
     XLSX.utils.book_append_sheet(wb, ws, "Sample");
     XLSX.writeFile(wb, 'log_dictionary_sample.csv');
+  };
+
+  const clearDictionary = () => {
+    setLogDictionary(null);
+    setResults(null);
+    sessionStorage.removeItem('logDictionary');
   };
 
   const renderSelectScreen = () => (
@@ -376,6 +435,7 @@ export default function LogAnalyzer({ onClose }) {
               type="file"
               onChange={handleDictionaryUpload}
               accept=".csv"
+              key={Date.now()}
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Upload a CSV file containing log patterns and analysis rules (see format above)
@@ -393,10 +453,7 @@ export default function LogAnalyzer({ onClose }) {
             </p>
           </div>
           <Button
-            onClick={() => {
-              setLogDictionary(null);
-              sessionStorage.removeItem('logDictionary');
-            }}
+            onClick={clearDictionary}
             variant="outline"
             size="sm"
             className="text-red-600 hover:text-red-700"
@@ -430,42 +487,72 @@ export default function LogAnalyzer({ onClose }) {
       )}
 
       {results && results.length > 0 && (
-        <div className="mt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Analysis Results</h3>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Found {results.length} matching patterns
-            </span>
+        <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+          <div className="p-4 border-b dark:border-gray-700">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Analysis Results</h3>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Found {results.reduce((sum, r) => sum + r.totalMatches, 0)} matches across {results.length} patterns
+              </span>
+            </div>
           </div>
-          <div className="space-y-4">
-            {results.map((result, index) => (
-              <div key={index} className="border p-4 rounded-lg">
-                <p className="font-medium">Log:</p>
-                <p className="text-sm mb-2">{result.log}</p>
-                <p className="font-medium">Analysis:</p>
-                <ul className="list-disc list-inside">
-                  {result.matches.map((match, i) => (
-                    <li key={i} className="text-sm space-y-1">
-                      <div className="font-medium text-blue-600 dark:text-blue-400">{match.category}</div>
-                      <div>Cause: {match.cause}</div>
-                      <div>Severity: <span className={
-                        match.severity.toLowerCase() === 'high' ? 'text-red-500' :
-                        match.severity.toLowerCase() === 'medium' ? 'text-yellow-500' :
-                        'text-green-500'
-                      }>{match.severity}</span></div>
-                      <div>
-                        <div className="font-medium">Suggestions:</div>
-                        <ul className="list-disc list-inside ml-4">
-                          {match.suggestions.split(';').map((suggestion, j) => (
-                            <li key={j} className="text-sm">{suggestion}</li>
-                          ))}
-                        </ul>
+          
+          <div className="overflow-y-auto max-h-[400px] p-4">
+            <div className="space-y-4">
+              {results.map((result, index) => (
+                <div key={index} className="border p-4 rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="font-medium">Pattern Match:</p>
+                    <span className="text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                      {result.totalMatches} {result.totalMatches === 1 ? 'occurrence' : 'occurrences'}
+                    </span>
+                  </div>
+
+                  <div className="font-mono text-sm bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mb-4 whitespace-pre-wrap">
+                    {/* Context lines before */}
+                    {result.firstMatch.context?.before.map((line, i) => (
+                      <div key={`before-${i}`} className="text-gray-500">
+                        {line}
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+                    ))}
+                    
+                    {/* Matched lines */}
+                    <div className="bg-yellow-100 dark:bg-yellow-900/30 -mx-3 px-3 py-0.5 border-l-4 border-yellow-500">
+                      {result.firstMatch.matchedLines.map((line, i) => (
+                        <div key={`matched-${i}`}>
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Context lines after */}
+                    {result.firstMatch.context?.after.map((line, i) => (
+                      <div key={`after-${i}`} className="text-gray-500">
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="font-medium text-blue-600 dark:text-blue-400">{result.pattern.category}</div>
+                    <div>Cause: {result.pattern.cause}</div>
+                    <div>Severity: <span className={
+                      result.pattern.severity.toLowerCase() === 'high' ? 'text-red-500' :
+                      result.pattern.severity.toLowerCase() === 'medium' ? 'text-yellow-500' :
+                      'text-green-500'
+                    }>{result.pattern.severity}</span></div>
+                    <div>
+                      <div className="font-medium">Suggestions:</div>
+                      <ul className="list-disc list-inside ml-4">
+                        {result.pattern.suggestions.split(';').map((suggestion, j) => (
+                          <li key={j} className="text-sm">{suggestion}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -474,8 +561,8 @@ export default function LogAnalyzer({ onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl">
-        <div className="p-6 space-y-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex justify-between items-center">
             {screen === 'select' ? (
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -486,7 +573,9 @@ export default function LogAnalyzer({ onClose }) {
               <X className="h-4 h-4" />
             </Button>
           </div>
+        </div>
 
+        <div className="flex-1 overflow-y-auto p-6">
           {screen === 'select' && renderSelectScreen()}
           {screen === 'splunk' && renderSplunkAnalysis()}
           {screen === 'file' && renderFileAnalysis()}
