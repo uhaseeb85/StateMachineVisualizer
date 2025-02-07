@@ -326,15 +326,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       {/* Bottom right buttons - moved 25px to the left */}
       <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
         <Button
-          onClick={() => setShowSplunkConfig(true)}
-          title="Configure Splunk Settings"
-          className={buttonClass}
-        >
-          <Settings className="w-4 h-4 mr-2" />
-          Splunk Config
-        </Button>
-
-        <Button
           onClick={() => setShowChangeLog(true)}
           title="View Local History"
           className={buttonClass}
