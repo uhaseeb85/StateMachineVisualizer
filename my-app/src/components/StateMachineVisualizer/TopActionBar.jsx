@@ -133,8 +133,13 @@ export default function TopActionBar({
                      transform transition-all duration-200 ease-in-out
                      border border-gray-800 dark:border-gray-700
                      hover:border-blue-500 dark:hover:border-blue-500
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+                     flex items-center gap-2 px-3 py-1.5 rounded-md
+                     relative"
           >
+            <div className="absolute -top-2 -left-2 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full 
+                          animate-pulse font-semibold shadow-lg">
+              New
+            </div>
             <Search className="w-4 h-4 mr-2" />
             Analyze Logs
           </Button>
