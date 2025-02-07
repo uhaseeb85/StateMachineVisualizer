@@ -260,7 +260,7 @@ export default function LogAnalyzer({ onClose }) {
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li><strong>File Analysis Mode:</strong> All analysis is performed locally in your browser. Log files and patterns are never transmitted outside or stored on any server.</li>
-                <li><strong>Splunk Analysis Mode:</strong> Requires communication with your Splunk server using your configured credentials to fetch logs.</li>
+                <li><strong>Splunk Analysis Mode:</strong> Requires communication with your Splunk server using your configured credentials to fetch logs.All analysis is performed locally in your browser.Log files and patterns are never transmitted outside or stored on any server.</li>
               </ul>
             </div>
           </div>
