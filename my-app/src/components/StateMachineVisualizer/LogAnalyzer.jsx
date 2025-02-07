@@ -197,9 +197,12 @@ export default function LogAnalyzer({ onClose }) {
                 The Log Analysis feature is experimental and may contain bugs. appreciate your feedback and patience.
               </p>
               <p>
-                <strong>Privacy Note:</strong> All log file analysis is performed locally in your browser. 
-                Log file contents are never transmitted outside or stored on any server.
+                <strong>Privacy Information:</strong>
               </p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><strong>File Analysis Mode:</strong> All analysis is performed locally in your browser. Log files and patterns are never transmitted outside or stored on any server.</li>
+                <li><strong>Splunk Analysis Mode:</strong> Requires communication with your Splunk server using your configured credentials to fetch logs.</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -242,7 +245,7 @@ export default function LogAnalyzer({ onClose }) {
 
   const renderSplunkAnalysis = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Splunk Analysis
         </h2>
@@ -303,7 +306,7 @@ export default function LogAnalyzer({ onClose }) {
 
   const renderFileAnalysis = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           File Analysis
         </h2>
@@ -474,9 +477,11 @@ export default function LogAnalyzer({ onClose }) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl">
         <div className="p-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Log Analysis
-            </h2>
+            {screen === 'select' ? (
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Log Analysis
+              </h2>
+            ) : null}
             <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
               <X className="h-4 h-4" />
             </Button>
