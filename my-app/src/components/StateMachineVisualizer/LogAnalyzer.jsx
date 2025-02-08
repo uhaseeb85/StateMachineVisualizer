@@ -10,6 +10,28 @@
  * 
  * The component uses a pattern-matching approach with regular expressions
  * to identify known patterns in logs and provide relevant suggestions.
+ * 
+ * @typedef {Object} LogPattern
+ * @property {string} category - Pattern category (e.g., "Database Error")
+ * @property {string} regex_pattern - Regular expression for matching
+ * @property {string} cause - Description of the probable cause
+ * @property {string} severity - Impact level (High, Medium, Low)
+ * @property {string} suggestions - Semicolon-separated list of actions
+ * 
+ * @typedef {Object} LogContext
+ * @property {string[]} before - Lines before the match
+ * @property {string[]} after - Lines after the match
+ * 
+ * @typedef {Object} LogMatch
+ * @property {string} message - Full log message
+ * @property {number} lineNumber - Line number in file
+ * @property {LogContext} context - Surrounding context
+ * @property {string[]} matchedLines - Lines that matched
+ * 
+ * @typedef {Object} AnalysisResult
+ * @property {LogPattern} pattern - Matched pattern details
+ * @property {LogMatch} firstMatch - First occurrence details
+ * @property {number} totalMatches - Total occurrences found
  */
 
 import { useState, useEffect } from 'react';
@@ -22,6 +44,43 @@ import SplunkConfig from './SplunkConfig';
 import { toast } from 'sonner';
 import { searchSplunk } from '@/api/splunk';
 
+// Constants
+const SCREENS = {
+  SELECT: 'select',
+  SPLUNK: 'splunk',
+  FILE: 'file'
+};
+
+const SEVERITY_COLORS = {
+  high: 'text-red-500',
+  medium: 'text-yellow-500',
+  low: 'text-green-500'
+};
+
+const SAMPLE_PATTERNS = [
+  {
+    category: "Database Error",
+    regex_pattern: ".*Error executing SQL query: (ORA-\\d+).*",
+    cause: "Database connection or query execution failure",
+    severity: "High",
+    suggestions: "Check database connectivity;Verify SQL syntax;Review database logs"
+  },
+  {
+    category: "Authentication",
+    regex_pattern: ".*Failed login attempt for user &apos;(.+)&apos; from IP (\\d+\\.\\d+\\.\\d+\\.\\d+).*",
+    cause: "Multiple failed login attempts detected",
+    severity: "Medium",
+    suggestions: "Verify user credentials;Check for suspicious IP activity;Review security logs"
+  },
+  {
+    category: "System Resource",
+    regex_pattern: ".*Memory usage exceeded (\\d+)%.*",
+    cause: "High memory utilization",
+    severity: "High",
+    suggestions: "Review memory allocation;Check for memory leaks;Consider scaling resources"
+  }
+];
+
 const LogAnalyzer = ({ onClose }) => {
   // Core state management
   const [sessionId, setSessionId] = useState('');
@@ -32,7 +91,7 @@ const LogAnalyzer = ({ onClose }) => {
   const [results, setResults] = useState(null); // null indicates no analysis performed yet
   const [loading, setLoading] = useState(false);
   const [logFile, setLogFile] = useState(null);
-  const [screen, setScreen] = useState('select'); // 'select', 'splunk', or 'file'
+  const [screen, setScreen] = useState(SCREENS.SELECT);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
 
   // Persist dictionary to sessionStorage when it changes
@@ -42,10 +101,7 @@ const LogAnalyzer = ({ onClose }) => {
     }
   }, [logDictionary]);
 
-  /**
-   * Handles dictionary file upload and processing
-   * Supports CSV format with specific columns for pattern matching
-   */
+  // Dictionary Management Functions
   const handleDictionaryUpload = async (event) => {
     const file = event.target.files[0];
     const reader = new FileReader();
@@ -65,25 +121,32 @@ const LogAnalyzer = ({ onClose }) => {
     reader.readAsArrayBuffer(file);
   };
 
-  /**
-   * Handles log file selection for local file analysis
-   */
+  const downloadSampleDictionary = () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(SAMPLE_PATTERNS);
+    XLSX.utils.book_append_sheet(wb, ws, "Sample");
+    XLSX.writeFile(wb, 'log_dictionary_sample.csv');
+  };
+
+  const clearDictionary = () => {
+    setLogDictionary(null);
+    setResults(null);
+    sessionStorage.removeItem('logDictionary');
+  };
+
+  // Log Analysis Functions
   const handleLogFileUpload = (event) => {
     const file = event.target.files[0];
     setLogFile(file);
   };
 
-  /**
-   * Main analysis function that handles both local file and Splunk analysis
-   * Validates required inputs before proceeding
-   */
   const analyzeLogs = async () => {
     if (!logDictionary) {
       toast.error('Please upload a log dictionary first');
       return;
     }
 
-    if (screen === 'splunk') {
+    if (screen === SCREENS.SPLUNK) {
       if (!sessionId) {
         toast.error('Please enter a session ID');
         return;
@@ -98,11 +161,6 @@ const LogAnalyzer = ({ onClose }) => {
     }
   };
 
-  /**
-   * Handles Splunk log analysis
-   * Fetches logs from Splunk using the configured connection
-   * and analyzes them using the loaded pattern dictionary
-   */
   const analyzeSplunkLogs = async () => {
     setLoading(true);
     try {
@@ -122,16 +180,10 @@ const LogAnalyzer = ({ onClose }) => {
     }
   };
 
-  /**
-   * Handles local file analysis
-   * Reads and processes the uploaded log file using the loaded pattern dictionary
-   * Groups log lines for context-aware pattern matching
-   */
   const analyzeLogFile = async () => {
     setLoading(true);
     try {
       const text = await logFile.text();
-      console.log('Analyzing log file with content length:', text.length);
       const allLines = text.split('\n').map(line => line.trim());
       
       // Create groups of three lines with overlap for better context
@@ -160,14 +212,7 @@ const LogAnalyzer = ({ onClose }) => {
     }
   };
 
-  /**
-   * Core log processing function
-   * Applies pattern matching using the dictionary patterns
-   * Groups and aggregates matches for display
-   */
   const processLogs = (logs) => {
-    console.log('Processing logs with dictionary patterns:', logDictionary.length);
-    
     const matchGroups = new Map();
 
     logs.forEach(log => {
@@ -226,51 +271,7 @@ const LogAnalyzer = ({ onClose }) => {
     }
   };
 
-  /**
-   * Generates and downloads a sample dictionary file
-   * Provides example patterns for common log scenarios
-   */
-  const downloadSampleDictionary = () => {
-    const sampleData = [
-      {
-        category: "Database Error",
-        regex_pattern: ".*Error executing SQL query: (ORA-\\d+).*",
-        cause: "Database connection or query execution failure",
-        severity: "High",
-        suggestions: "Check database connectivity;Verify SQL syntax;Review database logs"
-      },
-      {
-        category: "Authentication",
-        regex_pattern: ".*Failed login attempt for user &apos;(.+)&apos; from IP (\\d+\\.\\d+\\.\\d+\\.\\d+).*",
-        cause: "Multiple failed login attempts detected",
-        severity: "Medium",
-        suggestions: "Verify user credentials;Check for suspicious IP activity;Review security logs"
-      },
-      {
-        category: "System Resource",
-        regex_pattern: ".*Memory usage exceeded (\\d+)%.*",
-        cause: "High memory utilization",
-        severity: "High",
-        suggestions: "Review memory allocation;Check for memory leaks;Consider scaling resources"
-      }
-    ];
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(sampleData);
-    XLSX.utils.book_append_sheet(wb, ws, "Sample");
-    XLSX.writeFile(wb, 'log_dictionary_sample.csv');
-  };
-
-  /**
-   * Clears the loaded dictionary and analysis results
-   */
-  const clearDictionary = () => {
-    setLogDictionary(null);
-    setResults(null);
-    sessionStorage.removeItem('logDictionary');
-  };
-
-  // Render functions for different screens and sections
+  // Render Functions
   const renderSelectScreen = () => (
     <div className="space-y-6">
       {/* Warning Banner */}
@@ -283,14 +284,14 @@ const LogAnalyzer = ({ onClose }) => {
             </h3>
             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
               <p>
-                The Log Analysis feature is experimental and may contain bugs. appreciate your feedback and patience.
+                The Log Analysis feature is experimental and may contain bugs. We appreciate your feedback and patience.
               </p>
               <p>
                 <strong>Privacy Information:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li><strong>File Analysis Mode:</strong> All analysis is performed locally in your browser. Log files and patterns are never transmitted outside or stored on any server.</li>
-                <li><strong>Splunk Analysis Mode:</strong> Requires communication with your Splunk server using your configured credentials to fetch logs.All analysis is performed locally in your browser.Log files and patterns are never transmitted outside or stored on any server.</li>
+                <li><strong>File Analysis Mode:</strong> All analysis is performed locally in your browser.</li>
+                <li><strong>Splunk Analysis Mode:</strong> Requires communication with your Splunk server.</li>
               </ul>
             </div>
           </div>
@@ -302,7 +303,7 @@ const LogAnalyzer = ({ onClose }) => {
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         <Button
-          onClick={() => setScreen('splunk')}
+          onClick={() => setScreen(SCREENS.SPLUNK)}
           variant="outline"
           className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
         >
@@ -316,7 +317,7 @@ const LogAnalyzer = ({ onClose }) => {
         </Button>
 
         <Button
-          onClick={() => setScreen('file')}
+          onClick={() => setScreen(SCREENS.FILE)}
           variant="outline"
           className="p-6 h-auto flex flex-col items-center gap-4 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
         >
@@ -338,7 +339,7 @@ const LogAnalyzer = ({ onClose }) => {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Splunk Analysis
         </h2>
-        <Button variant="outline" onClick={() => setScreen('select')}>
+        <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
           Back
         </Button>
       </div>
@@ -399,7 +400,7 @@ const LogAnalyzer = ({ onClose }) => {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           File Analysis
         </h2>
-        <Button variant="outline" onClick={() => setScreen('select')}>
+        <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
           Back
         </Button>
       </div>
@@ -498,7 +499,7 @@ const LogAnalyzer = ({ onClose }) => {
   const renderAnalyzeButton = () => (
     <Button 
       onClick={analyzeLogs} 
-      disabled={!logDictionary || loading || (screen === 'splunk' && !sessionId) || (screen === 'file' && !logFile)}
+      disabled={!logDictionary || loading || (screen === SCREENS.SPLUNK && !sessionId) || (screen === SCREENS.FILE && !logFile)}
       className="w-full"
     >
       {loading ? 'Analyzing...' : 'Analyze Logs'}
@@ -566,11 +567,9 @@ const LogAnalyzer = ({ onClose }) => {
                   <div className="space-y-3">
                     <div className="font-medium text-blue-600 dark:text-blue-400">{result.pattern.category}</div>
                     <div>Cause: {result.pattern.cause}</div>
-                    <div>Severity: <span className={
-                      result.pattern.severity.toLowerCase() === 'high' ? 'text-red-500' :
-                      result.pattern.severity.toLowerCase() === 'medium' ? 'text-yellow-500' :
-                      'text-green-500'
-                    }>{result.pattern.severity}</span></div>
+                    <div>Severity: <span className={SEVERITY_COLORS[result.pattern.severity.toLowerCase()]}>
+                      {result.pattern.severity}
+                    </span></div>
                     <div>
                       <div className="font-medium">Suggestions:</div>
                       <ul className="list-disc list-inside ml-4">
@@ -594,7 +593,7 @@ const LogAnalyzer = ({ onClose }) => {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex justify-between items-center">
-            {screen === 'select' ? (
+            {screen === SCREENS.SELECT ? (
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Log Analysis
               </h2>
@@ -606,9 +605,9 @@ const LogAnalyzer = ({ onClose }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {screen === 'select' && renderSelectScreen()}
-          {screen === 'splunk' && renderSplunkAnalysis()}
-          {screen === 'file' && renderFileAnalysis()}
+          {screen === SCREENS.SELECT && renderSelectScreen()}
+          {screen === SCREENS.SPLUNK && renderSplunkAnalysis()}
+          {screen === SCREENS.FILE && renderFileAnalysis()}
         </div>
       </div>
 

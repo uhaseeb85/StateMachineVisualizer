@@ -1,21 +1,48 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * RulesPanel Component
+ * 
+ * A panel component that manages transition rules between states in the state machine.
+ * Features include:
+ * - Adding new transition rules
+ * - Editing existing rules
+ * - Deleting rules
+ * - Importing rule descriptions from Excel
+ * - Displaying rule metadata and descriptions
+ * - Managing rule conditions and target states
+ * 
+ * Rules can be complex conditions (using + for AND operations) and can include
+ * negations (using ! prefix). Each rule defines a transition to a target state.
+ */
+
+import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ArrowRight, Upload, ChevronUp, ChevronDown, Edit2, Check, X } from 'lucide-react';
-import { toast } from 'sonner';
-import ChangeLog from './ChangeLog';
+import { Trash2, ArrowRight, Upload, Edit2, Check, X } from 'lucide-react';
 
-export default function RulesPanel({ states, selectedState, onStateSelect, setStates, onRuleDictionaryImport, loadedDictionary, setLoadedDictionary, addToChangeLog }) {
+const RulesPanel = ({ 
+  states, 
+  selectedState, 
+  onStateSelect, 
+  setStates, 
+  onRuleDictionaryImport, 
+  loadedDictionary, 
+  setLoadedDictionary, 
+  addToChangeLog 
+}) => {
+  // Rule editing states
   const [newRuleCondition, setNewRuleCondition] = useState("");
   const [newRuleNextState, setNewRuleNextState] = useState("");
-  const [ruleToDelete, setRuleToDelete] = useState(null);
   const [selectedRuleId, setSelectedRuleId] = useState(null);
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [editingRuleCondition, setEditingRuleCondition] = useState("");
-  const currentState = states.find(state => state.id === selectedState);
-  const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
 
-  // Initialize loadedDictionary from localStorage
+  // Get current state details
+  const currentState = states.find(state => state.id === selectedState);
+
+  /**
+   * Initialize rule dictionary from localStorage on component mount
+   */
   useEffect(() => {
     const savedDictionary = localStorage.getItem('ruleDictionary');
     if (savedDictionary) {
@@ -23,12 +50,15 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     }
   }, [setLoadedDictionary]);
 
+  /**
+   * Handles the import of rule descriptions from Excel file
+   * Updates both state and localStorage with the imported dictionary
+   */
   const handleDictionaryImport = async (event) => {
     try {
       const result = await onRuleDictionaryImport(event);
       if (result?.dictionary) {
         const dictionary = result.dictionary;
-        console.log('Setting dictionary:', dictionary, 'with length:', Object.keys(dictionary).length);
         setLoadedDictionary(dictionary);
         localStorage.setItem('ruleDictionary', JSON.stringify(dictionary));
       }
@@ -37,6 +67,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     }
   };
 
+  /**
+   * Adds a new rule or updates an existing one with the same condition
+   * Validates input and updates the state machine configuration
+   */
   const addRule = () => {
     if (!newRuleCondition.trim() || !newRuleNextState) return;
 
@@ -61,6 +95,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
             rules: updatedRules
           };
         } else {
+          // Add new rule
           addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
           
           return {
@@ -81,11 +116,14 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     setNewRuleNextState("");
   };
 
+  /**
+   * Deletes a rule from the current state
+   * @param {string} ruleId - ID of the rule to delete
+   */
   const deleteRule = (ruleId) => {
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
         const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
-        
         addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition}`);
         
         return {
@@ -98,28 +136,39 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     setStates(updatedStates);
   };
 
+  /**
+   * Handles clicking on a target state to navigate to it
+   * @param {string} stateId - ID of the target state
+   * @param {Event} e - Click event
+   */
   const handleTargetStateClick = (stateId, e) => {
-    e.preventDefault();  // Prevent default behavior
-    e.stopPropagation(); // Stop event propagation
+    e.preventDefault();
+    e.stopPropagation();
     onStateSelect(stateId, false); // Pass false to indicate no scrolling needed
   };
 
-  const handleRuleClick = (ruleId, condition) => {
-    if (selectedRuleId === ruleId) {
-      setSelectedRuleId(null);
-    } else {
-      setSelectedRuleId(ruleId);
-    }
+  /**
+   * Toggles rule selection for viewing descriptions
+   * @param {string} ruleId - ID of the rule
+   */
+  const handleRuleClick = (ruleId) => {
+    setSelectedRuleId(selectedRuleId === ruleId ? null : ruleId);
   };
 
+  /**
+   * Initiates rule editing mode
+   * @param {string} ruleId - ID of the rule to edit
+   */
   const handleEditRule = (ruleId) => {
-    const currentState = states.find(state => state.id === selectedState);
     const rule = currentState.rules.find(r => r.id === ruleId);
     setEditingRuleId(ruleId);
     setEditingRuleCondition(rule.condition);
     setNewRuleNextState(rule.nextState);
   };
 
+  /**
+   * Saves changes to an edited rule
+   */
   const saveEditedRule = () => {
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
@@ -152,11 +201,20 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     setNewRuleNextState("");
   };
 
+  /**
+   * Cancels rule editing mode
+   */
   const handleCancelEdit = () => {
     setEditingRuleId(null);
     setEditingRuleCondition("");
   };
 
+  /**
+   * Gets descriptions for individual parts of a compound rule
+   * Handles negated conditions (with ! prefix)
+   * @param {string} condition - Rule condition to get descriptions for
+   * @returns {Array} Array of rule parts with their descriptions
+   */
   const getRuleDescriptions = (condition) => {
     if (!condition) return [];
     
@@ -167,9 +225,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     return individualRules.map(rule => ({
       rule: rule,  // Keep original rule with ! for display
       description: loadedDictionary?.[rule.replace(/^!/, '')] // Remove ! prefix when searching dictionary
-    })).filter(item => item.description); // Only include rules that have descriptions
+    })).filter(item => item.description);
   };
 
+  // Render placeholder when no state is selected
   if (!selectedState) {
     return (
       <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
@@ -185,6 +244,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
     <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
                     rules-section">
+      {/* Header Section */}
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -222,6 +282,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
         <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
       </div>
 
+      {/* Add Rule Section */}
       <div className="mb-4">
         <div className="flex gap-2">
           <Input
@@ -252,6 +313,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
         </div>
       </div>
 
+      {/* Rules List Section */}
       <div className="space-y-2">
         {currentState?.rules.map(rule => {
           const targetState = states.find(s => s.id === rule.nextState);
@@ -261,6 +323,7 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
 
           return (
             <div key={rule.id} className="flex flex-col gap-1">
+              {/* Rule Item */}
               <div className="grid grid-cols-[1fr,auto,1fr,auto] gap-4 items-center 
                            bg-white dark:bg-gray-700 p-1 rounded-lg
                            hover:bg-gray-50 dark:hover:bg-gray-600
@@ -268,9 +331,9 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                            hover:shadow-sm cursor-pointer group
                            border border-transparent hover:border-gray-200 dark:hover:border-gray-500
                            relative">
-                {/* Rule Column */}
+                {/* Rule Condition */}
                 <div 
-                  onClick={() => !isEditing && handleRuleClick(rule.id, rule.condition)}
+                  onClick={() => !isEditing && handleRuleClick(rule.id)}
                   className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md
                            hover:bg-gray-100 dark:hover:bg-gray-500/50 cursor-pointer
                            flex items-center justify-between"
@@ -289,10 +352,10 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
                   )}
                 </div>
 
-                {/* Divider */}
+                {/* Visual Separator */}
                 <div className="h-2 w-[1px] bg-gray-300 dark:bg-gray-500" />
 
-                {/* State Column */}
+                {/* Target State */}
                 <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
                   <div className="flex items-center gap-2">
                     <ArrowRight className="w-4 h-4 text-gray-400" />
@@ -390,4 +453,29 @@ export default function RulesPanel({ states, selectedState, onStateSelect, setSt
       </div>
     </div>
   );
-}
+};
+
+RulesPanel.propTypes = {
+  // Array of state objects
+  states: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    rules: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      condition: PropTypes.string.isRequired,
+      nextState: PropTypes.string.isRequired
+    }))
+  })).isRequired,
+  // Currently selected state ID
+  selectedState: PropTypes.string,
+  // Callback functions
+  onStateSelect: PropTypes.func.isRequired,
+  setStates: PropTypes.func.isRequired,
+  onRuleDictionaryImport: PropTypes.func.isRequired,
+  addToChangeLog: PropTypes.func.isRequired,
+  // Rule dictionary state
+  loadedDictionary: PropTypes.object,
+  setLoadedDictionary: PropTypes.func.isRequired
+};
+
+export default RulesPanel;

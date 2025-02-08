@@ -1,146 +1,50 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { X, ArrowRight, Loader2, FileDown, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
-import { Document, Page, Text, View, StyleSheet, PDFViewer, pdf } from '@react-pdf/renderer';
+/**
+ * PathFinderModal Component
+ * 
+ * A modal component that provides advanced path finding capabilities in the state machine.
+ * Features include:
+ * - Finding paths to end states
+ * - Finding paths between specific states
+ * - Finding paths through intermediate states
+ * - Detecting loops in the state machine
+ * - Exporting results to HTML
+ * - Pagination for large result sets
+ * 
+ * The component uses depth-first search (DFS) with cycle detection for path finding
+ * and provides visual feedback during the search process.
+ */
 
-export default function PathFinderModal({ states, onClose }) {
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+const PathFinderModal = ({ states, onClose }) => {
+  // State Selection
   const [selectedStartState, setSelectedStartState] = useState('');
   const [selectedEndState, setSelectedEndState] = useState('');
   const [selectedIntermediateState, setSelectedIntermediateState] = useState('');
   const [searchMode, setSearchMode] = useState('endStates');
+
+  // Search State
   const [paths, setPaths] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [shouldCancel, setShouldCancel] = useState(false);
-  const PATH_LIMIT = 100;
-  const [currentPage, setCurrentPage] = useState(1);
-  const pathsPerPage = 250;
-  const [error, setError] = useState(null);
   const shouldContinueRef = useRef(true);
 
-  const pdfStyles = StyleSheet.create({
-    page: {
-      padding: 20,
-      backgroundColor: 'white',
-    },
-    title: {
-      fontSize: 18,
-      marginBottom: 12,
-      fontWeight: 'bold',
-      color: '#111827',
-    },
-    pathContainer: {
-      marginBottom: 8,
-      padding: 8,
-      backgroundColor: '#f9fafb',
-      borderRadius: 4,
-    },
-    stateContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 4,
-      marginBottom: 4,
-    },
-    state: {
-      padding: '3px 6px',
-      backgroundColor: 'white',
-      borderRadius: 3,
-      borderWidth: 1,
-      borderColor: '#e5e7eb',
-    },
-    stateText: {
-      fontSize: 10,
-      color: '#111827',
-    },
-    arrowContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    arrow: {
-      color: '#9ca3af',
-      fontSize: 10,
-    },
-    rulesContainer: {
-      gap: 2,
-    },
-    failedRule: {
-      padding: '2px 4px',
-      backgroundColor: '#fee2e2',
-      color: '#b91c1c',
-      borderRadius: 2,
-      fontSize: 10,
-      marginVertical: 1,
-    },
-    successRule: {
-      padding: '2px 4px',
-      backgroundColor: '#dcfce7',
-      color: '#15803d',
-      borderRadius: 2,
-      fontSize: 10,
-      marginVertical: 1,
-    },
-    pathInfo: {
-      fontSize: 8,
-      color: '#6b7280',
-      marginTop: 4,
-    },
-    pathNumber: {
-      fontSize: 10,
-      fontWeight: 'bold',
-      color: '#6b7280',
-      marginBottom: 4,
-    },
-  });
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pathsPerPage = 250;
 
-  const PathsDocument = () => (
-    <Document>
-      <Page size="A4" style={pdfStyles.page}>
-        <Text style={pdfStyles.title}>Found Paths</Text>
-        {paths.map((path, index) => (
-          <View key={index} style={pdfStyles.pathContainer}>
-            <Text style={pdfStyles.pathNumber}>Path {index + 1}</Text>
-            <View style={pdfStyles.stateContainer}>
-              {path.states.map((state, stateIndex) => (
-                <React.Fragment key={stateIndex}>
-                  <View style={pdfStyles.state}>
-                    <Text style={pdfStyles.stateText}>{state}</Text>
-                  </View>
-                  
-                  {stateIndex < path.states.length - 1 && (
-                    <>
-                      <View style={pdfStyles.rulesContainer}>
-                        {path.failedRules[stateIndex]?.map((rule, ruleIndex) => (
-                          <Text key={ruleIndex} style={pdfStyles.failedRule}>
-                            ❌ R{rule.split('R')[1]}
-                          </Text>
-                        ))}
-                        <Text style={pdfStyles.successRule}>
-                          ✓ {path.rules[stateIndex]}
-                        </Text>
-                      </View>
-                      <Text style={pdfStyles.arrow}>→</Text>
-                    </>
-                  )}
-                </React.Fragment>
-              ))}
-            </View>
-            <Text style={pdfStyles.pathInfo}>
-              Path length: {path.states.length} states, {path.rules.length} transitions
-            </Text>
-          </View>
-        ))}
-      </Page>
-    </Document>
-  );
-
+  /**
+   * Core path finding algorithm using depth-first search
+   * Supports finding paths to end states, between states, and through intermediate states
+   */
   const findPaths = useCallback(async (startStateId, endStateId = null, intermediateStateId = null) => {
     const startState = states.find(s => s.id === startStateId);
     if (!startState) {
-      setError('Start state not found');
+      toast.error('Start state not found');
       return;
     }
 
@@ -149,6 +53,14 @@ export default function PathFinderModal({ states, onClose }) {
     let totalStates = states.length;
     let processedStates = 0;
 
+    /**
+     * Recursive DFS function for path finding
+     * @param {Object} currentState - Current state in the traversal
+     * @param {Array} currentPath - Current path being explored
+     * @param {Array} rulePath - Rules used in the current path
+     * @param {Array} failedRulesPath - Failed rules at each step
+     * @param {boolean} foundIntermediate - Whether intermediate state was found (if required)
+     */
     const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = [], foundIntermediate = false) => {
       if (!shouldContinueRef.current) {
         throw new Error('Search cancelled');
@@ -160,8 +72,10 @@ export default function PathFinderModal({ states, onClose }) {
       processedStates++;
       setProgress(Math.min((processedStates / (totalStates * 2)) * 100, 99));
 
+      // Add delay to prevent UI freezing
       await new Promise(resolve => setTimeout(resolve, 50));
 
+      // Check if current path is valid based on search mode
       if (intermediateStateId) {
         if (currentState.id === endStateId && foundIntermediate) {
           const newPath = {
@@ -194,6 +108,7 @@ export default function PathFinderModal({ states, onClose }) {
         }
       }
 
+      // Explore next states
       for (let i = 0; i < currentState.rules.length; i++) {
         const rule = currentState.rules[i];
         const nextState = states.find(s => s.id === rule.nextState);
@@ -222,17 +137,20 @@ export default function PathFinderModal({ states, onClose }) {
         console.log('Search was cancelled');
       } else {
         console.error('Error during search:', error);
+        toast.error('An error occurred during path finding');
       }
     } finally {
       setIsSearching(false);
     }
-  }, [states, shouldContinueRef]);
+  }, [states]);
 
+  /**
+   * Initiates path finding based on current search parameters
+   */
   const handleFindPaths = async () => {
     if (!selectedStartState) return;
     
     try {
-      setError(null);
       shouldContinueRef.current = true;
       if (searchMode === 'intermediateState') {
         await findPaths(selectedStartState, selectedEndState, selectedIntermediateState);
@@ -241,30 +159,36 @@ export default function PathFinderModal({ states, onClose }) {
       }
     } catch (error) {
       console.error('Path finding error:', error);
-      setError('An error occurred while finding paths');
+      toast.error('An error occurred while finding paths');
     }
   };
 
+  /**
+   * Cancels the current search operation
+   */
   const handleCancel = () => {
     shouldContinueRef.current = false;
     setIsSearching(false);
   };
 
+  // Calculate pagination values
   const indexOfLastPath = currentPage * pathsPerPage;
   const indexOfFirstPath = indexOfLastPath - pathsPerPage;
   const currentPaths = paths.slice(indexOfFirstPath, indexOfLastPath);
   const totalPages = Math.ceil(paths.length / pathsPerPage);
 
+  // Reset pagination when paths change
   useEffect(() => {
     setCurrentPage(1);
   }, [paths]);
 
+  /**
+   * Detects loops in the state machine using DFS with cycle detection
+   */
   const handleDetectLoops = async () => {
     try {
-      setError(null);
       setIsSearching(true);
       setPaths([]);
-      setShouldCancel(false);
       shouldContinueRef.current = true;
       setProgress(0);
 
@@ -272,6 +196,9 @@ export default function PathFinderModal({ states, onClose }) {
       const visited = new Set();
       const stack = new Set();
 
+      /**
+       * DFS function for loop detection
+       */
       const dfs = async (currentState, path = [], rulePath = [], failedRulesPath = []) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
@@ -285,7 +212,7 @@ export default function PathFinderModal({ states, onClose }) {
           const loopRules = [...rulePath.slice(loopStartIndex)];
           const loopFailedRules = [...failedRulesPath.slice(loopStartIndex)];
 
-          // Find the rules that complete the loop (from last state back to start)
+          // Find rules that complete the loop
           const lastState = states.find(s => s.name === path[path.length - 1]);
           if (lastState) {
             const rulesBackToStart = lastState.rules
@@ -293,7 +220,7 @@ export default function PathFinderModal({ states, onClose }) {
               .map(rule => rule.condition);
             
             if (rulesBackToStart.length > 0) {
-              loopRules.push(rulesBackToStart[0]); // Add the first rule that completes the loop
+              loopRules.push(rulesBackToStart[0]);
               loopFailedRules.push(lastState.rules
                 .slice(0, lastState.rules.findIndex(r => rulesBackToStart.includes(r.condition)))
                 .map(r => r.condition)
@@ -301,13 +228,12 @@ export default function PathFinderModal({ states, onClose }) {
             }
           }
 
-          const loop = {
+          loops.push({
             states: loopStates,
             rules: loopRules,
             failedRules: loopFailedRules
-          };
+          });
           
-          loops.push(loop);
           setPaths([...loops]);
           return;
         }
@@ -333,6 +259,7 @@ export default function PathFinderModal({ states, onClose }) {
         stack.delete(currentState.id);
       };
 
+      // Search for loops starting from each state
       for (const state of states) {
         visited.clear();
         stack.clear();
@@ -351,7 +278,7 @@ export default function PathFinderModal({ states, onClose }) {
         console.log('Search was cancelled');
       } else {
         console.error('Error during loop detection:', error);
-        setError('An error occurred while detecting loops');
+        toast.error('An error occurred while detecting loops');
       }
     } finally {
       setIsSearching(false);
@@ -359,6 +286,9 @@ export default function PathFinderModal({ states, onClose }) {
     }
   };
 
+  /**
+   * Switches between different search modes
+   */
   const handleModeSwitch = (newMode) => {
     setSearchMode(newMode);
     setSelectedEndState('');
@@ -366,10 +296,12 @@ export default function PathFinderModal({ states, onClose }) {
     setPaths([]);
     setIsSearching(false);
     setProgress(0);
-    setError(null);
     shouldContinueRef.current = true;
   };
 
+  /**
+   * Exports results to an HTML file with styling
+   */
   const exportResults = () => {
     const htmlContent = `
       <!DOCTYPE html>
@@ -499,6 +431,7 @@ export default function PathFinderModal({ states, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
+        {/* Header Section */}
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Find Paths</h2>
@@ -523,8 +456,10 @@ export default function PathFinderModal({ states, onClose }) {
           </div>
         </div>
 
+        {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-6 pt-0">
           <div className="space-y-6">
+            {/* Mode Selection */}
             <div className="flex gap-4">
               <Button
                 onClick={() => handleModeSwitch('endStates')}
@@ -559,6 +494,7 @@ export default function PathFinderModal({ states, onClose }) {
               </Button>
             </div>
 
+            {/* State Selection */}
             <div className="flex gap-4 items-center">
               <select
                 value={selectedStartState}
@@ -628,6 +564,7 @@ export default function PathFinderModal({ states, onClose }) {
               )}
             </div>
 
+            {/* Progress Bar */}
             {isSearching && (
               <div className="space-y-2">
                 <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -642,6 +579,7 @@ export default function PathFinderModal({ states, onClose }) {
               </div>
             )}
 
+            {/* Results Section */}
             {paths.length > 0 && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -693,6 +631,7 @@ export default function PathFinderModal({ states, onClose }) {
                   </div>
                 ))}
 
+                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex justify-center gap-2 mt-4">
                     <Button
@@ -716,6 +655,7 @@ export default function PathFinderModal({ states, onClose }) {
               </div>
             )}
 
+            {/* No Results Message */}
             {paths.length === 0 && (selectedStartState && (searchMode === 'endStates' || selectedEndState)) && (
               <div className="text-center text-gray-500 dark:text-gray-400 py-4">
                 No paths found.
@@ -726,4 +666,20 @@ export default function PathFinderModal({ states, onClose }) {
       </div>
     </div>
   );
-} 
+};
+
+PathFinderModal.propTypes = {
+  // Array of state objects
+  states: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    rules: PropTypes.arrayOf(PropTypes.shape({
+      nextState: PropTypes.string.isRequired,
+      condition: PropTypes.string.isRequired
+    })).isRequired
+  })).isRequired,
+  // Modal close handler
+  onClose: PropTypes.func.isRequired
+};
+
+export default PathFinderModal;
