@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { Save, Upload, Download, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Share2, ArrowUpFromLine, ArrowDownToLine, History, Search } from 'lucide-react';
+import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search } from 'lucide-react';
 import LogAnalyzer from './LogAnalyzer';
 
 export default function TopActionBar({ 
@@ -63,7 +64,7 @@ export default function TopActionBar({
             <Button 
               onClick={onSave}
               title="Save your current state machine configuration"
-              className="save-button bg-gray-900 text-white text-sm
+              className="save-action-button bg-gray-900 text-white text-sm
                        dark:bg-gray-800 dark:text-gray-100
                        hover:bg-blue-600 hover:scale-105
                        dark:hover:bg-blue-600
@@ -126,7 +127,7 @@ export default function TopActionBar({
         <div className="flex items-center gap-4">
           <Button
             onClick={() => setShowLogAnalyzer(true)}
-            className="save-button bg-gray-900 text-white text-sm
+            className="log-analyzer-button bg-gray-900 text-white text-sm
                      dark:bg-gray-800 dark:text-gray-100
                      hover:bg-blue-600 hover:scale-105
                      dark:hover:bg-blue-600
@@ -182,17 +183,13 @@ export default function TopActionBar({
   );
 } 
 
-<style jsx global>{`
-  @keyframes shimmer {
-    0% {
-      background-position: -200% center;
-    }
-    100% {
-      background-position: 200% center;
-    }
-  }
-  .animate-shimmer {
-    background-size: 200% auto;
-    animation: shimmer 3s linear infinite;
-  }
-`}</style>
+TopActionBar.propTypes = {
+  isDarkMode: PropTypes.bool.isRequired,
+  toggleTheme: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
+  onExcelImport: PropTypes.func.isRequired,
+  onSimulate: PropTypes.func.isRequired,
+  onFindPaths: PropTypes.func.isRequired,
+  startTour: PropTypes.func.isRequired,
+  onExportCSV: PropTypes.func.isRequired
+};

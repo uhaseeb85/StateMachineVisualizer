@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import SimulationModal from './SimulationModal';
 import StatePanel from './StatePanel';
 import RulesPanel from './RulesPanel';
@@ -8,7 +9,7 @@ import useSimulation from './hooks/useSimulation';
 import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import PathFinderModal from './PathFinderModal';
-import { ChevronDown, ChevronUp, Book, History, Settings } from 'lucide-react';
+import { Book, History } from 'lucide-react';
 import UserGuideModal from './UserGuideModal';
 import { Button } from "@/components/ui/button";
 import VersionInfo from './VersionInfo';
@@ -25,7 +26,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     selectedState,
     setSelectedState,
     addState,
-    deleteState,
     saveFlow,
     handleImport,
     handleExcelImport,
@@ -62,7 +62,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     const savedDictionary = localStorage.getItem(DICTIONARY_STORAGE_KEY);
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
-  const [isDictionaryExpanded, setIsDictionaryExpanded] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
@@ -84,12 +83,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     }
   };
 
-  const clearDictionary = () => {
-    setLoadedDictionary(null);
-    localStorage.removeItem(DICTIONARY_STORAGE_KEY);
-  };
-
-  // Add new state for state dictionary
   const [loadedStateDictionary, setLoadedStateDictionary] = useState(() => {
     const savedDictionary = localStorage.getItem('stateDictionary');
     return savedDictionary ? JSON.parse(savedDictionary) : null;
@@ -98,7 +91,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
   const handleStateSelect = (stateId, shouldScroll = true) => {
     setSelectedState(stateId);
     
-    // Only scroll if shouldScroll is true
     if (shouldScroll) {
       const stateElement = document.querySelector(`[data-state-id="${stateId}"]`);
       if (stateElement) {
@@ -107,7 +99,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     }
   };
 
-  // First, add the button style as a constant (same as in TopActionBar)
   const buttonClass = "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md \
                       bg-transparent \
                       text-gray-700 dark:text-gray-200 \
@@ -118,11 +109,9 @@ const StateMachineVisualizerContent = ({ startTour }) => {
                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400";
 
   const handleExportCSV = () => {
-    // Get the original data with all columns from localStorage if it exists
     const lastImportedData = localStorage.getItem('lastImportedCSV');
     let baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
     
-    // Create current state data
     const currentData = states.flatMap(sourceState => 
       sourceState.rules.map(rule => {
         const destState = states.find(s => s.id === rule.nextState);
@@ -134,17 +123,13 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       })
     );
 
-    // If we have base data, merge current state with original additional columns
     let csvData;
     if (baseData.length > 0) {
-      // Get all column names from the original data
       const allColumns = Object.keys(baseData[0]);
       
-      // Create new rows with all columns
       csvData = currentData.map(currentRow => {
         const newRow = {};
         
-        // Find matching row from original data based only on Source and Destination
         const matchingRow = baseData.find(
           baseRow => 
             baseRow['Source Node'] === currentRow['Source Node'] &&
@@ -153,26 +138,20 @@ const StateMachineVisualizerContent = ({ startTour }) => {
 
         allColumns.forEach(column => {
           if (['Source Node', 'Destination Node', 'Rule List'].includes(column)) {
-            // Use current state data for these columns
             newRow[column] = currentRow[column];
           } else {
-            // For other columns, use data from matching row if found
             newRow[column] = matchingRow ? matchingRow[column] : '';
           }
         });
         return newRow;
       });
     } else {
-      // If no original data, just use current state
       csvData = currentData;
     }
 
-    // Create workbook and add sheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(csvData);
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-
-    // Generate and download file
     XLSX.writeFile(wb, 'state_machine_export.csv');
   };
 
@@ -214,11 +193,9 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
-          onShowChangeLog={() => setShowChangeLog(true)}
           onExportCSV={handleExportCSV}
         />
 
-        {/* States and Rules panels first */}
         <div className="flex flex-col lg:flex-row gap-8 mb-8">
           <StatePanel
             states={states}
@@ -323,7 +300,6 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         />
       </div>
 
-      {/* Bottom right buttons - moved 25px to the left */}
       <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
         <Button
           onClick={() => setShowChangeLog(true)}
@@ -343,17 +319,14 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         </Button>
       </div>
 
-      {/* User Guide Modal */}
       {showUserGuide && (
         <UserGuideModal onClose={() => setShowUserGuide(false)} />
       )}
 
-      {/* Splunk Config Modal */}
       {showSplunkConfig && (
         <SplunkConfig
           onClose={() => setShowSplunkConfig(false)}
-          onSave={(config) => {
-            // Handle config save
+          onSave={() => {
             setShowSplunkConfig(false);
           }}
         />
@@ -362,6 +335,10 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       <VersionInfo />
     </div>
   );
+};
+
+StateMachineVisualizerContent.propTypes = {
+  startTour: PropTypes.func.isRequired
 };
 
 const StateMachineVisualizer = () => {

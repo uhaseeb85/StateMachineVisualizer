@@ -1,21 +1,46 @@
-import React, { useState } from 'react';
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { useState } from 'react';
+import PropTypes from 'prop-types';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from 'sonner';
 
 export default function SplunkConfig({ onClose, onSave }) {
-  const [config, setConfig] = useState({
-    serverUrl: '',
-    port: '',
-    token: '',
-    index: '',
-    username: '',
-    password: ''
+  const [config, setConfig] = useState(() => {
+    try {
+      const savedConfig = localStorage.getItem('splunkConfig');
+      return savedConfig ? JSON.parse(savedConfig) : {
+        serverUrl: '',
+        port: '',
+        token: '',
+        index: ''
+      };
+    } catch (error) {
+      console.error('Error loading Splunk config:', error);
+      return {
+        serverUrl: '',
+        port: '',
+        token: '',
+        index: ''
+      };
+    }
   });
 
   const handleSave = () => {
-    localStorage.setItem('splunkConfig', JSON.stringify(config));
-    onSave(config);
-    onClose();
+    // Validate required fields
+    if (!config.serverUrl || !config.port || !config.token || !config.index) {
+      toast.error('All fields are required');
+      return;
+    }
+
+    try {
+      localStorage.setItem('splunkConfig', JSON.stringify(config));
+      toast.success('Splunk configuration saved successfully');
+      onSave(config);
+      onClose();
+    } catch (error) {
+      console.error('Error saving Splunk config:', error);
+      toast.error('Failed to save Splunk configuration');
+    }
   };
 
   return (
@@ -61,6 +86,9 @@ export default function SplunkConfig({ onClose, onSave }) {
                 onChange={(e) => setConfig({...config, token: e.target.value})}
                 placeholder="Splunk API Token"
               />
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Use a Splunk authentication token for secure access. Never share or expose your token.
+              </p>
             </div>
 
             <div>
@@ -88,4 +116,9 @@ export default function SplunkConfig({ onClose, onSave }) {
       </div>
     </div>
   );
-} 
+}
+
+SplunkConfig.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired
+};

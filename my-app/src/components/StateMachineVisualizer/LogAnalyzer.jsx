@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Upload, AlertTriangle, X, Download, Settings, FileText, Database } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AlertTriangle, X, Download, Settings, FileText, Database } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import SplunkConfig from './SplunkConfig';
 import { toast } from 'sonner';
+import { searchSplunk } from '@/api/splunk';
 
 export default function LogAnalyzer({ onClose }) {
   const [sessionId, setSessionId] = useState('');
   const [logDictionary, setLogDictionary] = useState(() => {
-    // Initialize from sessionStorage if available
     const savedDictionary = sessionStorage.getItem('logDictionary');
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
-  const [results, setResults] = useState(null); // Changed from [] to null to differentiate between "no results" and "not analyzed yet"
+  const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [logFile, setLogFile] = useState(null);
-  const [screen, setScreen] = useState('select'); // 'select', 'splunk', or 'file'
+  const [screen, setScreen] = useState('select');
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
 
-  // Save dictionary to sessionStorage whenever it changes
   useEffect(() => {
     if (logDictionary) {
       sessionStorage.setItem('logDictionary', JSON.stringify(logDictionary));
@@ -36,14 +36,9 @@ export default function LogAnalyzer({ onClose }) {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(firstSheet);
       
-      // Clear any existing results when loading a new dictionary
       setResults(null);
-      
-      // Clear the existing dictionary from sessionStorage before setting new one
       sessionStorage.removeItem('logDictionary');
       setLogDictionary(jsonData);
-      
-      // Reset the file input
       event.target.value = '';
     };
     
@@ -57,19 +52,19 @@ export default function LogAnalyzer({ onClose }) {
 
   const analyzeLogs = async () => {
     if (!logDictionary) {
-      alert('Please upload a log dictionary first');
+      toast.error('Please upload a log dictionary first');
       return;
     }
 
     if (screen === 'splunk') {
       if (!sessionId) {
-        alert('Please enter a session ID');
+        toast.error('Please enter a session ID');
         return;
       }
       await analyzeSplunkLogs();
     } else {
       if (!logFile) {
-        alert('Please upload a log file');
+        toast.error('Please upload a log file');
         return;
       }
       await analyzeLogFile();
@@ -80,25 +75,16 @@ export default function LogAnalyzer({ onClose }) {
     setLoading(true);
     try {
       const config = JSON.parse(localStorage.getItem('splunkConfig'));
-      
-      // Fetch logs from Splunk
-      const response = await fetch('/api/splunk/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          config,
-          sessionId,
-          searchQuery: `index=${config.index} sessionId=${sessionId}`
-        })
-      });
+      if (!config) {
+        throw new Error('Splunk configuration not found. Please configure Splunk first.');
+      }
 
-      const logs = await response.json();
+      const searchQuery = `index=${config.index} sessionId=${sessionId}`;
+      const logs = await searchSplunk(config, searchQuery);
       processLogs(logs);
     } catch (error) {
       console.error('Error analyzing Splunk logs:', error);
-      alert('Error analyzing Splunk logs: ' + error.message);
+      toast.error('Error analyzing Splunk logs: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -111,10 +97,8 @@ export default function LogAnalyzer({ onClose }) {
       console.log('Analyzing log file with content length:', text.length);
       const allLines = text.split('\n').map(line => line.trim());
       
-      // Create groups of three lines with overlap
       const logs = [];
       for (let i = 0; i < allLines.length; i++) {
-        // Get three lines for the pattern matching
         const threeLines = allLines.slice(i, i + 3).join('\n');
         if (threeLines) {
           logs.push({
@@ -124,7 +108,6 @@ export default function LogAnalyzer({ onClose }) {
               before: allLines.slice(Math.max(0, i - 2), i),
               after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
             },
-            // Store the individual lines that make up this group
             matchedLines: allLines.slice(i, i + 3)
           });
         }
@@ -134,7 +117,7 @@ export default function LogAnalyzer({ onClose }) {
       processLogs(logs);
     } catch (error) {
       console.error('Error analyzing log file:', error);
-      alert('Error analyzing log file: ' + error.message);
+      toast.error('Error analyzing log file: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -143,17 +126,16 @@ export default function LogAnalyzer({ onClose }) {
   const processLogs = (logs) => {
     console.log('Processing logs with dictionary patterns:', logDictionary.length);
     
-    // Create a map to group matches by pattern
-    const matchGroups = new Map(); // key: pattern_id, value: array of matches
+    const matchGroups = new Map();
 
     logs.forEach(log => {
       logDictionary.forEach(pattern => {
         try {
-          const regex = new RegExp(pattern.regex_pattern, 'gm'); // Add multiline flag
+          const regex = new RegExp(pattern.regex_pattern, 'gm');
           const isMatch = regex.test(log.message);
           
           if (isMatch) {
-            const patternKey = pattern.regex_pattern; // Use regex pattern as key
+            const patternKey = pattern.regex_pattern;
             if (!matchGroups.has(patternKey)) {
               matchGroups.set(patternKey, {
                 pattern: {
@@ -171,7 +153,6 @@ export default function LogAnalyzer({ onClose }) {
             const group = matchGroups.get(patternKey);
             group.count++;
             
-            // Only store the first match details
             if (group.matches.length === 0) {
               group.matches.push({
                 log: log.message,
@@ -186,7 +167,6 @@ export default function LogAnalyzer({ onClose }) {
       });
     });
 
-    // Convert map to array and filter out empty groups
     const matches = Array.from(matchGroups.values())
       .filter(group => group.matches.length > 0)
       .map(group => ({
@@ -198,7 +178,6 @@ export default function LogAnalyzer({ onClose }) {
     console.log('Found match groups:', matches.length);
     setResults(matches);
 
-    // Show feedback if no matches were found
     if (matches.length === 0) {
       toast.info('No known patterns or errors were found in the log file.');
     }
@@ -215,7 +194,7 @@ export default function LogAnalyzer({ onClose }) {
       },
       {
         category: "Authentication",
-        regex_pattern: ".*Failed login attempt for user '(.+)' from IP (\\d+\\.\\d+\\.\\d+\\.\\d+).*",
+        regex_pattern: ".*Failed login attempt for user &apos;(.+)&apos; from IP (\\d+\\.\\d+\\.\\d+\\.\\d+).*",
         cause: "Multiple failed login attempts detected",
         severity: "Medium",
         suggestions: "Verify user credentials;Check for suspicious IP activity;Review security logs"
@@ -319,13 +298,13 @@ export default function LogAnalyzer({ onClose }) {
           About Splunk Authentication
         </h3>
         <p className="text-sm text-blue-800 dark:text-blue-300">
-          To use Splunk integration, you need an authentication token. Here's how to get one:
+          To use Splunk integration, you need an authentication token. Here&apos;s how to get one:
         </p>
         <ol className="list-decimal list-inside mt-2 space-y-1 text-sm text-blue-800 dark:text-blue-300">
           <li>Log into your Splunk instance</li>
           <li>Go to Settings {String.fromCharCode(62)} User Settings {String.fromCharCode(62)} Account Settings</li>
-          <li>Look for "Tokens" or "Authentication Tokens"</li>
-          <li>Click "New Token" and follow the prompts</li>
+          <li>Look for &quot;Tokens&quot; or &quot;Authentication Tokens&quot;</li>
+          <li>Click &quot;New Token&quot; and follow the prompts</li>
         </ol>
       </div>
 
@@ -570,7 +549,7 @@ export default function LogAnalyzer({ onClose }) {
               </h2>
             ) : null}
             <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
-              <X className="h-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -586,11 +565,15 @@ export default function LogAnalyzer({ onClose }) {
       {showSplunkConfig && (
         <SplunkConfig
           onClose={() => setShowSplunkConfig(false)}
-          onSave={(config) => {
+          onSave={() => {
             setShowSplunkConfig(false);
           }}
         />
       )}
     </div>
   );
-} 
+}
+
+LogAnalyzer.propTypes = {
+  onClose: PropTypes.func.isRequired
+};

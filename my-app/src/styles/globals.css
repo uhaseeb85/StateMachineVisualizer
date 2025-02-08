@@ -15,4 +15,18 @@
 
 .highlight-pulse {
   animation: highlightPulse 1.5s ease-out;
-} 
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}

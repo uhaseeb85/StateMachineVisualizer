@@ -1,27 +1,13 @@
-// Modern Splunk REST API integration
+// Modern Splunk REST API integration with token-based authentication
 export async function searchSplunk(config, searchQuery) {
   try {
-    // Get authentication token
-    const authResponse = await fetch(`${config.host}/services/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `username=${encodeURIComponent(config.username)}&password=${encodeURIComponent(config.password)}`,
-    });
-
-    if (!authResponse.ok) {
-      throw new Error('Authentication failed');
-    }
-
-    const authData = await authResponse.text();
-    const sessionKey = authData.match(/<sessionKey>([^<]+)<\/sessionKey>/)[1];
+    const baseUrl = `${config.serverUrl}:${config.port}`;
 
     // Create search job
-    const searchJobResponse = await fetch(`${config.host}/services/search/jobs`, {
+    const searchJobResponse = await fetch(`${baseUrl}/services/search/jobs`, {
       method: 'POST',
       headers: {
-        'Authorization': `Splunk ${sessionKey}`,
+        'Authorization': `Bearer ${config.token}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: `search=${encodeURIComponent(searchQuery)}&output_mode=json`,
@@ -42,10 +28,10 @@ export async function searchSplunk(config, searchQuery) {
 
     while (!isDone && attempts < maxAttempts) {
       const statusResponse = await fetch(
-        `${config.host}/services/search/jobs/${sid}?output_mode=json`,
+        `${baseUrl}/services/search/jobs/${sid}?output_mode=json`,
         {
           headers: {
-            'Authorization': `Splunk ${sessionKey}`,
+            'Authorization': `Bearer ${config.token}`,
           },
         }
       );
@@ -55,15 +41,15 @@ export async function searchSplunk(config, searchQuery) {
       }
 
       const statusData = await statusResponse.json();
-      const isDone = statusData.entry[0].content.isDone;
+      isDone = statusData.entry[0].content.isDone;
 
       if (isDone) {
         // Get results
         const resultsResponse = await fetch(
-          `${config.host}/services/search/jobs/${sid}/results?output_mode=json`,
+          `${baseUrl}/services/search/jobs/${sid}/results?output_mode=json`,
           {
             headers: {
-              'Authorization': `Splunk ${sessionKey}`,
+              'Authorization': `Bearer ${config.token}`,
             },
           }
         );
@@ -81,6 +67,10 @@ export async function searchSplunk(config, searchQuery) {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between polls
     }
 
+    if (attempts >= maxAttempts) {
+      throw new Error('Search job timed out');
+    }
+
     return results;
   } catch (error) {
     console.error('Splunk API error:', error);
@@ -90,15 +80,14 @@ export async function searchSplunk(config, searchQuery) {
 
 export async function testSplunkConnection(config) {
   try {
-    const authResponse = await fetch(`${config.host}/services/auth/login`, {
-      method: 'POST',
+    const baseUrl = `${config.serverUrl}:${config.port}`;
+    const response = await fetch(`${baseUrl}/services/search/jobs?output_mode=json&count=1`, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${config.token}`,
       },
-      body: `username=${encodeURIComponent(config.username)}&password=${encodeURIComponent(config.password)}`,
     });
 
-    if (!authResponse.ok) {
+    if (!response.ok) {
       throw new Error('Authentication failed');
     }
 
@@ -107,4 +96,4 @@ export async function testSplunkConnection(config) {
     console.error('Splunk connection test failed:', error);
     throw error;
   }
-} 
+}
