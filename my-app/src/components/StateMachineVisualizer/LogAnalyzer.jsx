@@ -1,3 +1,17 @@
+/**
+ * LogAnalyzer Component
+ * 
+ * A comprehensive log analysis tool that supports both local file analysis
+ * and Splunk integration. This component allows users to:
+ * - Upload and analyze local log files
+ * - Connect to Splunk for remote log analysis
+ * - Import/manage log pattern dictionaries
+ * - View analysis results with context
+ * 
+ * The component uses a pattern-matching approach with regular expressions
+ * to identify known patterns in logs and provide relevant suggestions.
+ */
+
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
@@ -8,24 +22,30 @@ import SplunkConfig from './SplunkConfig';
 import { toast } from 'sonner';
 import { searchSplunk } from '@/api/splunk';
 
-export default function LogAnalyzer({ onClose }) {
+const LogAnalyzer = ({ onClose }) => {
+  // Core state management
   const [sessionId, setSessionId] = useState('');
   const [logDictionary, setLogDictionary] = useState(() => {
     const savedDictionary = sessionStorage.getItem('logDictionary');
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(null); // null indicates no analysis performed yet
   const [loading, setLoading] = useState(false);
   const [logFile, setLogFile] = useState(null);
-  const [screen, setScreen] = useState('select');
+  const [screen, setScreen] = useState('select'); // 'select', 'splunk', or 'file'
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
 
+  // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
     if (logDictionary) {
       sessionStorage.setItem('logDictionary', JSON.stringify(logDictionary));
     }
   }, [logDictionary]);
 
+  /**
+   * Handles dictionary file upload and processing
+   * Supports CSV format with specific columns for pattern matching
+   */
   const handleDictionaryUpload = async (event) => {
     const file = event.target.files[0];
     const reader = new FileReader();
@@ -45,11 +65,18 @@ export default function LogAnalyzer({ onClose }) {
     reader.readAsArrayBuffer(file);
   };
 
+  /**
+   * Handles log file selection for local file analysis
+   */
   const handleLogFileUpload = (event) => {
     const file = event.target.files[0];
     setLogFile(file);
   };
 
+  /**
+   * Main analysis function that handles both local file and Splunk analysis
+   * Validates required inputs before proceeding
+   */
   const analyzeLogs = async () => {
     if (!logDictionary) {
       toast.error('Please upload a log dictionary first');
@@ -71,6 +98,11 @@ export default function LogAnalyzer({ onClose }) {
     }
   };
 
+  /**
+   * Handles Splunk log analysis
+   * Fetches logs from Splunk using the configured connection
+   * and analyzes them using the loaded pattern dictionary
+   */
   const analyzeSplunkLogs = async () => {
     setLoading(true);
     try {
@@ -90,6 +122,11 @@ export default function LogAnalyzer({ onClose }) {
     }
   };
 
+  /**
+   * Handles local file analysis
+   * Reads and processes the uploaded log file using the loaded pattern dictionary
+   * Groups log lines for context-aware pattern matching
+   */
   const analyzeLogFile = async () => {
     setLoading(true);
     try {
@@ -97,6 +134,7 @@ export default function LogAnalyzer({ onClose }) {
       console.log('Analyzing log file with content length:', text.length);
       const allLines = text.split('\n').map(line => line.trim());
       
+      // Create groups of three lines with overlap for better context
       const logs = [];
       for (let i = 0; i < allLines.length; i++) {
         const threeLines = allLines.slice(i, i + 3).join('\n');
@@ -113,7 +151,6 @@ export default function LogAnalyzer({ onClose }) {
         }
       }
       
-      console.log('Created', logs.length, 'three-line groups to analyze');
       processLogs(logs);
     } catch (error) {
       console.error('Error analyzing log file:', error);
@@ -123,6 +160,11 @@ export default function LogAnalyzer({ onClose }) {
     }
   };
 
+  /**
+   * Core log processing function
+   * Applies pattern matching using the dictionary patterns
+   * Groups and aggregates matches for display
+   */
   const processLogs = (logs) => {
     console.log('Processing logs with dictionary patterns:', logDictionary.length);
     
@@ -153,6 +195,7 @@ export default function LogAnalyzer({ onClose }) {
             const group = matchGroups.get(patternKey);
             group.count++;
             
+            // Store only the first match details for each pattern
             if (group.matches.length === 0) {
               group.matches.push({
                 log: log.message,
@@ -167,6 +210,7 @@ export default function LogAnalyzer({ onClose }) {
       });
     });
 
+    // Convert matches to array format for rendering
     const matches = Array.from(matchGroups.values())
       .filter(group => group.matches.length > 0)
       .map(group => ({
@@ -175,7 +219,6 @@ export default function LogAnalyzer({ onClose }) {
         totalMatches: group.count
       }));
 
-    console.log('Found match groups:', matches.length);
     setResults(matches);
 
     if (matches.length === 0) {
@@ -183,6 +226,10 @@ export default function LogAnalyzer({ onClose }) {
     }
   };
 
+  /**
+   * Generates and downloads a sample dictionary file
+   * Provides example patterns for common log scenarios
+   */
   const downloadSampleDictionary = () => {
     const sampleData = [
       {
@@ -214,12 +261,16 @@ export default function LogAnalyzer({ onClose }) {
     XLSX.writeFile(wb, 'log_dictionary_sample.csv');
   };
 
+  /**
+   * Clears the loaded dictionary and analysis results
+   */
   const clearDictionary = () => {
     setLogDictionary(null);
     setResults(null);
     sessionStorage.removeItem('logDictionary');
   };
 
+  // Render functions for different screens and sections
   const renderSelectScreen = () => (
     <div className="space-y-6">
       {/* Warning Banner */}
@@ -572,8 +623,10 @@ export default function LogAnalyzer({ onClose }) {
       )}
     </div>
   );
-}
+};
 
 LogAnalyzer.propTypes = {
   onClose: PropTypes.func.isRequired
 };
+
+export default LogAnalyzer;

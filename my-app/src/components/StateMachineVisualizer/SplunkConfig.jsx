@@ -1,40 +1,67 @@
+/**
+ * SplunkConfig Component
+ * 
+ * A configuration modal for setting up Splunk integration parameters.
+ * This component handles:
+ * - Server URL and port configuration
+ * - Token-based authentication
+ * - Index selection
+ * - Local storage persistence
+ * 
+ * The configuration is stored in localStorage and used by the LogAnalyzer
+ * component for Splunk-based log analysis.
+ */
+
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 
+// Default configuration structure
+const DEFAULT_CONFIG = {
+  serverUrl: '',
+  port: '',
+  token: '',
+  index: ''
+};
+
 export default function SplunkConfig({ onClose, onSave }) {
+  /**
+   * Initialize configuration state from localStorage
+   * Falls back to default empty configuration if no saved config exists
+   * or if there's an error loading the saved configuration
+   */
   const [config, setConfig] = useState(() => {
     try {
       const savedConfig = localStorage.getItem('splunkConfig');
-      return savedConfig ? JSON.parse(savedConfig) : {
-        serverUrl: '',
-        port: '',
-        token: '',
-        index: ''
-      };
+      return savedConfig ? JSON.parse(savedConfig) : DEFAULT_CONFIG;
     } catch (error) {
       console.error('Error loading Splunk config:', error);
-      return {
-        serverUrl: '',
-        port: '',
-        token: '',
-        index: ''
-      };
+      return DEFAULT_CONFIG;
     }
   });
 
+  /**
+   * Handles the configuration save operation
+   * - Validates required fields
+   * - Persists to localStorage
+   * - Notifies parent component
+   * - Shows success/error feedback
+   */
   const handleSave = () => {
-    // Validate required fields
+    // Validate all required fields
     if (!config.serverUrl || !config.port || !config.token || !config.index) {
       toast.error('All fields are required');
       return;
     }
 
     try {
+      // Persist configuration
       localStorage.setItem('splunkConfig', JSON.stringify(config));
       toast.success('Splunk configuration saved successfully');
+      
+      // Notify parent components and close modal
       onSave(config);
       onClose();
     } catch (error) {
@@ -52,6 +79,7 @@ export default function SplunkConfig({ onClose, onSave }) {
           </h2>
           
           <div className="space-y-4">
+            {/* Server URL Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Server URL
@@ -64,6 +92,7 @@ export default function SplunkConfig({ onClose, onSave }) {
               />
             </div>
 
+            {/* Port Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Port
@@ -76,6 +105,7 @@ export default function SplunkConfig({ onClose, onSave }) {
               />
             </div>
 
+            {/* Token Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Token
@@ -91,6 +121,7 @@ export default function SplunkConfig({ onClose, onSave }) {
               </p>
             </div>
 
+            {/* Index Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Index
@@ -104,6 +135,7 @@ export default function SplunkConfig({ onClose, onSave }) {
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex justify-end space-x-4 mt-6">
             <Button variant="outline" onClick={onClose}>
               Cancel

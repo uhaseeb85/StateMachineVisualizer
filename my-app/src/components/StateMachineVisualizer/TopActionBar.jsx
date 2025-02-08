@@ -1,10 +1,24 @@
+/**
+ * TopActionBar Component
+ * 
+ * A navigation and action bar component that provides quick access to core functionality
+ * of the State Machine Visualizer. It includes controls for:
+ * - Theme toggling (dark/light mode)
+ * - Getting started tour
+ * - Save/Export/Import operations
+ * - Tool access (Pathfinder, Simulation, Log Analysis)
+ * 
+ * The component is designed to be responsive and provides visual feedback
+ * through hover states and transitions.
+ */
+
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search } from 'lucide-react';
 import LogAnalyzer from './LogAnalyzer';
 
-export default function TopActionBar({ 
+const TopActionBar = ({ 
   isDarkMode, 
   toggleTheme, 
   onSave, 
@@ -13,7 +27,8 @@ export default function TopActionBar({
   onFindPaths,
   startTour,
   onExportCSV
-}) {
+}) => {
+  // State for controlling the LogAnalyzer modal visibility
   const [showLogAnalyzer, setShowLogAnalyzer] = useState(false);
 
   return (
@@ -22,6 +37,7 @@ export default function TopActionBar({
                     border-b border-gray-200 dark:border-gray-700
                     shadow-lg">
       <div className="flex flex-wrap items-center justify-between">
+        {/* Left Section: Theme, Tour, and Core Actions */}
         <div className="flex items-center gap-4">
           {/* Theme Toggle Button */}
           <Button
@@ -39,7 +55,7 @@ export default function TopActionBar({
             )}
           </Button>
 
-          {/* Getting Started Button */}
+          {/* Getting Started Button - Initiates the guided tour */}
           <Button
             onClick={startTour}
             title="Get a guided tour of all features and how to use them"
@@ -56,11 +72,12 @@ export default function TopActionBar({
             Getting Started
           </Button>
 
-          {/* Separator */}
+          {/* Visual Separator */}
           <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
 
           {/* Core Actions Group */}
           <div className="flex flex-wrap gap-4">
+            {/* Save Button */}
             <Button 
               onClick={onSave}
               title="Save your current state machine configuration"
@@ -77,7 +94,9 @@ export default function TopActionBar({
               Save
             </Button>
 
+            {/* Import/Export Section */}
             <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
+              {/* Export CSV Button */}
               <Button 
                 onClick={onExportCSV}
                 title="Export your state machine as a CSV file"
@@ -94,6 +113,7 @@ export default function TopActionBar({
                 Export CSV
               </Button>
 
+              {/* Import CSV Button with Hidden File Input */}
               <div className="relative">
                 <Button 
                   onClick={() => document.getElementById('excel-import').click()}
@@ -123,8 +143,9 @@ export default function TopActionBar({
           </div>
         </div>
 
-        {/* Right side buttons */}
+        {/* Right Section: Tools and Analysis */}
         <div className="flex items-center gap-4">
+          {/* Log Analysis Button */}
           <Button
             onClick={() => setShowLogAnalyzer(true)}
             className="log-analyzer-button bg-gray-900 text-white text-sm
@@ -140,11 +161,12 @@ export default function TopActionBar({
             Analyze Logs
           </Button>
 
-          {/* Separator */}
+          {/* Visual Separator */}
           <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
 
           {/* Tools Group */}
           <div className="flex gap-4">
+            {/* Pathfinder Button */}
             <Button
               onClick={onFindPaths}
               title="Find all possible paths between any two states in your state machine"
@@ -158,6 +180,7 @@ export default function TopActionBar({
               Pathfinder
             </Button>
 
+            {/* Simulation Button */}
             <Button 
               onClick={onSimulate}
               title="Run a simulation of your state machine to test its behavior"
@@ -174,6 +197,7 @@ export default function TopActionBar({
         </div>
       </div>
 
+      {/* Log Analyzer Modal */}
       {showLogAnalyzer && (
         <LogAnalyzer
           onClose={() => setShowLogAnalyzer(false)}
@@ -184,12 +208,21 @@ export default function TopActionBar({
 } 
 
 TopActionBar.propTypes = {
+  // Theme related props
   isDarkMode: PropTypes.bool.isRequired,
   toggleTheme: PropTypes.func.isRequired,
+  
+  // Core action props
   onSave: PropTypes.func.isRequired,
   onExcelImport: PropTypes.func.isRequired,
+  onExportCSV: PropTypes.func.isRequired,
+  
+  // Tool action props
   onSimulate: PropTypes.func.isRequired,
   onFindPaths: PropTypes.func.isRequired,
-  startTour: PropTypes.func.isRequired,
-  onExportCSV: PropTypes.func.isRequired
+  
+  // Tour prop
+  startTour: PropTypes.func.isRequired
 };
+
+export default TopActionBar;

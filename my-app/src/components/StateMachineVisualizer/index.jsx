@@ -1,25 +1,54 @@
+/**
+ * StateMachineVisualizer
+ * 
+ * The main container component for the state machine visualization application.
+ * This component orchestrates all sub-components and manages the global state.
+ * 
+ * Key Features:
+ * - State and rule management
+ * - Dark/Light theme support
+ * - Import/Export functionality (JSON and CSV)
+ * - Interactive simulation
+ * - Path finding between states
+ * - Local storage persistence
+ * - Change history tracking
+ * - Guided tour
+ */
+
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import SimulationModal from './SimulationModal';
+// Core components
 import StatePanel from './StatePanel';
 import RulesPanel from './RulesPanel';
 import TopActionBar from './TopActionBar';
-import useStateMachine from './hooks/useStateMachine';
-import useSimulation from './hooks/useSimulation';
-import { TourProvider } from './TourProvider';
-import { Toaster } from 'sonner';
+import SimulationModal from './SimulationModal';
 import PathFinderModal from './PathFinderModal';
-import { Book, History } from 'lucide-react';
 import UserGuideModal from './UserGuideModal';
-import { Button } from "@/components/ui/button";
-import VersionInfo from './VersionInfo';
 import ChangeLog from './ChangeLog';
-import * as XLSX from 'xlsx-js-style';
+import VersionInfo from './VersionInfo';
 import SplunkConfig from './SplunkConfig';
 
+// Custom hooks
+import useStateMachine from './hooks/useStateMachine';
+import useSimulation from './hooks/useSimulation';
+
+// UI Components and utilities
+import { TourProvider } from './TourProvider';
+import { Toaster } from 'sonner';
+import { Book, History } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import * as XLSX from 'xlsx-js-style';
+
+// Constants
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
 
+/**
+ * Main content component that manages the application state and renders all sub-components
+ * @param {Object} props - Component props
+ * @param {Function} props.startTour - Function to initiate the guided tour
+ */
 const StateMachineVisualizerContent = ({ startTour }) => {
+  // Core state machine functionality from custom hook
   const {
     states,
     setStates,
@@ -40,6 +69,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     handleDeleteState
   } = useStateMachine();
 
+  // Simulation functionality from custom hook
   const {
     showSimulation,
     setShowSimulation,
@@ -57,37 +87,44 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     undo
   } = useSimulation(states);
 
+  // Modal visibility states
   const [showPathFinder, setShowPathFinder] = useState(false);
-  const [loadedDictionary, setLoadedDictionary] = useState(() => {
-    const savedDictionary = localStorage.getItem(DICTIONARY_STORAGE_KEY);
-    return savedDictionary ? JSON.parse(savedDictionary) : null;
-  });
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
 
-  const handleRuleDictionaryImport = async (event) => {
-    console.log("Import started with file:", event);
-    try {
-      const result = await originalHandleRuleDictionaryImport(event);
-      console.log("Import result:", result);
-      if (result?.dictionary) {
-        setLoadedDictionary(result.dictionary);
-        localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(result.dictionary));
-        console.log("Dictionary state updated and saved:", result);
-      } else {
-        console.log("No result from import");
-      }
-    } catch (error) {
-      console.error("Error importing dictionary:", error);
-    }
-  };
+  // Dictionary states with localStorage persistence
+  const [loadedDictionary, setLoadedDictionary] = useState(() => {
+    const savedDictionary = localStorage.getItem(DICTIONARY_STORAGE_KEY);
+    return savedDictionary ? JSON.parse(savedDictionary) : null;
+  });
 
   const [loadedStateDictionary, setLoadedStateDictionary] = useState(() => {
     const savedDictionary = localStorage.getItem('stateDictionary');
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
 
+  /**
+   * Handles the import of rule dictionaries
+   * Processes the imported file and updates both state and localStorage
+   */
+  const handleRuleDictionaryImport = async (event) => {
+    try {
+      const result = await originalHandleRuleDictionaryImport(event);
+      if (result?.dictionary) {
+        setLoadedDictionary(result.dictionary);
+        localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(result.dictionary));
+      }
+    } catch (error) {
+      console.error("Error importing dictionary:", error);
+    }
+  };
+
+  /**
+   * Handles state selection with optional scrolling
+   * @param {string} stateId - ID of the state to select
+   * @param {boolean} shouldScroll - Whether to scroll to the selected state
+   */
   const handleStateSelect = (stateId, shouldScroll = true) => {
     setSelectedState(stateId);
     
@@ -99,6 +136,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
     }
   };
 
+  // Common button styling for utility buttons
   const buttonClass = "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md \
                       bg-transparent \
                       text-gray-700 dark:text-gray-200 \
@@ -108,10 +146,15 @@ const StateMachineVisualizerContent = ({ startTour }) => {
                       transition-all duration-200 ease-in-out \
                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400";
 
+  /**
+   * Handles CSV export with preservation of additional columns
+   * Merges current state data with previously imported data
+   */
   const handleExportCSV = () => {
     const lastImportedData = localStorage.getItem('lastImportedCSV');
     let baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
     
+    // Create current state data
     const currentData = states.flatMap(sourceState => 
       sourceState.rules.map(rule => {
         const destState = states.find(s => s.id === rule.nextState);
@@ -123,13 +166,13 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       })
     );
 
+    // Merge with existing data or use current data only
     let csvData;
     if (baseData.length > 0) {
       const allColumns = Object.keys(baseData[0]);
       
       csvData = currentData.map(currentRow => {
         const newRow = {};
-        
         const matchingRow = baseData.find(
           baseRow => 
             baseRow['Source Node'] === currentRow['Source Node'] &&
@@ -149,6 +192,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
       csvData = currentData;
     }
 
+    // Generate and download the CSV file
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(csvData);
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
@@ -157,7 +201,10 @@ const StateMachineVisualizerContent = ({ startTour }) => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+      {/* Toast notifications */}
       <Toaster richColors />
+
+      {/* Save success notification */}
       {showSaveNotification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
@@ -171,9 +218,11 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         </div>
       )}
 
-       <div className="container mx-auto p-4 max-w-full min-h-screen 
+      {/* Main content container */}
+      <div className="container mx-auto p-4 max-w-full min-h-screen 
                     bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
                     dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
+        {/* Header */}
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5 tracking-wide">
             State Machine Visualizer
@@ -183,6 +232,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           </p>
         </div>
 
+        {/* Top Action Bar */}
         <TopActionBar
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
@@ -196,6 +246,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           onExportCSV={handleExportCSV}
         />
 
+        {/* Main Panels */}
         <div className="flex flex-col lg:flex-row gap-8 mb-8">
           <StatePanel
             states={states}
@@ -220,6 +271,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           />
         </div>
 
+        {/* Modals */}
         {showSimulation && (
           <SimulationModal
             states={states}
@@ -300,6 +352,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         />
       </div>
 
+      {/* Utility buttons */}
       <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
         <Button
           onClick={() => setShowChangeLog(true)}
@@ -319,6 +372,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         </Button>
       </div>
 
+      {/* Additional modals */}
       {showUserGuide && (
         <UserGuideModal onClose={() => setShowUserGuide(false)} />
       )}
@@ -332,6 +386,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
         />
       )}
 
+      {/* Version information */}
       <VersionInfo />
     </div>
   );
@@ -341,6 +396,9 @@ StateMachineVisualizerContent.propTypes = {
   startTour: PropTypes.func.isRequired
 };
 
+/**
+ * Root component wrapped with TourProvider for guided tour functionality
+ */
 const StateMachineVisualizer = () => {
   return (
     <TourProvider>
