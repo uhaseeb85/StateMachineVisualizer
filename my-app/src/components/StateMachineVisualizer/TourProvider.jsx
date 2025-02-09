@@ -15,12 +15,19 @@
 
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import Joyride from 'react-joyride';
-import { tourSteps } from './tourSteps';
+import Joyride, { STATUS } from 'react-joyride';
+import { tourSteps } from './constants';
 
 export const TourProvider = ({ children }) => {
   // Tour state
   const [runTour, setRunTour] = useState(false);
+
+  const handleJoyrideCallback = (data) => {
+    const { status } = data;
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+      setRunTour(false);
+    }
+  };
 
   /**
    * Starts the guided tour
@@ -38,17 +45,36 @@ export const TourProvider = ({ children }) => {
         continuous={true}
         showProgress={true}
         showSkipButton={true}
+        callback={handleJoyrideCallback}
         styles={{
           options: {
-            primaryColor: '#10B981', // Tailwind emerald-500
+            primaryColor: '#3b82f6', // Tailwind blue-500
             zIndex: 1000,
+            arrowColor: '#fff',
+            backgroundColor: '#fff',
+            overlayColor: 'rgba(0, 0, 0, 0.5)',
+            textColor: '#374151', // Tailwind gray-700
           },
-        }}
-        callback={({ status }) => {
-          // Reset tour state when finished or skipped
-          if (['finished', 'skipped'].includes(status)) {
-            setRunTour(false);
-          }
+          tooltip: {
+            padding: '1rem',
+            borderRadius: '0.5rem',
+          },
+          buttonNext: {
+            padding: '0.5rem 1rem',
+            fontSize: '0.875rem',
+            borderRadius: '0.375rem',
+          },
+          buttonBack: {
+            marginRight: '0.5rem',
+            padding: '0.5rem 1rem',
+            fontSize: '0.875rem',
+            borderRadius: '0.375rem',
+          },
+          buttonSkip: {
+            padding: '0.5rem 1rem',
+            fontSize: '0.875rem',
+            borderRadius: '0.375rem',
+          },
         }}
       />
       {/* Inject startTour function into child component */}
@@ -61,3 +87,5 @@ TourProvider.propTypes = {
   // Single child component to wrap
   children: PropTypes.element.isRequired
 };
+
+export default TourProvider;
