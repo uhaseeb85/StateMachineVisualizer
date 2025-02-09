@@ -201,7 +201,7 @@ npm run test         # Run tests
 - It also includes several UI-related libraries like @radix-ui/react-alert-dialog, @radix-ui/react-dialog, @shadcn/ui, lucide-react, tailwind-merge, and tailwindcss-animate. 
 - There's also react-joyride for creating guided tours, 
 - sonner for toast notifications, html2canvas for taking screenshots, 
-- @react-pdf/renderer for rendering PDFs, and xlsx-js-style for working with Excel files.
+- xlsx-js-style for working with Excel files.
 
 
 ## File level Functional Details
