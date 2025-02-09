@@ -25,6 +25,24 @@ export const tourSteps = [
     placement: 'bottom',
   },
   {
+    target: '.load-state-dictionary-button',
+    content: 'Load descriptions for your states from an Excel file. This helps document what each state represents and its purpose in the flow.',
+    title: '📖 State Dictionary',
+    placement: 'right',
+  },
+  {
+    target: '.load-rule-dictionary-button',
+    content: 'Load descriptions for your rules from an Excel file. This helps document the conditions and logic behind each transition rule.',
+    title: '📝 Rule Dictionary',
+    placement: 'right',
+  },
+  {
+    target: '.local-history-button',
+    content: 'View a chronological history of all changes made to your state machine. You can export the history or clear it if needed.',
+    title: '📜 Local History',
+    placement: 'bottom',
+  },
+  {
     target: '.log-analyzer-button',
     content: 'Analyze logs to understand state machine behavior. Supports both local files and Splunk integration.',
     title: '🔍 Log Analysis',
