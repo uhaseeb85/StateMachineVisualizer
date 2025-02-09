@@ -202,9 +202,7 @@ npm run test         # Run tests
 - There's also react-joyride for creating guided tours, 
 - sonner for toast notifications, html2canvas for taking screenshots, 
 - @react-pdf/renderer for rendering PDFs, and xlsx-js-style for working with Excel files.
-Scripts: 
-- The project has scripts for dev, build, lint, and preview.
-- Includes eslint, prettier, typescript, and vite.
+
 
 ## File level Functional Details
 
