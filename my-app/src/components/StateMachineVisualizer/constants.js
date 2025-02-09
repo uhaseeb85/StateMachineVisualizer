@@ -65,5 +65,11 @@ export const tourSteps = [
     content: 'View and manage your states here. Click a state to edit its properties and rules.',
     title: '📋 States Panel',
     placement: 'right',
+  },
+  {
+    target: '.rules-section',
+    content: 'Define and manage transition rules between states. Each rule specifies when and how states can transition to other states.',
+    title: '📐 Rules Panel',
+    placement: 'right',
   }
 ]; 
