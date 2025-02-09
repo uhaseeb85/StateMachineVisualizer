@@ -159,7 +159,7 @@ npm run dev
    - Records all modifications
    - Tracks state and rule changes
    - Helps audit configuration changes
-   - Access via "History" button
+   - Access via "Local History" button
 
 3. **User Guide**
    - Access via "?" icon in toolbar
