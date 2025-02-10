@@ -20,15 +20,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, ArrowRight, Upload, Edit2, Check, X } from 'lucide-react';
 
-const RulesPanel = ({ 
-  states, 
-  selectedState, 
-  onStateSelect, 
-  setStates, 
-  onRuleDictionaryImport, 
-  loadedDictionary, 
-  setLoadedDictionary, 
-  addToChangeLog 
+const RulesPanel = ({
+  states,
+  selectedState,
+  onStateSelect,
+  setStates,
+  onRuleDictionaryImport,
+  loadedDictionary,
+  setLoadedDictionary,
+  addToChangeLog,
+  loadedStateDictionary
 }) => {
   // Rule editing states
   const [newRuleCondition, setNewRuleCondition] = useState("");
@@ -282,6 +283,15 @@ const RulesPanel = ({
         <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
       </div>
 
+      {/* State Description Section */}
+      {loadedStateDictionary && currentState && loadedStateDictionary[currentState.name] && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {loadedStateDictionary[currentState.name]}
+          </p>
+        </div>
+      )}
+
       {/* Add Rule Section */}
       <div className="mb-4">
         <div className="flex gap-2">
@@ -475,7 +485,8 @@ RulesPanel.propTypes = {
   addToChangeLog: PropTypes.func.isRequired,
   // Rule dictionary state
   loadedDictionary: PropTypes.object,
-  setLoadedDictionary: PropTypes.func.isRequired
+  setLoadedDictionary: PropTypes.func.isRequired,
+  loadedStateDictionary: PropTypes.object
 };
 
 export default RulesPanel;

@@ -264,6 +264,7 @@ const StateMachineVisualizerContent = ({ startTour }) => {
             setLoadedDictionary={setLoadedDictionary}
             setChangeLog={setChangeLog}
             addToChangeLog={addToChangeLog}
+            loadedStateDictionary={loadedStateDictionary}
           />
         </div>
 
