@@ -1,9 +1,29 @@
-import React, { useState, useRef } from 'react';
+/**
+ * SimulationModal Component
+ * 
+ * A modal component that provides interactive simulation of state machine flows.
+ * Features include:
+ * - Visual representation of state transitions
+ * - Interactive rule evaluation
+ * - Success/failure outcome selection
+ * - Undo/reset capabilities
+ * - Layout switching (vertical/horizontal)
+ * - Image export functionality
+ * 
+ * The simulation follows a step-by-step process where users can:
+ * 1. Click on states to initiate transitions
+ * 2. Evaluate rules for state changes
+ * 3. Determine success/failure outcomes
+ * 4. Track the simulation path visually
+ */
+
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Camera, RotateCcw } from 'lucide-react';
 import { exportToImage } from './utils';
 
-export default function SimulationModal({
+const SimulationModal = ({
   states,
   simulationState,
   onStateClick,
@@ -13,10 +33,14 @@ export default function SimulationModal({
   onClose,
   onUndo,
   canUndo
-}) {
+}) => {
+  // Layout state
   const [isVerticalLayout, setIsVerticalLayout] = useState(false);
-  const containerRef = useRef(null);
 
+  /**
+   * Handles exporting the simulation view as an image
+   * Prompts for filename and downloads the PNG
+   */
   const handleExportImage = async () => {
     try {
       const element = document.querySelector('.simulation-content');
@@ -42,7 +66,14 @@ export default function SimulationModal({
     }
   };
 
+  /**
+   * Renders a simulation node (state or rule)
+   * @param {Object} node - Node to render
+   * @param {number} index - Node index in the path
+   * @returns {JSX.Element} Rendered node
+   */
   const renderSimulationNode = (node, index) => {
+    // State node rendering
     if (node.type === 'state') {
       const state = node.id === 'end' ? { name: 'END' } : states.find(s => s.id === node.id);
       return (
@@ -72,7 +103,9 @@ export default function SimulationModal({
       );
     }
 
+    // Rule node rendering
     if (node.type === 'rule') {
+      // Find the associated state for this rule
       const ruleState = simulationState.path
         .slice(0, index)
         .reverse()
@@ -81,6 +114,7 @@ export default function SimulationModal({
       const stateWithRule = states.find(s => s.id === ruleState?.id);
       const rule = stateWithRule?.rules.find(r => r.id === node.id);
 
+      // Determine rule outcome status
       const nextNode = simulationState.path[index + 1];
       const hasOutcome = nextNode && nextNode.type === 'state' && nextNode.id !== 'end';
       const isFailure = nextNode && nextNode.type === 'rule';
@@ -114,6 +148,7 @@ export default function SimulationModal({
             </span>
           </div>
           
+          {/* Outcome Selection Buttons */}
           {simulationState.status === 'deciding' && 
            simulationState.currentRule === node.id && (
             <div className="flex gap-4 -mt-1">
@@ -144,17 +179,21 @@ export default function SimulationModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 
                     flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-4/5 h-4/5 overflow-auto">
+        {/* Header Section */}
         <div className="flex justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Flow Simulation
           </h2>
           <div className="space-x-2">
+            {/* Layout Toggle */}
             <Button
               onClick={() => setIsVerticalLayout(!isVerticalLayout)}
               className="bg-gray-900 hover:bg-blue-600 text-white"
             >
               {isVerticalLayout ? 'Horizontal' : 'Vertical'} Layout
             </Button>
+            
+            {/* Export Button */}
             <Button
               onClick={handleExportImage}
               className="bg-gray-900 hover:bg-blue-600 text-white"
@@ -162,6 +201,8 @@ export default function SimulationModal({
               <Camera className="w-4 h-4 mr-2" />
               Export Image
             </Button>
+            
+            {/* Undo Button */}
             <Button
               onClick={onUndo}
               disabled={!canUndo}
@@ -170,6 +211,8 @@ export default function SimulationModal({
               <RotateCcw className="w-4 h-4 mr-2" />
               Undo
             </Button>
+            
+            {/* Reset Button */}
             <Button
               onClick={onReset}
               disabled={simulationState.path.length <= 1}
@@ -178,6 +221,8 @@ export default function SimulationModal({
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset
             </Button>
+            
+            {/* Close Button */}
             <Button
               onClick={onClose}
               className="bg-gray-900 hover:bg-red-600 text-white"
@@ -187,6 +232,7 @@ export default function SimulationModal({
           </div>
         </div>
 
+        {/* Simulation Content */}
         <div className="simulation-content min-h-[400px] border dark:border-gray-700 
                       rounded-lg p-4 relative bg-gray-50 dark:bg-gray-900">
           <div className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row flex-wrap'} 
@@ -196,6 +242,7 @@ export default function SimulationModal({
               <div key={index} className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row'} 
                                        items-center`}>
                 {renderSimulationNode(node, index)}
+                {/* Connector Line */}
                 {index < simulationState.path.length - 1 && (
                   <div className={`bg-gray-400 ${isVerticalLayout ? 'h-6 w-0.5 my-2' : 'w-6 h-0.5 mx-2'}`} />
                 )}
@@ -206,4 +253,37 @@ export default function SimulationModal({
       </div>
     </div>
   );
-}
+};
+
+SimulationModal.propTypes = {
+  // Array of state objects
+  states: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    rules: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      condition: PropTypes.string.isRequired
+    })).isRequired
+  })).isRequired,
+  // Current simulation state
+  simulationState: PropTypes.shape({
+    status: PropTypes.oneOf(['active', 'evaluating', 'deciding']).isRequired,
+    currentState: PropTypes.string,
+    currentRule: PropTypes.string,
+    path: PropTypes.arrayOf(PropTypes.shape({
+      type: PropTypes.oneOf(['state', 'rule']).isRequired,
+      id: PropTypes.string.isRequired
+    })).isRequired
+  }).isRequired,
+  // Event handlers
+  onStateClick: PropTypes.func.isRequired,
+  onRuleClick: PropTypes.func.isRequired,
+  onOutcome: PropTypes.func.isRequired,
+  onReset: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUndo: PropTypes.func.isRequired,
+  // Undo state
+  canUndo: PropTypes.bool.isRequired
+};
+
+export default SimulationModal;

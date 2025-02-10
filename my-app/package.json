@@ -23,7 +23,6 @@
     "react-dom": "^18.2.0",
     "react-joyride": "^2.9.3",
     "sonner": "^1.7.2",
-    "splunk-sdk": "^2.0.0",
     "tailwind-merge": "^2.2.1",
     "xlsx-js-style": "^1.2.0"
   },

@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+/**
+ * StatePanel Component
+ * 
+ * A panel component that manages the states of the state machine.
+ * Features include:
+ * - Adding new states
+ * - Deleting existing states
+ * - Selecting states for editing
+ * - Importing state descriptions from Excel
+ * - Displaying state metadata (rule count, descriptions)
+ * 
+ * The component maintains a list of states and their associated rules,
+ * with support for state dictionary imports to provide additional context.
+ */
+
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style';
 
-export default function StatePanel({ 
+const StatePanel = ({ 
   states, 
   selectedState, 
   onStateSelect, 
@@ -13,10 +29,15 @@ export default function StatePanel({
   onStateDelete,
   loadedStateDictionary,
   setLoadedStateDictionary
-}) {
+}) => {
+  // Local state management
   const [newStateName, setNewStateName] = useState('');
   const [selectedStateId, setSelectedStateId] = useState(null);
 
+  /**
+   * Handles the addition of a new state
+   * Validates state name uniqueness and formats
+   */
   const handleAddState = () => {
     const trimmedName = newStateName.trim();
     if (trimmedName) {
@@ -35,11 +56,17 @@ export default function StatePanel({
     }
   };
 
+  /**
+   * Handles the import of state descriptions from Excel file
+   * Validates file format and content structure
+   * @param {Event} event - File input change event
+   */
   const handleStateDictionaryImport = async (event) => {
     try {
       const file = event.target.files[0];
       if (!file) return;
 
+      // Validate file extension
       const fileExtension = file.name.split('.').pop().toLowerCase();
       if (!['xlsx', 'xls'].includes(fileExtension)) {
         toast.error('Please upload a valid Excel file (.xlsx or .xls)');
@@ -49,11 +76,13 @@ export default function StatePanel({
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
+          // Parse Excel file
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
           const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
+          // Validate file content
           if (jsonData.length === 0) {
             toast.error('The Excel file is empty');
             return;
@@ -65,6 +94,7 @@ export default function StatePanel({
             return;
           }
 
+          // Process state descriptions
           const stateDictionary = {};
           let statesUpdated = 0;
 
@@ -80,6 +110,7 @@ export default function StatePanel({
             return;
           }
 
+          // Update state and persist to localStorage
           setLoadedStateDictionary(stateDictionary);
           localStorage.setItem('stateDictionary', JSON.stringify(stateDictionary));
           toast.success(`State dictionary imported successfully! Loaded ${statesUpdated} state descriptions.`);
@@ -97,6 +128,10 @@ export default function StatePanel({
     }
   };
 
+  /**
+   * Handles state selection and description toggle
+   * @param {string} stateId - ID of the selected state
+   */
   const handleStateClick = (stateId) => {
     onStateSelect(stateId);
     setSelectedStateId(selectedStateId === stateId ? null : stateId);
@@ -105,6 +140,7 @@ export default function StatePanel({
   return (
     <div className="w-full lg:w-1/4 border border-gray-200/20 dark:border-gray-700/20 
                     rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
+      {/* Header Section */}
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
@@ -138,6 +174,7 @@ export default function StatePanel({
         </div>
       </div>
 
+      {/* Add State Section */}
       <div className="mb-4">
         <div className="flex gap-2">
           <Input
@@ -156,9 +193,11 @@ export default function StatePanel({
         </div>
       </div>
 
+      {/* States List Section */}
       <div className="states-list space-y-1.5">
         {states.map(state => (
           <div key={state.id} className="flex flex-col gap-1">
+            {/* State Item */}
             <div 
               data-state-id={state.id}
               onClick={() => handleStateClick(state.id)}
@@ -174,6 +213,7 @@ export default function StatePanel({
             >
               <span>{state.name}</span>
               <div className="flex items-center gap-2">
+                {/* Rule Count Badge */}
                 <span className={`
                   text-xs px-1.5 rounded-full
                   ${selectedState === state.id
@@ -183,6 +223,7 @@ export default function StatePanel({
                 `}>
                   {state.rules?.length || 0}
                 </span>
+                {/* Delete Button */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -197,7 +238,7 @@ export default function StatePanel({
               </div>
             </div>
             
-            {/* State Description */}
+            {/* State Description (shown when state is selected) */}
             {selectedStateId === state.id && loadedStateDictionary?.[state.name] && (
               <div className="ml-2 p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
                             text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
@@ -211,4 +252,24 @@ export default function StatePanel({
       </div>
     </div>
   );
-}
+};
+
+StatePanel.propTypes = {
+  // Array of state objects with id, name, and rules
+  states: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    rules: PropTypes.array
+  })).isRequired,
+  // Currently selected state ID
+  selectedState: PropTypes.string,
+  // Callback functions for state operations
+  onStateSelect: PropTypes.func.isRequired,
+  onStateAdd: PropTypes.func.isRequired,
+  onStateDelete: PropTypes.func.isRequired,
+  // State dictionary for descriptions
+  loadedStateDictionary: PropTypes.object,
+  setLoadedStateDictionary: PropTypes.func.isRequired
+};
+
+export default StatePanel;
