@@ -284,15 +284,8 @@ const LogAnalyzer = ({ onClose }) => {
             </h3>
             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
               <p>
-                The Log Analysis feature is experimental and may contain bugs. We appreciate your feedback and patience.
+                The Log Analysis feature is experimental . All analysis is done in your browser locally.
               </p>
-              <p>
-                <strong>Privacy Information:</strong>
-              </p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li><strong>File Analysis Mode:</strong> All analysis is performed locally in your browser.</li>
-                <li><strong>Splunk Analysis Mode:</strong> Requires communication with your Splunk server.</li>
-              </ul>
             </div>
           </div>
         </div>
