@@ -1,12 +1,19 @@
-import React from 'react';
-import StateMachineVisualizer from './StateMachineVisualizer/index.jsx';
+import { useState } from 'react';
+import StateMachineVisualizer from './StateMachineVisualizer';
+import LandingPage from './LandingPage';
 
-function App() {
+const App = () => {
+  const [showApp, setShowApp] = useState(false);
+
   return (
-    <>
-      <StateMachineVisualizer />
-    </>
+    <div>
+      {showApp ? (
+        <StateMachineVisualizer />
+      ) : (
+        <LandingPage onGetStarted={() => setShowApp(true)} />
+      )}
+    </div>
   );
-}
+};
 
 export default App;
