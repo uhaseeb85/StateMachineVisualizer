@@ -11,175 +11,321 @@ function createPlaceholder(title, width = 1200, height = 800) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Background
+  // Background - matching the app's gradient
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(0, 0, width, height);
 
-  // Add some visual elements
-  // Header bar
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fillRect(0, 0, width, 60);
-
-  // Sidebar
+  // Top Action Bar - matching TopActionBar.jsx
   ctx.fillStyle = '#f1f5f9';
-  ctx.fillRect(0, 60, 250, height - 60);
+  ctx.fillRect(0, 0, width, 80);
+  drawTopBar(ctx, title);
 
-  // Main content area grid
-  const gridSize = 50;
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 1;
-  
-  for (let x = 250; x < width; x += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(x, 60);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  
-  for (let y = 60; y < height; y += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(250, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-
-  // Add title
-  ctx.fillStyle = '#1e293b';
-  ctx.font = 'bold 24px Arial';
-  ctx.fillText(title, 20, 35);
-
-  // Add some mock UI elements based on the feature
+  // Main content area
   switch (title) {
     case 'Interactive Design':
-      // Add mock states
-      drawState(ctx, 400, 200, 'State 1');
-      drawState(ctx, 600, 200, 'State 2');
-      drawArrow(ctx, 450, 200, 550, 200);
+      drawInteractiveDesign(ctx);
       break;
     case 'Real-time Simulation':
-      // Add simulation elements
-      drawState(ctx, 400, 200, 'Active', '#22c55e');
-      drawState(ctx, 600, 200, 'Pending');
-      drawState(ctx, 500, 400, 'Complete');
-      drawArrow(ctx, 450, 200, 550, 200);
-      drawArrow(ctx, 600, 250, 550, 350);
+      drawSimulation(ctx);
       break;
     case 'Path Analysis':
-      // Add path visualization
-      drawState(ctx, 400, 200, 'Start');
-      drawState(ctx, 600, 200, 'Middle');
-      drawState(ctx, 800, 200, 'End');
-      drawArrow(ctx, 450, 200, 550, 200);
-      drawArrow(ctx, 650, 200, 750, 200);
+      drawPathAnalysis(ctx);
       break;
     case 'Data Persistence':
-      // Add mock data table
-      drawTable(ctx, 300, 100, 800, 400);
+      drawDataPersistence(ctx);
       break;
     case 'Log Analysis':
-      // Add mock log entries
-      drawLogs(ctx, 300, 100, 800, 400);
+      drawLogAnalysis(ctx);
       break;
     case 'Rule Management':
-      // Add mock rule interface
-      drawRules(ctx, 300, 100, 800, 400);
+      drawRuleManagement(ctx);
       break;
   }
 
   return canvas.toBuffer('image/png');
 }
 
-// Helper functions
-function drawState(ctx, x, y, label, color = '#3b82f6') {
+// Helper function to draw the top action bar based on TopActionBar.jsx
+function drawTopBar(ctx, title) {
+  // Theme toggle button
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(40, 40, 20, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Getting Started button
+  drawButton(ctx, 100, 25, 'Getting Started', '#1e293b');
+  
+  // Save button
+  drawButton(ctx, 250, 25, 'Save', '#1e293b');
+  
+  // Export/Import buttons
+  drawButton(ctx, 380, 25, 'Export CSV', '#1e293b');
+  drawButton(ctx, 500, 25, 'Import CSV', '#1e293b');
+}
+
+// Helper function to draw a button matching the app's UI
+function drawButton(ctx, x, y, text, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(x, y, 30, 0, Math.PI * 2);
+  ctx.roundRect(x, y, 100, 30, 6);
   ctx.fill();
   
   ctx.fillStyle = '#ffffff';
   ctx.font = '14px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText(label, x, y + 5);
+  ctx.fillText(text, x + 50, y + 20);
+}
+
+// Draw functions for each feature
+function drawInteractiveDesign(ctx) {
+  // Draw StatePanel-like interface
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(50, 100, 300, 600);
+  
+  // Draw state items
+  const states = ['Initial State', 'Processing', 'Completed', 'Error'];
+  states.forEach((state, i) => {
+    ctx.fillStyle = i === 0 ? '#3b82f6' : '#f1f5f9';
+    ctx.beginPath();
+    ctx.roundRect(70, 150 + i * 60, 260, 40, 6);
+    ctx.fill();
+    
+    ctx.fillStyle = i === 0 ? '#ffffff' : '#1e293b';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(state, 90, 175 + i * 60);
+  });
+  
+  // Draw RulesPanel-like interface
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(400, 100, 750, 600);
+  
+  // Draw rule items
+  const rules = [
+    'status === "ready"',
+    'data.isValid === true',
+    'error === null'
+  ];
+  rules.forEach((rule, i) => {
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(420, 150 + i * 80, 710, 60, 6);
+    ctx.fill();
+    
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(rule, 440, 185 + i * 80);
+  });
+}
+
+function drawSimulation(ctx) {
+  // Based on SimulationModal.jsx
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(50, 100, 1100, 600);
+  
+  // Draw simulation states
+  const states = [
+    { x: 200, y: 300, name: 'Start', color: '#3b82f6' },
+    { x: 500, y: 300, name: 'Processing', color: '#22c55e' },
+    { x: 800, y: 300, name: 'Complete', color: '#6366f1' }
+  ];
+  
+  // Draw connections
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  states.forEach((state, i) => {
+    if (i < states.length - 1) {
+      drawArrow(ctx, state.x + 40, state.y, states[i + 1].x - 40, states[i + 1].y);
+    }
+  });
+  
+  // Draw states
+  states.forEach(state => {
+    drawSimulationState(ctx, state.x, state.y, state.name, state.color);
+  });
+}
+
+function drawPathAnalysis(ctx) {
+  // Based on PathFinderModal.jsx
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(50, 100, 1100, 600);
+  
+  // Draw path analysis visualization
+  const states = [
+    { x: 150, y: 200, name: 'Start' },
+    { x: 400, y: 200, name: 'Step 1' },
+    { x: 650, y: 200, name: 'Step 2' },
+    { x: 400, y: 400, name: 'Alternative' },
+    { x: 900, y: 200, name: 'End' }
+  ];
+  
+  // Draw paths
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  drawArrow(ctx, 190, 200, 360, 200);
+  drawArrow(ctx, 440, 200, 610, 200);
+  drawArrow(ctx, 690, 200, 860, 200);
+  drawArrow(ctx, 400, 240, 400, 360);
+  drawArrow(ctx, 440, 400, 860, 240);
+  
+  // Draw states
+  states.forEach(state => {
+    drawPathState(ctx, state.x, state.y, state.name);
+  });
+}
+
+function drawDataPersistence(ctx) {
+  // Draw export/import interface
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(50, 100, 1100, 600);
+  
+  // Draw table header
+  const columns = ['Source State', 'Destination State', 'Rule Condition', 'Description'];
+  columns.forEach((col, i) => {
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(70 + i * 270, 120, 250, 40);
+    
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(col, 85 + i * 270, 145);
+  });
+  
+  // Draw table rows
+  const rows = 8;
+  for (let i = 0; i < rows; i++) {
+    ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+    ctx.fillRect(70, 160 + i * 50, 1060, 50);
+    
+    // Add some mock data
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '14px Arial';
+    ctx.fillText(`State ${i + 1}`, 85, 190 + i * 50);
+    ctx.fillText(`State ${i + 2}`, 355, 190 + i * 50);
+    ctx.fillText(`condition${i + 1} === true`, 625, 190 + i * 50);
+    ctx.fillText(`Transition ${i + 1}`, 895, 190 + i * 50);
+  }
+}
+
+function drawLogAnalysis(ctx) {
+  // Based on LogAnalyzer.jsx
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(50, 100, 1100, 600);
+  
+  // Draw log entries
+  const logs = [
+    '[2024-03-10 10:15:23] State transition: Initial → Processing',
+    '[2024-03-10 10:15:24] Validating input data...',
+    '[2024-03-10 10:15:25] Rule evaluation: status === "ready"',
+    '[2024-03-10 10:15:26] Transition successful',
+    '[2024-03-10 10:15:27] New state: Processing'
+  ];
+  
+  logs.forEach((log, i) => {
+    ctx.fillStyle = i % 2 === 0 ? '#f8fafc' : '#ffffff';
+    ctx.fillRect(70, 120 + i * 50, 1060, 50);
+    
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(log, 90, 150 + i * 50);
+  });
+  
+  // Draw analysis panel
+  ctx.fillStyle = '#f1f5f9';
+  ctx.fillRect(850, 120, 280, 560);
+  
+  ctx.fillStyle = '#1e293b';
+  ctx.font = 'bold 16px Arial';
+  ctx.fillText('Analysis Results', 870, 150);
+}
+
+function drawRuleManagement(ctx) {
+  // Based on RulesPanel.jsx
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(50, 100, 1100, 600);
+  
+  // Draw rule editor
+  const rules = [
+    { condition: 'status === "ready"', target: 'Processing' },
+    { condition: 'data.isValid === true', target: 'Validation' },
+    { condition: 'error === null', target: 'Success' }
+  ];
+  
+  rules.forEach((rule, i) => {
+    // Rule container
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(70, 120 + i * 100, 1060, 80, 8);
+    ctx.fill();
+    
+    // Condition
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(rule.condition, 90, 160 + i * 100);
+    
+    // Target state
+    drawButton(ctx, 900, 140 + i * 100, rule.target, '#3b82f6');
+  });
+  
+  // Add rule button
+  drawButton(ctx, 70, 420, '+ Add Rule', '#3b82f6');
+}
+
+function drawSimulationState(ctx, x, y, name, color) {
+  // State circle
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, 40, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // State name
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(name, x, y + 5);
+}
+
+function drawPathState(ctx, x, y, name) {
+  // State box
+  ctx.fillStyle = '#3b82f6';
+  ctx.beginPath();
+  ctx.roundRect(x - 40, y - 25, 80, 50, 8);
+  ctx.fill();
+  
+  // State name
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(name, x, y + 5);
 }
 
 function drawArrow(ctx, x1, y1, x2, y2) {
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 2;
+  const headLength = 10;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
   
-  // Draw line
+  // Line
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
   
-  // Draw arrow head
-  const angle = Math.atan2(y2 - y1, x2 - x1);
+  // Arrow head
   ctx.beginPath();
   ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - 15 * Math.cos(angle - Math.PI / 6), y2 - 15 * Math.sin(angle - Math.PI / 6));
-  ctx.lineTo(x2 - 15 * Math.cos(angle + Math.PI / 6), y2 - 15 * Math.sin(angle + Math.PI / 6));
+  ctx.lineTo(
+    x2 - headLength * Math.cos(angle - Math.PI / 6),
+    y2 - headLength * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    x2 - headLength * Math.cos(angle + Math.PI / 6),
+    y2 - headLength * Math.sin(angle + Math.PI / 6)
+  );
   ctx.closePath();
-  ctx.fillStyle = '#64748b';
   ctx.fill();
-}
-
-function drawTable(ctx, x, y, width, height) {
-  const rows = 8;
-  const cols = 3;
-  const rowHeight = height / rows;
-  const colWidth = width / cols;
-  
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 1;
-  
-  // Draw header
-  ctx.fillStyle = '#f1f5f9';
-  ctx.fillRect(x, y, width, rowHeight);
-  
-  // Draw grid
-  for (let i = 0; i <= rows; i++) {
-    ctx.beginPath();
-    ctx.moveTo(x, y + i * rowHeight);
-    ctx.lineTo(x + width, y + i * rowHeight);
-    ctx.stroke();
-  }
-  
-  for (let i = 0; i <= cols; i++) {
-    ctx.beginPath();
-    ctx.moveTo(x + i * colWidth, y);
-    ctx.lineTo(x + i * colWidth, y + height);
-    ctx.stroke();
-  }
-}
-
-function drawLogs(ctx, x, y, width, height) {
-  const lineHeight = 30;
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#475569';
-  
-  for (let i = 0; i < 12; i++) {
-    const timestamp = new Date().toISOString();
-    ctx.fillText(`[${timestamp}] Log entry ${i + 1}`, x + 10, y + 25 + i * lineHeight);
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.beginPath();
-    ctx.moveTo(x, y + (i + 1) * lineHeight);
-    ctx.lineTo(x + width, y + (i + 1) * lineHeight);
-    ctx.stroke();
-  }
-}
-
-function drawRules(ctx, x, y, width, height) {
-  const ruleHeight = 60;
-  const rules = ['IF state = "A" THEN goto "B"', 'IF condition = true THEN goto "C"', 'IF value > 10 THEN goto "D"'];
-  
-  rules.forEach((rule, i) => {
-    ctx.fillStyle = '#f1f5f9';
-    ctx.fillRect(x, y + i * ruleHeight, width, ruleHeight - 10);
-    
-    ctx.fillStyle = '#475569';
-    ctx.font = '16px Arial';
-    ctx.fillText(rule, x + 20, y + 35 + i * ruleHeight);
-  });
 }
 
 // Generate and save images
