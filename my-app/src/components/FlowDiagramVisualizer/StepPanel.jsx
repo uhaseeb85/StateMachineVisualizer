@@ -157,7 +157,7 @@ const StepPanel = ({
         <div
           className={`
             group flex items-center gap-2 p-2 rounded-md cursor-pointer
-            ${selectedStep?.id === step.id ? 'bg-primary text-white' : 'hover:bg-muted'}
+            ${selectedStep?.id === step.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
             ${connectionType && selectedStep?.id !== step.id ? 'hover:ring-2 hover:ring-blue-500' : ''}
             ${connectionType && selectedStep?.id === step.id ? 'opacity-50' : ''}
             border border-gray-200 dark:border-gray-700 mb-1
