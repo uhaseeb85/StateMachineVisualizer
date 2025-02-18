@@ -402,10 +402,6 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                 <Download className="h-4 w-4 mr-2" />
                 Export Results
               </Button>
-              <Button variant="outline" onClick={handleClose}>
-                <X className="h-4 w-4 mr-2" />
-                Close
-              </Button>
             </div>
           </DialogTitle>
         </DialogHeader>

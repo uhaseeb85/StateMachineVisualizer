@@ -237,15 +237,6 @@ const SimulationModal = ({ steps, connections, onClose }) => {
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClose}
-                title="Close simulation"
-                className="hover:bg-red-50 dark:hover:bg-red-900/50"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </DialogHeader>
