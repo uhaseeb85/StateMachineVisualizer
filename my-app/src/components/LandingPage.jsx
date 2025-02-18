@@ -8,7 +8,6 @@ import simulationImg from '../assets/features/real-time-simulation.png';
 import pathAnalysisImg from '../assets/features/path-analysis.png';
 import dataPersistenceImg from '../assets/features/data-persistence.png';
 import logAnalysisImg from '../assets/features/log-analysis.png';
-import ruleManagementImg from '../assets/features/rule-management.png';
 
 const ModeCard = ({ title, description, features, icon: Icon, onSelect, color, mainImage }) => (
   <Card className={`p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg
@@ -76,7 +75,7 @@ const LandingPage = ({ onGetStarted }) => {
       features: [
         {
           icon: GitBranch,
-          text: "Create and modify state machines with an intuitive drag-and-drop interface"
+          text: "Create modify and test state machines with an intuitive interface"
         },
         {
           icon: Shield,
@@ -89,6 +88,10 @@ const LandingPage = ({ onGetStarted }) => {
         {
           icon: Code2,
           text: "Advanced log analysis and Splunk integration"
+        },
+        {
+          icon: Code2,
+          text: "Import/Export flows in CSV format"
         }
       ]
     },
@@ -162,7 +165,7 @@ const LandingPage = ({ onGetStarted }) => {
           <Card className="p-6 bg-white dark:bg-gray-800">
             <img src={dataPersistenceImg} alt="Data Persistence" className="w-full h-48 object-cover rounded-lg mb-4" />
             <h3 className="text-xl font-semibold mb-2">Data Persistence</h3>
-            <p className="text-gray-600 dark:text-gray-300">Your work is automatically saved and can be exported.</p>
+            <p className="text-gray-600 dark:text-gray-300">Your work can be saved and can be exported/imported.</p>
           </Card>
           <Card className="p-6 bg-white dark:bg-gray-800">
             <img src={logAnalysisImg} alt="Path Analysis" className="w-full h-48 object-cover rounded-lg mb-4" />
