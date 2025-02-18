@@ -6,13 +6,15 @@ import SimulationModal from './SimulationModal';
 import PathFinderModal from './PathFinderModal';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
+import { TourProvider, useTour } from './TourProvider';
 
 const STORAGE_KEY = 'flowDiagramData';
 
-const FlowDiagramVisualizer = ({ onChangeMode }) => {
+const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   console.log('Rendering FlowDiagramVisualizer');
   const [showSimulation, setShowSimulation] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
+  const { startTour } = useTour();
   
   const {
     steps,
@@ -81,6 +83,7 @@ const FlowDiagramVisualizer = ({ onChangeMode }) => {
           onImport={importData}
           onExport={exportData}
           onSave={saveFlow}
+          startTour={startTour}
         />
         
         <div className="mt-8 bg-background rounded-xl border shadow-sm">
@@ -112,6 +115,18 @@ const FlowDiagramVisualizer = ({ onChangeMode }) => {
         )}
       </div>
     </div>
+  );
+};
+
+FlowDiagramVisualizerContent.propTypes = {
+  onChangeMode: PropTypes.func.isRequired,
+};
+
+const FlowDiagramVisualizer = ({ onChangeMode }) => {
+  return (
+    <TourProvider>
+      <FlowDiagramVisualizerContent onChangeMode={onChangeMode} />
+    </TourProvider>
   );
 };
 

@@ -9,7 +9,8 @@ import {
   SwitchCamera,
   Moon,
   Sun,
-  Save
+  Save,
+  HelpCircle
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -21,7 +22,8 @@ const TopActionBar = ({
   onClear,
   onImport,
   onExport,
-  onSave
+  onSave,
+  startTour
 }) => {
   const { theme, setTheme } = useTheme();
 
@@ -82,6 +84,23 @@ const TopActionBar = ({
             ) : (
               <Moon className="h-5 w-5" />
             )}
+          </Button>
+
+          {/* Getting Started Button */}
+          <Button
+            onClick={startTour}
+            title="Get a guided tour of all features and how to use them"
+            className="getting-started-button bg-gray-900 text-white text-sm
+                     dark:bg-gray-800 dark:text-gray-100
+                     hover:bg-blue-600 hover:scale-105
+                     dark:hover:bg-blue-600
+                     transform transition-all duration-200 ease-in-out
+                     border border-gray-800 dark:border-gray-700
+                     hover:border-blue-500 dark:hover:border-blue-500
+                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Getting Started
           </Button>
 
           {/* Visual Separator */}
@@ -224,7 +243,8 @@ TopActionBar.propTypes = {
   onClear: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired
+  onSave: PropTypes.func.isRequired,
+  startTour: PropTypes.func.isRequired
 };
 
 export default TopActionBar; 
