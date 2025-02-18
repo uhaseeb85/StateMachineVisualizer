@@ -12,7 +12,8 @@ import {
   XCircle,
   Grip,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,7 +56,6 @@ const StepPanel = ({
 
   const handleStepClick = (step) => {
     if (selectedStep && connectionType) {
-      // Add connection if a different step is clicked
       if (selectedStep.id !== step.id) {
         const success = onAddConnection(selectedStep.id, step.id, connectionType);
         if (success) {
@@ -72,7 +72,9 @@ const StepPanel = ({
   const handleConnectionStart = (step, type) => {
     setSelectedStep(step);
     setConnectionType(type);
-    toast.info(`Select a target step for ${type} path`);
+    toast.info(`Select a target step for ${type} path`, {
+      duration: 2000,
+    });
   };
 
   const handleRemoveConnection = (fromStepId, toStepId, type) => {
@@ -90,72 +92,104 @@ const StepPanel = ({
 
   return (
     <div className="flex h-full">
-      {/* Steps List */}
-      <div className="w-80 border-r p-4 overflow-y-auto">
-        <div className="flex gap-2 mb-4">
-          <Input
-            placeholder="New step name"
-            value={newStepName}
-            onChange={(e) => setNewStepName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddStep()}
-            className="flex-1"
-          />
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={handleAddStep}
-            disabled={!newStepName.trim()}
-            className="shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+      <div className="w-full max-w-4xl mx-auto p-6">
+        {connectionType && (
+          <div className="sticky top-0 z-50 mb-4">
+            <Card className="p-4 bg-blue-500/10 border-blue-500">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="bg-blue-500 text-white p-2 rounded-full">
+                    {connectionType === 'success' ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-medium">
+                      Select {connectionType === 'success' ? 'Success' : 'Failure'} Target
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      From: {selectedStep?.name}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedStep(null);
+                    setConnectionType(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
 
-        <div className="space-y-3">
+        {/* Add New Step Section */}
+        <Card className="mb-8 p-6 bg-muted/50">
+          <h2 className="text-lg font-semibold mb-4">Add New Step</h2>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Enter step name..."
+                value={newStepName}
+                onChange={(e) => setNewStepName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddStep()}
+                className="h-10"
+              />
+            </div>
+            <Button
+              onClick={handleAddStep}
+              disabled={!newStepName.trim()}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Step
+            </Button>
+          </div>
+        </Card>
+
+        {/* Steps Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {steps.map((step) => (
             <Card
               key={step.id}
               className={`
-                p-3 hover:shadow-md transition-all duration-200
+                p-4 hover:shadow-md transition-all duration-200
                 ${selectedStep?.id === step.id ? 'ring-2 ring-primary' : ''}
-                ${connectionType ? 'cursor-pointer hover:bg-muted/50' : ''}
+                ${connectionType && selectedStep?.id !== step.id ? 'cursor-pointer hover:ring-2 hover:ring-blue-500' : ''}
+                ${connectionType && selectedStep?.id === step.id ? 'opacity-50' : ''}
               `}
               onClick={() => handleStepClick(step)}
             >
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-3">
                 <div className="mt-1 cursor-move">
                   <Grip className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-medium truncate">{step.name}</h3>
-                      {step.description && !expandedSteps[step.id] && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {step.description}
-                        </p>
-                      )}
-                    </div>
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-medium text-lg">{step.name}</h3>
                     <div className="flex gap-1">
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-6 w-6"
+                        className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleStepExpansion(step.id);
                         }}
                       >
-                        {expandedSteps[step.id] ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
+                        <Settings className="h-4 w-4" />
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-6 w-6 hover:text-destructive"
+                        className="h-8 w-8 hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveStep(step.id);
@@ -166,119 +200,111 @@ const StepPanel = ({
                     </div>
                   </div>
 
+                  {/* Description Preview */}
+                  {step.description && !expandedSteps[step.id] && (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {step.description}
+                    </p>
+                  )}
+
+                  {/* Expanded Content */}
                   {expandedSteps[step.id] && (
-                    <div className="mt-2 space-y-2">
-                      <Input
-                        placeholder="Description"
-                        value={step.description || ''}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          onUpdateStep(step.id, { description: e.target.value });
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-sm"
-                      />
-                      <Input
-                        placeholder="Expected Response"
-                        value={step.expectedResponse || ''}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          onUpdateStep(step.id, { expectedResponse: e.target.value });
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-sm"
-                      />
+                    <div className="space-y-3 mb-3">
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Description</label>
+                        <Textarea
+                          placeholder="Step description..."
+                          value={step.description || ''}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onUpdateStep(step.id, { description: e.target.value });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Expected Response</label>
+                        <Input
+                          placeholder="e.g., 200 OK, Success message..."
+                          value={step.expectedResponse || ''}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onUpdateStep(step.id, { expectedResponse: e.target.value });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
                     </div>
                   )}
-                  
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 h-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleConnectionStart(step, 'success');
-                      }}
-                    >
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Success
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 h-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleConnectionStart(step, 'failure');
-                      }}
-                    >
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Failure
-                    </Button>
-                  </div>
 
-                  {/* Show existing connections */}
-                  {connections
-                    .filter((conn) => conn.fromStepId === step.id)
-                    .map((conn) => {
-                      const targetStep = steps.find((s) => s.id === conn.toStepId);
-                      return (
-                        <div
-                          key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`}
-                          className="flex items-center gap-1 mt-1 text-sm text-muted-foreground"
-                        >
-                          <ArrowRight className="h-3 w-3" />
-                          {conn.type === 'success' ? (
-                            <CheckCircle2 className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <XCircle className="h-3 w-3 text-red-500" />
-                          )}
-                          <span className="truncate flex-1">{targetStep?.name}</span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-4 w-4 hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveConnection(step.id, conn.toStepId, conn.type);
-                            }}
+                  {/* Connections */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConnectionStart(step, 'success');
+                        }}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                        Add Success Path
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConnectionStart(step, 'failure');
+                        }}
+                      >
+                        <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                        Add Failure Path
+                      </Button>
+                    </div>
+
+                    {/* Existing Connections */}
+                    {connections
+                      .filter((conn) => conn.fromStepId === step.id)
+                      .map((conn) => {
+                        const targetStep = steps.find((s) => s.id === conn.toStepId);
+                        return (
+                          <div
+                            key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`}
+                            className="flex items-center gap-2 p-2 bg-muted rounded-md"
                           >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                            {conn.type === 'success' ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm flex-1">{targetStep?.name}</span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveConnection(step.id, conn.toStepId, conn.type);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               </div>
             </Card>
           ))}
         </div>
       </div>
-
-      {/* Connection Mode */}
-      {connectionType && (
-        <div className="flex-1 p-4 bg-muted/50">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">
-              Select {connectionType === 'success' ? 'Success' : 'Failure'} Target
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedStep(null);
-                setConnectionType(null);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-          <p className="text-muted-foreground mb-4">
-            Click on a step to create a {connectionType} connection from "{selectedStep?.name}"
-          </p>
-        </div>
-      )}
     </div>
   );
 };
