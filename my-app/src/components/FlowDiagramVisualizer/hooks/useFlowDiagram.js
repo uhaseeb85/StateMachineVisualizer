@@ -87,14 +87,21 @@ const useFlowDiagram = (storageKey) => {
       return false;
     }
 
-    // Check if step already has this type of connection
-    const hasExistingTypeConnection = connections.some(
+    // Remove any existing connection of the same type
+    const existingConnection = connections.find(
       (conn) => conn.fromStepId === fromStepId && conn.type === type
     );
 
-    if (hasExistingTypeConnection) {
-      toast.error(`Step already has a ${type} path`);
-      return false;
+    if (existingConnection) {
+      setConnections((prev) =>
+        prev.filter(
+          (conn) =>
+            !(
+              conn.fromStepId === fromStepId &&
+              conn.type === type
+            )
+        )
+      );
     }
 
     setConnections((prev) => [
