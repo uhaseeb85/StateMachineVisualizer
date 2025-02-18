@@ -610,7 +610,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                     >
                       Next
                     </Button>
-                  </div>
+              </div>
                 )}
             </div>
           )}

@@ -1,44 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import StateMachineVisualizer from './StateMachineVisualizer';
 import FlowDiagramVisualizer from './FlowDiagramVisualizer';
 import LandingPage from './LandingPage';
-import ModeSelector from './ModeSelector';
 import { ThemeProvider } from './ThemeProvider';
 
-const STORAGE_KEY_MODE = 'visualizer_mode';
-
 const AppContent = () => {
-  const [showApp, setShowApp] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
   const [mode, setMode] = useState(null);
-  const [showModeSelector, setShowModeSelector] = useState(false);
 
-  useEffect(() => {
-    const savedMode = localStorage.getItem(STORAGE_KEY_MODE);
-    if (savedMode) {
-      setMode(savedMode);
-    }
-  }, []);
-
-  const handleModeSelect = (selectedMode) => {
+  const handleGetStarted = () => {
+    const selectedMode = localStorage.getItem('visualizer_mode');
     setMode(selectedMode);
-    localStorage.setItem(STORAGE_KEY_MODE, selectedMode);
-    setShowModeSelector(false);
+    setShowLanding(false);
   };
 
   const handleChangeModeClick = () => {
-    setShowModeSelector(true);
+    setShowLanding(true);
   };
 
   const renderContent = () => {
-    if (!showApp) {
-      return <LandingPage onGetStarted={() => {
-        setShowApp(true);
-        setShowModeSelector(true);
-      }} />;
-    }
-
-    if (showModeSelector || !mode) {
-      return <ModeSelector onSelect={handleModeSelect} currentMode={mode} />;
+    if (showLanding) {
+      return <LandingPage onGetStarted={handleGetStarted} />;
     }
 
     if (mode === 'stateMachine') {
