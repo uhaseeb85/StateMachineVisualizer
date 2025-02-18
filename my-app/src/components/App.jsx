@@ -3,10 +3,11 @@ import StateMachineVisualizer from './StateMachineVisualizer';
 import FlowDiagramVisualizer from './FlowDiagramVisualizer';
 import LandingPage from './LandingPage';
 import ModeSelector from './ModeSelector';
+import { ThemeProvider } from './ThemeProvider';
 
 const STORAGE_KEY_MODE = 'visualizer_mode';
 
-const App = () => {
+const AppContent = () => {
   const [showApp, setShowApp] = useState(false);
   const [mode, setMode] = useState(null);
   const [showModeSelector, setShowModeSelector] = useState(false);
@@ -51,6 +52,14 @@ const App = () => {
     <div className="min-h-screen bg-background">
       {renderContent()}
     </div>
+  );
+};
+
+const App = () => {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 };
 
