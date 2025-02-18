@@ -70,14 +70,36 @@ const SimulationModal = ({ steps, connections, onClose }) => {
         conn => conn.fromStepId === nextStep.id
       );
 
-      // If no outgoing connections, mark as complete
+      // If no outgoing connections, mark as complete and add END element
       if (!hasOutgoingConnections) {
         setCurrentStep(null);
         setIsComplete(true);
+        setSimulationPath(prev => [
+          ...prev,
+          { 
+            step: { 
+              id: 'end', 
+              name: 'END',
+              description: 'Simulation complete'
+            }, 
+            status: 'end' 
+          }
+        ]);
       }
     } else {
       setCurrentStep(null);
       setIsComplete(true);
+      setSimulationPath(prev => [
+        ...prev,
+        { 
+          step: { 
+            id: 'end', 
+            name: 'END',
+            description: 'Simulation complete'
+          }, 
+          status: 'end' 
+        }
+      ]);
     }
   };
 
@@ -159,6 +181,8 @@ const SimulationModal = ({ steps, connections, onClose }) => {
         return <XCircle className="h-4 w-4 text-red-500/70" />;
       case 'current':
         return <ArrowRight className="h-4 w-4 text-blue-500/70" />;
+      case 'end':
+        return <X className="h-4 w-4 text-gray-500/70" />;
       default:
         return null;
     }
@@ -239,6 +263,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                       status === 'current' ? 'ring-1 ring-blue-300 bg-blue-50 dark:bg-blue-900/30' : 
                       status === 'success' ? 'bg-green-50 dark:bg-green-900/30' :
                       status === 'failure' ? 'bg-red-50 dark:bg-red-900/30' :
+                      status === 'end' ? 'bg-gray-50 dark:bg-gray-800' :
                       'bg-gray-50 dark:bg-gray-800'
                     }`}>
                       <div className="flex items-center gap-2 justify-center">
