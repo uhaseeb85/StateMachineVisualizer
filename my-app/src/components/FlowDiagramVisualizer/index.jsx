@@ -25,6 +25,8 @@ const FlowDiagramVisualizer = ({ onChangeMode }) => {
     clearAll,
     importData,
     exportData,
+    saveFlow,
+    showSaveNotification
   } = useFlowDiagram(STORAGE_KEY);
 
   useEffect(() => {
@@ -42,6 +44,20 @@ const FlowDiagramVisualizer = ({ onChangeMode }) => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       <Toaster richColors />
+
+      {/* Save success notification */}
+      {showSaveNotification && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
+                        transition-opacity duration-300 flex items-center space-x-2
+                        animate-fade-in-out">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-lg font-medium">Flow saved successfully!</span>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto p-4 max-w-full min-h-screen 
                     bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
@@ -64,6 +80,7 @@ const FlowDiagramVisualizer = ({ onChangeMode }) => {
           onClear={clearAll}
           onImport={importData}
           onExport={exportData}
+          onSave={saveFlow}
         />
         
         <div className="mt-8 bg-background rounded-xl border shadow-sm">

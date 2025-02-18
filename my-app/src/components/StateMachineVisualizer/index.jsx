@@ -46,8 +46,9 @@ const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
  * Main content component that manages the application state and renders all sub-components
  * @param {Object} props - Component props
  * @param {Function} props.startTour - Function to initiate the guided tour
+ * @param {Function} props.onChangeMode - Function to change the theme mode
  */
-const StateMachineVisualizerContent = ({ startTour }) => {
+const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   // Core state machine functionality from custom hook
   const {
     states,
@@ -235,11 +236,12 @@ const StateMachineVisualizerContent = ({ startTour }) => {
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
           onSave={saveFlow}
-          onExcelImport={handleExcelImport}
+          onExcelImport={handleRuleDictionaryImport}
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
           onExportCSV={handleExportCSV}
+          onChangeMode={onChangeMode}
         />
 
         {/* Main Panels */}
@@ -390,18 +392,23 @@ const StateMachineVisualizerContent = ({ startTour }) => {
 };
 
 StateMachineVisualizerContent.propTypes = {
-  startTour: PropTypes.func.isRequired
+  startTour: PropTypes.func.isRequired,
+  onChangeMode: PropTypes.func.isRequired
 };
 
 /**
  * Root component wrapped with TourProvider for guided tour functionality
  */
-const StateMachineVisualizer = () => {
+const StateMachineVisualizer = ({ onChangeMode }) => {
   return (
     <TourProvider>
-      <StateMachineVisualizerContent />
+      <StateMachineVisualizerContent startTour={() => {}} onChangeMode={onChangeMode} />
     </TourProvider>
   );
+};
+
+StateMachineVisualizer.propTypes = {
+  onChangeMode: PropTypes.func.isRequired
 };
 
 export default StateMachineVisualizer;

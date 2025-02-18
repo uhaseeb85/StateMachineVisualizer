@@ -6,6 +6,7 @@ import Papa from 'papaparse';
 const useFlowDiagram = (storageKey) => {
   const [steps, setSteps] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [showSaveNotification, setShowSaveNotification] = useState(false);
 
   // Load data from localStorage
   useEffect(() => {
@@ -28,10 +29,13 @@ const useFlowDiagram = (storageKey) => {
   }, [storageKey]);
 
   // Save data to localStorage
-  useEffect(() => {
-    console.log('Saving data to storage. Steps:', steps);
+  const saveFlow = () => {
+    console.log('Saving flow diagram data');
     localStorage.setItem(storageKey, JSON.stringify({ steps, connections }));
-  }, [steps, connections, storageKey]);
+    setShowSaveNotification(true);
+    setTimeout(() => setShowSaveNotification(false), 2000);
+    toast.success('Flow diagram saved successfully');
+  };
 
   const addStep = (stepData) => {
     console.log('Adding new step:', stepData);
@@ -247,6 +251,8 @@ const useFlowDiagram = (storageKey) => {
     clearAll,
     importData,
     exportData,
+    saveFlow,
+    showSaveNotification
   };
 };
 

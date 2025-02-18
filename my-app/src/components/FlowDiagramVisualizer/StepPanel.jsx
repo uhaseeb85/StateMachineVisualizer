@@ -12,7 +12,6 @@ import {
   XCircle,
   Grip,
   ChevronDown,
-  ChevronUp,
   ChevronRight,
   Settings,
   FolderPlus
@@ -28,28 +27,48 @@ const StepPanel = ({
   onAddConnection,
   onRemoveConnection,
 }) => {
-  console.log('Steps received:', steps); // Debug log
   const [newStepName, setNewStepName] = useState('');
   const [selectedStep, setSelectedStep] = useState(null);
   const [connectionType, setConnectionType] = useState(null);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [addingSubStepFor, setAddingSubStepFor] = useState(null);
+  const [subStepName, setSubStepName] = useState('');
 
-  const handleAddStep = (parentStepId = null) => {
+  // Function to get child steps for a parent
+  const getChildSteps = (parentId) => {
+    return steps.filter(step => step.parentId === parentId);
+  };
+
+  // Function to handle adding a new root-level step
+  const handleAddRootStep = () => {
     if (newStepName.trim()) {
       const stepId = onAddStep({
         name: newStepName.trim(),
         description: '',
         expectedResponse: '',
-        parentId: parentStepId
+        parentId: null
       });
       setNewStepName('');
+      toast.success('Step added successfully');
+    }
+  };
+
+  // Function to handle adding a sub-step
+  const handleAddSubStep = (parentId) => {
+    if (subStepName.trim()) {
+      const stepId = onAddStep({
+        name: subStepName.trim(),
+        description: '',
+        expectedResponse: '',
+        parentId: parentId
+      });
+      setSubStepName('');
       setAddingSubStepFor(null);
       setExpandedSteps(prev => ({
         ...prev,
-        [stepId]: true
+        [parentId]: true // Auto-expand parent when adding sub-step
       }));
-      toast.success('Step added successfully');
+      toast.success('Sub-step added successfully');
     }
   };
 
@@ -82,77 +101,125 @@ const StepPanel = ({
   };
 
   const handleRemoveStep = (stepId) => {
+    // Get all descendant steps (sub-steps and their sub-steps)
+    const getAllDescendants = (parentId) => {
+      const children = steps.filter(s => s.parentId === parentId);
+      let descendants = [...children];
+      children.forEach(child => {
+        descendants = [...descendants, ...getAllDescendants(child.id)];
+      });
+      return descendants;
+    };
+
+    const descendantIds = getAllDescendants(stepId).map(s => s.id);
+    
+    // Remove all descendant steps first
+    descendantIds.forEach(id => {
+      onRemoveStep(id);
+    });
+    
+    // Then remove the step itself
     onRemoveStep(stepId);
+    
     if (selectedStep?.id === stepId) {
       setSelectedStep(null);
     }
-    toast.success('Step removed');
+    toast.success('Step and all sub-steps removed');
   };
 
-  const renderStepHierarchy = (steps, parentId = null, level = 0) => {
-    console.log('Rendering hierarchy for parentId:', parentId, 'Level:', level); // Debug log
-    // For imported steps that don't have parentId, treat them as root level steps
-    const filteredSteps = steps.filter(step => 
-      parentId === null ? !step.parentId : step.parentId === parentId
-    );
-    console.log('Filtered steps:', filteredSteps); // Debug log
-    
-    return filteredSteps.map(step => (
-      <div key={step.id} className="mb-1">
+  const renderStep = (step, level = 0) => {
+    const childSteps = getChildSteps(step.id);
+    const hasChildren = childSteps.length > 0;
+    const isExpanded = expandedSteps[step.id];
+
+    return (
+      <div key={step.id} className="step-container">
         <div
           className={`
             group flex items-center gap-2 p-2 rounded-md cursor-pointer
             ${selectedStep?.id === step.id ? 'bg-primary text-white' : 'hover:bg-muted'}
             ${connectionType && selectedStep?.id !== step.id ? 'hover:ring-2 hover:ring-blue-500' : ''}
             ${connectionType && selectedStep?.id === step.id ? 'opacity-50' : ''}
-            border border-gray-200 dark:border-gray-700
+            border border-gray-200 dark:border-gray-700 mb-1
           `}
           style={{ marginLeft: `${level * 20}px` }}
-          onClick={() => handleStepClick(step)}
         >
-          <div className="flex-1 flex items-center gap-2">
+          <div className="flex items-center gap-1 min-w-[24px]">
+            {hasChildren && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedSteps(prev => ({
+                    ...prev,
+                    [step.id]: !prev[step.id]
+                  }));
+                }}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+          </div>
+
+          <div 
+            className="flex-1 flex items-center gap-2"
+            onClick={() => handleStepClick(step)}
+          >
             <Grip className="h-4 w-4 text-muted-foreground cursor-move" />
             <span className="font-medium">{step.name}</span>
           </div>
+
           <div className="flex items-center gap-1">
             <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+              size="sm"
+              variant="outline"
+              className="h-7 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
               onClick={(e) => {
                 e.stopPropagation();
                 setAddingSubStepFor(step.id);
+                setSubStepName('');
               }}
+              title="Add sub-step"
             >
               <FolderPlus className="h-3 w-3" />
+              Add Sub-step
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
                 handleRemoveStep(step.id);
               }}
+              title="Remove step and all sub-steps"
             >
               <X className="h-3 w-3" />
             </Button>
           </div>
         </div>
+
+        {/* Sub-step input form */}
         {addingSubStepFor === step.id && (
           <div className="flex gap-2 mt-2" style={{ marginLeft: `${(level + 1) * 20}px` }}>
             <Input
               placeholder="Enter sub-step name..."
-              value={newStepName}
-              onChange={(e) => setNewStepName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddStep(step.id)}
+              value={subStepName}
+              onChange={(e) => setSubStepName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSubStep(step.id)}
               className="h-8"
               autoFocus
             />
             <Button
               size="sm"
-              onClick={() => handleAddStep(step.id)}
-              disabled={!newStepName.trim()}
+              onClick={() => handleAddSubStep(step.id)}
+              disabled={!subStepName.trim()}
             >
               Add
             </Button>
@@ -161,16 +228,41 @@ const StepPanel = ({
               variant="ghost"
               onClick={() => {
                 setAddingSubStepFor(null);
-                setNewStepName('');
+                setSubStepName('');
               }}
             >
               Cancel
             </Button>
           </div>
         )}
-        {renderStepHierarchy(steps, step.id, level + 1)}
+
+        {/* Render child steps */}
+        {isExpanded && childSteps.map(childStep => renderStep(childStep, level + 1))}
       </div>
-    ));
+    );
+  };
+
+  // Get root-level steps (steps with no parent)
+  const rootSteps = steps.filter(step => !step.parentId);
+
+  const addConnection = (fromStepId, toStepId, type) => {
+    console.log('Adding connection:', { fromStepId, toStepId, type });
+    // Check if connection already exists
+    const exists = connections.some(
+      (conn) =>
+        conn.fromStepId === fromStepId &&
+        conn.toStepId === toStepId &&
+        conn.type === type
+    );
+
+    if (exists) {
+      toast.error('Connection already exists');
+      return false;
+    }
+
+    // Remove any existing connection of the same type
+    onRemoveConnection(fromStepId, toStepId, type);
+    return true;
   };
 
   return (
@@ -178,29 +270,32 @@ const StepPanel = ({
       {/* Left Panel - Steps List */}
       <div className="w-1/3 border rounded-xl p-6 bg-background overflow-y-auto">
         <div className="space-y-4">
+          {/* Add root step input */}
           <div className="flex gap-4 sticky top-0 bg-background pb-4 border-b">
             <Input
               placeholder="Enter step name..."
               value={newStepName}
               onChange={(e) => setNewStepName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddStep()}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
               className="h-10"
             />
             <Button
-              onClick={() => handleAddStep()}
+              onClick={handleAddRootStep}
               disabled={!newStepName.trim()}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Step
             </Button>
           </div>
+
+          {/* Steps list */}
           <div className="space-y-1 mt-4">
-            {steps.length === 0 ? (
+            {rootSteps.length === 0 ? (
               <div className="text-center text-muted-foreground py-4">
                 No steps added yet. Add your first step above.
               </div>
             ) : (
-              renderStepHierarchy(steps)
+              rootSteps.map(step => renderStep(step))
             )}
           </div>
         </div>
@@ -231,37 +326,96 @@ const StepPanel = ({
                   className="min-h-[80px]"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Expected Response</label>
-                <Input
-                  placeholder="e.g., 200 OK, Success message..."
-                  value={selectedStep.expectedResponse || ''}
-                  onChange={(e) => onUpdateStep(selectedStep.id, { expectedResponse: e.target.value })}
-                />
-              </div>
             </div>
 
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Connections</h3>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleConnectionStart(selectedStep, 'success')}
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                  Add Success Path
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleConnectionStart(selectedStep, 'failure')}
-                >
-                  <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                  Add Failure Path
-                </Button>
+              <div className="flex gap-4">
+                {/* Success Path Dropdown */}
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-1 block text-green-600 dark:text-green-400">
+                    Success Path
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                               text-sm dark:bg-gray-700 dark:text-white px-3 pr-8
+                               focus:outline-none focus:ring-2 focus:ring-green-500"
+                      value={connections.find(conn => conn.fromStepId === selectedStep.id && conn.type === 'success')?.toStepId || ''}
+                      onChange={(e) => {
+                        const newTargetId = e.target.value;
+                        // First remove any existing success connection
+                        const existingConnections = connections.filter(conn => 
+                          conn.fromStepId === selectedStep.id && conn.type === 'success'
+                        );
+                        
+                        existingConnections.forEach(conn => {
+                          onRemoveConnection(selectedStep.id, conn.toStepId, 'success');
+                        });
+
+                        // Then add the new connection if a target is selected
+                        if (newTargetId) {
+                          onAddConnection(selectedStep.id, newTargetId, 'success');
+                          toast.success('Success path updated');
+                        }
+                      }}
+                    >
+                      <option value="">Select target step</option>
+                      {steps
+                        .filter(s => s.id !== selectedStep.id)
+                        .map(step => (
+                          <option key={step.id} value={step.id}>
+                            {step.name}
+                          </option>
+                        ))
+                      }
+                    </select>
+                    <CheckCircle2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Failure Path Dropdown */}
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-1 block text-red-600 dark:text-red-400">
+                    Failure Path
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                               text-sm dark:bg-gray-700 dark:text-white px-3 pr-8
+                               focus:outline-none focus:ring-2 focus:ring-red-500"
+                      value={connections.find(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure')?.toStepId || ''}
+                      onChange={(e) => {
+                        const newTargetId = e.target.value;
+                        // First remove any existing failure connection
+                        const existingConnections = connections.filter(conn => 
+                          conn.fromStepId === selectedStep.id && conn.type === 'failure'
+                        );
+                        
+                        existingConnections.forEach(conn => {
+                          onRemoveConnection(selectedStep.id, conn.toStepId, 'failure');
+                        });
+
+                        // Then add the new connection if a target is selected
+                        if (newTargetId) {
+                          onAddConnection(selectedStep.id, newTargetId, 'failure');
+                          toast.success('Failure path updated');
+                        }
+                      }}
+                    >
+                      <option value="">Select target step</option>
+                      {steps
+                        .filter(s => s.id !== selectedStep.id)
+                        .map(step => (
+                          <option key={step.id} value={step.id}>
+                            {step.name}
+                          </option>
+                        ))
+                      }
+                    </select>
+                    <XCircle className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500 pointer-events-none" />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

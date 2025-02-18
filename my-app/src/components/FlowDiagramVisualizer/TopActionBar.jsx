@@ -9,6 +9,7 @@ import {
   SwitchCamera,
   Moon,
   Sun,
+  Save
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -19,7 +20,8 @@ const TopActionBar = ({
   onFindPath,
   onClear,
   onImport,
-  onExport
+  onExport,
+  onSave
 }) => {
   const { theme, setTheme } = useTheme();
 
@@ -87,6 +89,23 @@ const TopActionBar = ({
 
           {/* Core Actions Group */}
           <div className="flex flex-wrap gap-4">
+            {/* Save Button */}
+            <Button 
+              onClick={onSave}
+              title="Save your current flow diagram"
+              className="save-action-button bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Save className="w-4 h-4" />
+              Save
+            </Button>
+
             {/* Import/Export Section */}
             <div className="flex gap-2">
               <Button
@@ -205,6 +224,7 @@ TopActionBar.propTypes = {
   onClear: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired
 };
 
 export default TopActionBar; 
