@@ -79,7 +79,7 @@ const LandingPage = ({ onGetStarted }) => {
         },
         {
           icon: Shield,
-          text: "Import rule dictionaries for consistent documentation"
+          text: "Import rule and state dictionaries for consistent documentation"
         },
         {
           icon: Zap,
@@ -102,6 +102,10 @@ const LandingPage = ({ onGetStarted }) => {
       icon: GitBranch,
       mainImage: pathAnalysisImg,
       features: [
+        {
+          icon: Workflow,
+          text: "Suitable for documenting API flows and other flows involving multiple steps."
+        },
         {
           icon: Workflow,
           text: "Build step-by-step flows with success and failure branches"
