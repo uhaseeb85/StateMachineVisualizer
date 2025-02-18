@@ -64,6 +64,17 @@ const SimulationModal = ({ steps, connections, onClose }) => {
         ...prev,
         { step: nextStep, status: 'current' }
       ]);
+
+      // Check if the next step has any outgoing connections
+      const hasOutgoingConnections = connections.some(
+        conn => conn.fromStepId === nextStep.id
+      );
+
+      // If no outgoing connections, mark as complete
+      if (!hasOutgoingConnections) {
+        setCurrentStep(null);
+        setIsComplete(true);
+      }
     } else {
       setCurrentStep(null);
       setIsComplete(true);
@@ -86,6 +97,10 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     
     const newPath = simulationPath.slice(0, -1);
     const lastItem = newPath[newPath.length - 1];
+    
+    // Update the last item's status to 'current'
+    newPath[newPath.length - 1] = { ...lastItem, status: 'current' };
+    
     setCurrentStep(lastItem.step);
     setSimulationPath(newPath);
     setIsComplete(false);
