@@ -16,7 +16,8 @@ import {
   X,
   Camera,
   PanelLeftClose,
-  PanelBottomClose
+  PanelBottomClose,
+  Undo2
 } from 'lucide-react';
 
 const SimulationModal = ({ steps, connections, onClose }) => {
@@ -80,6 +81,16 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  const handleUndo = () => {
+    if (simulationPath.length <= 1) return;
+    
+    const newPath = simulationPath.slice(0, -1);
+    const lastItem = newPath[newPath.length - 1];
+    setCurrentStep(lastItem.step);
+    setSimulationPath(newPath);
+    setIsComplete(false);
+  };
+
   const handleExportImage = async () => {
     try {
       const element = document.querySelector('.simulation-content');
@@ -128,11 +139,11 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-500/70" />;
       case 'failure':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-500/70" />;
       case 'current':
-        return <ArrowRight className="h-4 w-4 text-blue-500" />;
+        return <ArrowRight className="h-4 w-4 text-blue-500/70" />;
       default:
         return null;
     }
@@ -140,7 +151,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+      <DialogContent className="max-w-[95vw] h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle>Flow Simulation</DialogTitle>
@@ -150,6 +161,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 size="sm"
                 onClick={() => setIsVerticalLayout(!isVerticalLayout)}
                 title={`Switch to ${isVerticalLayout ? 'horizontal' : 'vertical'} layout`}
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 {isVerticalLayout ? (
                   <PanelLeftClose className="h-4 w-4" />
@@ -162,8 +174,19 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 size="sm"
                 onClick={handleExportImage}
                 title="Export as image"
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <Camera className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUndo}
+                disabled={simulationPath.length <= 1}
+                title="Undo last step"
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <Undo2 className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
@@ -171,6 +194,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 onClick={handleReset}
                 disabled={simulationPath.length <= 1}
                 title="Reset simulation"
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
@@ -179,6 +203,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 size="sm"
                 onClick={handleClose}
                 title="Close simulation"
+                className="hover:bg-red-50 dark:hover:bg-red-900/50"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -186,36 +211,59 @@ const SimulationModal = ({ steps, connections, onClose }) => {
           </div>
         </DialogHeader>
 
-        <div className="mt-4">
+        <div className="flex-1 overflow-hidden">
           {/* Simulation Content */}
-          <div className="simulation-content min-h-[400px] border rounded-lg p-6 bg-background">
+          <div className="simulation-content h-[calc(90vh-8rem)] border rounded-lg p-6 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto">
             <div className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row flex-wrap'} 
-                          gap-6 items-center ${isVerticalLayout ? 'justify-start' : 'justify-start'}`}>
+                          gap-6 items-center ${isVerticalLayout ? 'justify-center' : 'justify-start'}`}>
               {simulationPath.map(({ step, status }, index) => (
                 <div key={`${step.id}-${index}`} 
                      className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row'} items-center`}>
-                  <Card className={`p-4 min-w-[200px] ${
-                    status === 'current' ? 'ring-2 ring-blue-500' : ''
-                  }`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      {getStatusIcon(status)}
-                      <span className="font-medium">{step.name}</span>
-                    </div>
-                    {step.description && (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {step.description}
-                      </p>
+                  <div className="relative">
+                    <Card className={`p-4 min-w-[200px] rounded-lg ${
+                      status === 'current' ? 'ring-1 ring-blue-300 bg-blue-50 dark:bg-blue-900/30' : 
+                      status === 'success' ? 'bg-green-50 dark:bg-green-900/30' :
+                      status === 'failure' ? 'bg-red-50 dark:bg-red-900/30' :
+                      'bg-gray-50 dark:bg-gray-800'
+                    }`}>
+                      <div className="flex items-center gap-2 justify-center">
+                        {getStatusIcon(status)}
+                        <span className="font-medium text-gray-700 dark:text-gray-200">{step.name}</span>
+                      </div>
+                      {step.description && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-1">
+                          {step.description}
+                        </p>
+                      )}
+                    </Card>
+
+                    {/* Path Selection Buttons */}
+                    {status === 'current' && !isComplete && (
+                      <div className="absolute -bottom-12 left-0 right-0 flex justify-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleChoice('success')}
+                          className="bg-green-100 hover:bg-green-200 text-green-700 border-green-200"
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Success
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleChoice('failure')}
+                          className="bg-red-100 hover:bg-red-200 text-red-700 border-red-200"
+                        >
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Failure
+                        </Button>
+                      </div>
                     )}
-                    {step.expectedResponse && (
-                      <p className="text-sm text-muted-foreground">
-                        Expected: {step.expectedResponse}
-                      </p>
-                    )}
-                  </Card>
+                  </div>
+
                   {index < simulationPath.length - 1 && (
                     <div className={`
-                      ${isVerticalLayout ? 'h-8 w-px my-2' : 'w-8 h-px mx-2'}
-                      bg-border
+                      ${isVerticalLayout ? 'h-16 w-px my-2' : 'w-8 h-px mx-2'}
+                      bg-gray-200 dark:bg-gray-700
                     `} />
                   )}
                 </div>
@@ -223,42 +271,21 @@ const SimulationModal = ({ steps, connections, onClose }) => {
             </div>
           </div>
 
-          {/* Current Step Actions */}
-          {currentStep && !isComplete && (
-            <Card className="mt-6 p-4">
-              <h3 className="font-medium mb-4">Select Path:</h3>
-              <div className="flex gap-4">
-                <Button
-                  onClick={() => handleChoice('success')}
-                  className="flex-1"
-                  variant="outline"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Success Path
-                </Button>
-                <Button
-                  onClick={() => handleChoice('failure')}
-                  className="flex-1"
-                  variant="outline"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Failure Path
-                </Button>
-              </div>
-            </Card>
-          )}
-
           {/* Simulation Complete */}
           {isComplete && (
-            <Card className="mt-6 p-4">
+            <Card className="mt-4 p-4 bg-gray-50/50 dark:bg-gray-900/50 border-gray-200/50">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium">Simulation Complete</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <h3 className="font-medium text-gray-700 dark:text-gray-200">Simulation Complete</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     The flow has reached an end point.
                   </p>
                 </div>
-                <Button variant="outline" onClick={handleReset}>
+                <Button 
+                  variant="outline" 
+                  onClick={handleReset}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Start Over
                 </Button>
