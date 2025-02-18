@@ -12,18 +12,23 @@
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-select": "^2.1.6",
     "@react-pdf/renderer": "^4.1.6",
     "@shadcn/ui": "^0.0.4",
+    "canvas": "^3.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "d3": "^7.9.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.344.0",
     "my-app": "file:",
+    "papaparse": "^5.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-joyride": "^2.9.3",
     "sonner": "^1.7.2",
     "tailwind-merge": "^2.2.1",
+    "uuid": "^9.0.1",
     "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
@@ -31,15 +36,19 @@
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.4.17",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
-    "tailwindcss-animate": "^1.0.7",
-    "vite": "^5.4.12"
-  }
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "main": "eslint.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }

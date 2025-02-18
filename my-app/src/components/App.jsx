@@ -1,12 +1,48 @@
-import React from 'react';
-import StateMachineVisualizer from './StateMachineVisualizer/index.jsx';
+import { useState } from 'react';
+import StateMachineVisualizer from './StateMachineVisualizer';
+import FlowDiagramVisualizer from './FlowDiagramVisualizer';
+import LandingPage from './LandingPage';
+import { ThemeProvider } from './ThemeProvider';
 
-function App() {
+const AppContent = () => {
+  const [showLanding, setShowLanding] = useState(true);
+  const [mode, setMode] = useState(null);
+
+  const handleGetStarted = () => {
+    const selectedMode = localStorage.getItem('visualizer_mode');
+    setMode(selectedMode);
+    setShowLanding(false);
+  };
+
+  const handleChangeModeClick = () => {
+    setShowLanding(true);
+  };
+
+  const renderContent = () => {
+    if (showLanding) {
+      return <LandingPage onGetStarted={handleGetStarted} />;
+    }
+
+    if (mode === 'stateMachine') {
+      return <StateMachineVisualizer onChangeMode={handleChangeModeClick} />;
+    }
+
+    return <FlowDiagramVisualizer onChangeMode={handleChangeModeClick} />;
+  };
+
   return (
-    <>
-      <StateMachineVisualizer />
-    </>
+    <div className="min-h-screen bg-background">
+      {renderContent()}
+    </div>
   );
-}
+};
+
+const App = () => {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+};
 
 export default App;

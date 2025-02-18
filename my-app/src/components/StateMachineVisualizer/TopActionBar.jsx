@@ -15,7 +15,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search } from 'lucide-react';
+import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera } from 'lucide-react';
 import LogAnalyzer from './LogAnalyzer';
 
 const TopActionBar = ({ 
@@ -26,7 +26,8 @@ const TopActionBar = ({
   onSimulate,
   onFindPaths,
   startTour,
-  onExportCSV
+  onExportCSV,
+  onChangeMode
 }) => {
   // State for controlling the LogAnalyzer modal visibility
   const [showLogAnalyzer, setShowLogAnalyzer] = useState(false);
@@ -180,6 +181,20 @@ const TopActionBar = ({
               Pathfinder
             </Button>
 
+            {/* Mode Switch Button */}
+            <Button
+              onClick={onChangeMode}
+              title="Switch Visualization Mode"
+              className="mode-switch-button bg-gray-900 text-white text-sm
+                       hover:bg-gray-800 hover:scale-105
+                       dark:bg-gray-800 dark:hover:bg-gray-700
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <SwitchCamera className="w-4 h-4" />
+              Switch Mode
+            </Button>
+
             {/* Simulation Button */}
             <Button 
               onClick={onSimulate}
@@ -222,7 +237,10 @@ TopActionBar.propTypes = {
   onFindPaths: PropTypes.func.isRequired,
   
   // Tour prop
-  startTour: PropTypes.func.isRequired
+  startTour: PropTypes.func.isRequired,
+
+  // Mode switch prop
+  onChangeMode: PropTypes.func.isRequired
 };
 
 export default TopActionBar;
