@@ -101,6 +101,16 @@ const StepPanel = ({
   };
 
   const handleRemoveStep = (stepId) => {
+    // Check if the step is referenced in any other step's connections
+    const isReferenced = connections.some(
+      conn => conn.toStepId === stepId
+    );
+
+    if (isReferenced) {
+      toast.error('Cannot remove this step as it is referenced in other steps. Remove the connections first.');
+      return;
+    }
+
     // Get all descendant steps (sub-steps and their sub-steps)
     const getAllDescendants = (parentId) => {
       const children = steps.filter(s => s.parentId === parentId);
@@ -112,6 +122,16 @@ const StepPanel = ({
     };
 
     const descendantIds = getAllDescendants(stepId).map(s => s.id);
+    
+    // Check if any descendant is referenced
+    const isDescendantReferenced = descendantIds.some(id => 
+      connections.some(conn => conn.toStepId === id)
+    );
+
+    if (isDescendantReferenced) {
+      toast.error('Cannot remove this step as one of its sub-steps is referenced in other steps. Remove the connections first.');
+      return;
+    }
     
     // Remove all descendant steps first
     descendantIds.forEach(id => {
