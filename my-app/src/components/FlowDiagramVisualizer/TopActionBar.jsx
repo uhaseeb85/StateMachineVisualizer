@@ -7,10 +7,8 @@ import {
   Download,
   Upload,
   SwitchCamera,
-  HelpCircle,
   Moon,
   Sun,
-  History
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -25,15 +23,26 @@ const TopActionBar = ({
 }) => {
   const { theme, setTheme } = useTheme();
 
-  const handleImport = (event) => {
+  const handleImport = async (event) => {
+    console.log('Import triggered with event:', event);
     const file = event.target.files?.[0];
     if (file) {
+      console.log('Selected file:', file);
       if (!file.name.endsWith('.csv')) {
         toast.error('Please select a CSV file');
         return;
       }
-      onImport(file);
-      toast.success('Flow diagram imported successfully');
+      try {
+        await onImport(file);
+        toast.success('Flow diagram imported successfully');
+        // Reset the file input
+        event.target.value = '';
+      } catch (error) {
+        console.error('Import error:', error);
+        toast.error(error.message || 'Error importing flow diagram');
+        // Reset the file input
+        event.target.value = '';
+      }
     }
   };
 
@@ -50,59 +59,67 @@ const TopActionBar = ({
   };
 
   return (
-    <div className="bg-background border-b p-4">
-      <div className="max-w-screen-2xl mx-auto">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Primary Actions */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={onSimulate}
-                className="bg-green-600 hover:bg-green-700 text-white"
-                title="Start Simulation"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Simulate
-              </Button>
+    <div className="mb-8 p-6 
+                    bg-gray-100 dark:bg-gray-900
+                    border-b border-gray-200 dark:border-gray-700
+                    shadow-lg">
+      <div className="flex flex-wrap items-center justify-between">
+        {/* Left Section: Theme and Core Actions */}
+        <div className="flex items-center gap-4">
+          {/* Theme Toggle Button */}
+          <Button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            title="Toggle between light and dark mode"
+            variant="ghost"
+            className="theme-toggle w-10 h-10 p-0 text-gray-900 
+                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                     transform transition-all duration-200 hover:scale-110"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5 text-yellow-500" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+          </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onFindPath}
-                title="Find Path Between Steps"
-              >
-                <Route className="w-4 h-4 mr-2" />
-                Find Path
-              </Button>
-            </div>
+          {/* Visual Separator */}
+          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
 
-            {/* Divider */}
-            <div className="h-6 w-px bg-border" />
-
-            {/* Data Management */}
-            <div className="flex items-center gap-2">
+          {/* Core Actions Group */}
+          <div className="flex flex-wrap gap-4">
+            {/* Import/Export Section */}
+            <div className="flex gap-2">
               <Button
-                variant="outline"
-                size="sm"
                 onClick={handleExport}
                 title="Export to CSV"
+                className="export-csv-button bg-gray-900 text-white text-sm
+                         dark:bg-gray-800 dark:text-gray-100
+                         hover:bg-blue-600 hover:scale-105
+                         dark:hover:bg-blue-600
+                         transform transition-all duration-200 ease-in-out
+                         border border-gray-800 dark:border-gray-700
+                         hover:border-blue-500 dark:hover:border-blue-500
+                         flex items-center gap-2 px-3 py-1.5 rounded-md"
               >
-                <Download className="w-4 h-4 mr-2" />
-                Export
+                <Download className="w-4 h-4" />
+                Export CSV
               </Button>
 
               <div className="relative">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="relative"
-                  title="Import from CSV"
                   onClick={() => document.getElementById('file-import').click()}
+                  title="Import from CSV"
+                  className="excel-import-button bg-gray-900 text-white text-sm
+                           dark:bg-gray-800 dark:text-gray-100
+                           hover:bg-blue-600 hover:scale-105
+                           dark:hover:bg-blue-600
+                           transform transition-all duration-200 ease-in-out
+                           border border-gray-800 dark:border-gray-700
+                           hover:border-blue-500 dark:hover:border-blue-500
+                           flex items-center gap-2 px-3 py-1.5 rounded-md"
                 >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import
+                  <Upload className="w-4 h-4" />
+                  Import CSV
                 </Button>
                 <input
                   type="file"
@@ -114,40 +131,65 @@ const TopActionBar = ({
               </div>
 
               <Button
-                variant="outline"
-                size="sm"
                 onClick={handleClear}
-                className="text-destructive hover:text-destructive"
                 title="Clear All Steps"
+                className="clear-button bg-gray-900 text-white text-sm
+                         dark:bg-gray-800 dark:text-gray-100
+                         hover:bg-red-600 hover:scale-105
+                         dark:hover:bg-red-600
+                         transform transition-all duration-200 ease-in-out
+                         border border-gray-800 dark:border-gray-700
+                         hover:border-red-500 dark:hover:border-red-500
+                         flex items-center gap-2 px-3 py-1.5 rounded-md"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="w-4 h-4" />
                 Clear
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Right Section */}
-          <div className="flex items-center gap-2">
+        {/* Right Section: Tools */}
+        <div className="flex items-center gap-4">
+          {/* Tools Group */}
+          <div className="flex gap-4">
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              onClick={onFindPath}
+              title="Find paths between steps"
+              className="find-paths-button bg-blue-600 text-white text-sm
+                       hover:bg-blue-500 hover:scale-105
+                       dark:bg-blue-700 dark:hover:bg-blue-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4" />
-              ) : (
-                <Moon className="w-4 h-4" />
-              )}
+              <Route className="w-4 h-4" />
+              Find Paths
             </Button>
 
             <Button
-              variant="ghost"
-              size="sm"
+              onClick={onSimulate}
+              title="Run a simulation"
+              className="simulation-button bg-green-600 text-white text-sm
+                       hover:bg-green-500 hover:scale-105
+                       dark:bg-green-700 dark:hover:bg-green-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Play className="w-4 h-4" />
+              Simulate
+            </Button>
+
+            <Button
               onClick={onChangeMode}
               title="Switch Visualization Mode"
+              className="mode-switch-button bg-gray-900 text-white text-sm
+                       hover:bg-gray-800 hover:scale-105
+                       dark:bg-gray-800 dark:hover:bg-gray-700
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
               <SwitchCamera className="w-4 h-4" />
+              Switch Mode
             </Button>
           </div>
         </div>
