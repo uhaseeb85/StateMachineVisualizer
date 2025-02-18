@@ -10,9 +10,13 @@ import dataPersistenceImg from '../assets/features/data-persistence.png';
 import logAnalysisImg from '../assets/features/log-analysis.png';
 
 const ModeCard = ({ title, description, features, icon: Icon, onSelect, color, mainImage }) => (
-  <Card className={`p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg
-                  transform transition-all duration-200 hover:scale-[1.02] overflow-hidden
-                  border-2 hover:border-${color}-500`}>
+  <Card 
+    className={`p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg
+                transform transition-all duration-200 hover:scale-[1.02] overflow-hidden
+                border-2 hover:border-${color}-500 cursor-pointer
+                hover:shadow-xl transition-all duration-300`}
+    onClick={onSelect}
+  >
     <div className="flex flex-col h-full">
       <div className={`w-16 h-16 bg-${color}-100 dark:bg-${color}-900/50 rounded-xl 
                     flex items-center justify-center mb-6`}>
@@ -48,13 +52,12 @@ const ModeCard = ({ title, description, features, icon: Icon, onSelect, color, m
         ))}
       </div>
 
-      <Button 
-        className={`mt-8 w-full bg-${color}-600 hover:bg-${color}-700 text-white`}
-        onClick={onSelect}
-      >
+      <div className={`mt-8 w-full h-12 flex items-center justify-center gap-2 
+                    text-${color}-600 dark:text-${color}-400 font-medium
+                    border-t border-gray-100 dark:border-gray-700 pt-4`}>
         Select {title}
-        <ArrowRight className="ml-2 w-5 h-5" />
-      </Button>
+        <ArrowRight className="w-5 h-5" />
+      </div>
     </div>
   </Card>
 );
