@@ -104,7 +104,7 @@ const LandingPage = ({ onGetStarted }) => {
       features: [
         {
           icon: Workflow,
-          text: "Suitable for documenting API flows and other flows involving multiple steps."
+          text: "Suitable for documenting API flows and other requirements involving multiple steps."
         },
         {
           icon: Workflow,
