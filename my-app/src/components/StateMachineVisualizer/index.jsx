@@ -236,7 +236,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
           onSave={saveFlow}
-          onExcelImport={handleRuleDictionaryImport}
+          onExcelImport={handleExcelImport}
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}

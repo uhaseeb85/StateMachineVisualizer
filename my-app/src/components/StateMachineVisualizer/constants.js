@@ -20,7 +20,7 @@ export const tourSteps = [
   },
   {
     target: '.excel-import-button',
-    content: 'Import states and rules from a CSV file. The file should include Source Node, Destination Node, and Rule List columns.',
+    content: 'Import states and rules from a CSV file. The file must include "Source Node", "Destination Node", and "Rule List" columns.',
     title: '📥 Import from CSV',
     placement: 'bottom',
   },
@@ -32,7 +32,7 @@ export const tourSteps = [
   },
   {
     target: '.load-rule-dictionary-button',
-    content: 'Load descriptions for your rules from an Excel file. This helps document the conditions and logic behind each transition rule.',
+    content: 'Load descriptions for your rules from an Excel file. The file must include "rule name" and "rule description" columns to document the conditions and logic behind each transition rule.',
     title: '📝 Rule Dictionary',
     placement: 'right',
   },

@@ -208,8 +208,8 @@ export default function useStateMachine() {
 
       // Validate file extension
       const fileExtension = file.name.split('.').pop().toLowerCase();
-      if (!['xlsx', 'xls'].includes(fileExtension)) {
-        toast.error('Please upload a valid Excel file (.xlsx or .xls)');
+      if (!['xlsx', 'xls', 'csv'].includes(fileExtension)) {
+        toast.error('Please upload a valid Excel file (.xlsx or .xls) or CSV file (.csv)');
         return;
       }
 
@@ -217,53 +217,53 @@ export default function useStateMachine() {
 
       return new Promise((resolve, reject) => {
         reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
-          // Validate sheet structure
-          if (jsonData.length === 0) {
-            toast.error('The Excel file is empty');
-            return;
-          }
-
-          // Check if required columns exist
-          const firstRow = jsonData[0];
-          if (!('rule name' in firstRow) || !('rule description' in firstRow)) {
-            toast.error('Excel file must contain "rule name" and "rule description" columns');
-            return;
-          }
-
-          // Create a dictionary from the Excel data
-          const ruleDictionary = {};
-          let hasValidData = false;
-
-          jsonData.forEach(row => {
-            if (row['rule name'] && row['rule description']) {
-              ruleDictionary[row['rule name']] = row['rule description'];
-              hasValidData = true;
+            // Validate sheet structure
+            if (jsonData.length === 0) {
+              toast.error('The Excel file is empty');
+              return;
             }
-          });
 
-          if (!hasValidData) {
-            toast.error('No valid rules found in the Excel file');
-            return;
+            // Check if required columns exist
+            const firstRow = jsonData[0];
+            if (!('rule name' in firstRow) || !('rule description' in firstRow)) {
+              toast.error('Excel file must contain "rule name" and "rule description" columns');
+              return;
+            }
+
+            // Create a dictionary from the Excel data
+            const ruleDictionary = {};
+            let hasValidData = false;
+
+            jsonData.forEach(row => {
+              if (row['rule name'] && row['rule description']) {
+                ruleDictionary[row['rule name']] = row['rule description'];
+                hasValidData = true;
+              }
+            });
+
+            if (!hasValidData) {
+              toast.error('No valid rules found in the Excel file');
+              return;
+            }
+
+            const rulesCount = Object.keys(ruleDictionary).length;
+
+            // Show success notification and return the result
+            toast.success(`Rule dictionary imported successfully! Updated ${rulesCount} rules.`);
+            resolve({
+              dictionary: ruleDictionary,
+              rulesCount: rulesCount
+            });
+          } catch (error) {
+            toast.error('Error processing Excel file: ' + error.message);
+            reject(error);
           }
-
-          const rulesCount = Object.keys(ruleDictionary).length;
-
-          // Show success notification and return the result
-          toast.success(`Rule dictionary imported successfully! Updated ${rulesCount} rules.`);
-          resolve({
-            dictionary: ruleDictionary,
-            rulesCount: rulesCount
-          });
-        } catch (error) {
-          toast.error('Error processing Excel file: ' + error.message);
-          reject(error);
-        }
         };
 
         reader.onerror = () => {
