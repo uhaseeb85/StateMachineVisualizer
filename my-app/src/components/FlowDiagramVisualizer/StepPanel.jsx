@@ -383,11 +383,17 @@ const StepPanel = ({
                       <option value="">Select target step</option>
                       {steps
                         .filter(s => s.id !== selectedStep.id)
-                        .map(step => (
-                          <option key={step.id} value={step.id}>
-                            {step.name}
-                          </option>
-                        ))
+                        .map(step => {
+                          // Find parent step name if this is a sub-step
+                          const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
+                          const displayName = parentStep ? `${parentStep.name} → ${step.name}` : step.name;
+                          
+                          return (
+                            <option key={step.id} value={step.id}>
+                              {displayName}
+                            </option>
+                          );
+                        })
                       }
                     </select>
                     <CheckCircle2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500 pointer-events-none" />
@@ -426,11 +432,17 @@ const StepPanel = ({
                       <option value="">Select target step</option>
                       {steps
                         .filter(s => s.id !== selectedStep.id)
-                        .map(step => (
-                          <option key={step.id} value={step.id}>
-                            {step.name}
-                          </option>
-                        ))
+                        .map(step => {
+                          // Find parent step name if this is a sub-step
+                          const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
+                          const displayName = parentStep ? `${parentStep.name} → ${step.name}` : step.name;
+                          
+                          return (
+                            <option key={step.id} value={step.id}>
+                              {displayName}
+                            </option>
+                          );
+                        })
                       }
                     </select>
                     <XCircle className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500 pointer-events-none" />

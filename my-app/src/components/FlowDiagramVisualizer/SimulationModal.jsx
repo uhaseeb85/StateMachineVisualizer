@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import html2canvas from 'html2canvas';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,6 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const [currentStep, setCurrentStep] = useState(null);
   const [simulationPath, setSimulationPath] = useState([]);
   const [isComplete, setIsComplete] = useState(false);
-  const [isVerticalLayout, setIsVerticalLayout] = useState(false);
 
   useEffect(() => {
     // Find the first step (one that has no incoming connections)
@@ -139,34 +139,27 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       if (!fileName) return;
       
       const finalFileName = fileName.endsWith('.png') ? fileName : `${fileName}.png`;
-      
-      // Create a canvas with the element's dimensions
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      const scale = window.devicePixelRatio;
-      
-      canvas.width = element.offsetWidth * scale;
-      canvas.height = element.offsetHeight * scale;
-      
-      // Scale the context to ensure proper resolution
-      context.scale(scale, scale);
-      
-      // Draw the element onto the canvas
-      const elementHTML = element.outerHTML;
-      const blob = new Blob([elementHTML], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      
-      img.onload = () => {
-        context.drawImage(img, 0, 0);
-        const link = document.createElement('a');
-        link.download = finalFileName;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        URL.revokeObjectURL(url);
-      };
-      
-      img.src = url;
+
+      // Set background color before capture
+      const originalBg = element.style.background;
+      element.style.background = getComputedStyle(element).backgroundColor;
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: null,
+        scale: window.devicePixelRatio,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+      });
+
+      // Restore original background
+      element.style.background = originalBg;
+
+      // Create download link
+      const link = document.createElement('a');
+      link.download = finalFileName;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
     } catch (error) {
       console.error('Error exporting simulation:', error);
       alert('Failed to export simulation image');
@@ -188,6 +181,24 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  const getStepCardClasses = (status, isSubStep) => {
+    let baseClasses = "p-3 min-w-[200px] rounded-lg ";
+    
+    // Status-based styling
+    const statusClasses = status === 'current' ? 'ring-1 ring-blue-300 bg-blue-50 dark:bg-blue-900/30' : 
+                         status === 'success' ? 'bg-green-50 dark:bg-green-900/30' :
+                         status === 'failure' ? 'bg-red-50 dark:bg-red-900/30' :
+                         status === 'end' ? 'bg-gray-50 dark:bg-gray-800' :
+                         'bg-gray-50 dark:bg-gray-800';
+
+    // Different styling for main steps and sub-steps
+    const stepTypeClasses = isSubStep ? 
+      'border-dashed bg-opacity-60 dark:bg-opacity-60' : 
+      'border-solid bg-white dark:bg-gray-800 shadow-sm';
+
+    return `${baseClasses} ${statusClasses} ${stepTypeClasses}`;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-[95vw] h-[90vh] overflow-hidden">
@@ -195,19 +206,6 @@ const SimulationModal = ({ steps, connections, onClose }) => {
           <div className="flex justify-between items-center">
             <DialogTitle>Flow Simulation</DialogTitle>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsVerticalLayout(!isVerticalLayout)}
-                title={`Switch to ${isVerticalLayout ? 'horizontal' : 'vertical'} layout`}
-                className="hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                {isVerticalLayout ? (
-                  <PanelLeftClose className="h-4 w-4" />
-                ) : (
-                  <PanelBottomClose className="h-4 w-4" />
-                )}
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -244,61 +242,91 @@ const SimulationModal = ({ steps, connections, onClose }) => {
         <div className="flex-1 overflow-hidden">
           {/* Simulation Content */}
           <div className="simulation-content h-[calc(90vh-8rem)] border rounded-lg p-6 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto">
-            <div className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row flex-wrap'} 
-                          gap-6 items-center ${isVerticalLayout ? 'justify-center' : 'justify-start'}`}>
-              {simulationPath.map(({ step, status }, index) => (
-                <div key={`${step.id}-${index}`} 
-                     className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row'} items-center`}>
-                  <div className="relative">
-                    <Card className={`p-4 min-w-[200px] rounded-lg ${
-                      status === 'current' ? 'ring-1 ring-blue-300 bg-blue-50 dark:bg-blue-900/30' : 
-                      status === 'success' ? 'bg-green-50 dark:bg-green-900/30' :
-                      status === 'failure' ? 'bg-red-50 dark:bg-red-900/30' :
-                      status === 'end' ? 'bg-gray-50 dark:bg-gray-800' :
-                      'bg-gray-50 dark:bg-gray-800'
-                    }`}>
-                      <div className="flex items-center gap-2 justify-center">
-                        {getStatusIcon(status)}
-                        <span className="font-medium text-gray-700 dark:text-gray-200">{step.name}</span>
-                      </div>
-                      {step.description && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-1">
-                          {step.description}
-                        </p>
-                      )}
-                    </Card>
+            <div className="flex flex-col gap-6">
+              {simulationPath.map(({ step, status }, index) => {
+                // Find any sub-steps that follow this step
+                const subSteps = simulationPath.slice(index + 1).filter(item => 
+                  item.step.parentId === step.id
+                );
+                
+                // Check if this is a sub-step
+                const isSubStep = step.parentId;
+                
+                // Calculate the offset based on depth
+                const mainStepOffset = index * 24; // Reduced from 32px to 24px
+                const subStepOffset = isSubStep ? 40 : 0; // Reduced from 48px to 40px
+                const totalOffset = mainStepOffset + subStepOffset;
+                
+                // Only render if this is a main step or if its parent was already rendered
+                if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
+                  return (
+                    <div key={`${step.id}-${index}`} 
+                         className="relative flex flex-col"
+                         style={{ marginLeft: `${totalOffset}px` }}>
+                      <div className="relative flex flex-col items-start gap-2">
+                        <div className="relative flex items-center">
+                          {/* Vertical line from parent */}
+                          {isSubStep && (
+                            <div className="absolute -left-6 -top-3 h-6 border-l-2 border-gray-200 dark:border-gray-700" />
+                          )}
+                          
+                          {/* Horizontal line to sub-step */}
+                          {isSubStep && (
+                            <div className="absolute -left-6 top-1/2 w-6 border-t-2 border-gray-200 dark:border-gray-700" />
+                          )}
 
-                    {/* Path Selection Buttons */}
-                    {status === 'current' && !isComplete && (
-                      <div className="absolute -bottom-12 left-0 right-0 flex justify-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleChoice('success')}
-                          className="bg-green-100 hover:bg-green-200 text-green-700 border-green-200"
-                        >
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Success
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleChoice('failure')}
-                          className="bg-red-100 hover:bg-red-200 text-red-700 border-red-200"
-                        >
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Failure
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                          <Card className={`w-[240px] ${getStepCardClasses(status, isSubStep)}`}>
+                            <div className="flex items-center gap-2 justify-center">
+                              {getStatusIcon(status)}
+                              <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">
+                                {isSubStep ? (
+                                  <>
+                                    <span className="text-gray-500 dark:text-gray-400">{steps.find(s => s.id === step.parentId)?.name} → </span>
+                                    {step.name}
+                                  </>
+                                ) : step.name}
+                              </span>
+                            </div>
+                            {step.description && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+                                {step.description}
+                              </p>
+                            )}
+                          </Card>
 
-                  {index < simulationPath.length - 1 && (
-                    <div className={`
-                      ${isVerticalLayout ? 'h-16 w-px my-2' : 'w-8 h-px mx-2'}
-                      bg-gray-200 dark:bg-gray-700
-                    `} />
-                  )}
-                </div>
-              ))}
+                          {/* Straight line to next step */}
+                          {index < simulationPath.length - 1 && !isSubStep && !simulationPath[index + 1].step.parentId && (
+                            <div className="absolute -right-8 top-1/2 w-8 border-t-2 border-gray-200 dark:border-gray-700" />
+                          )}
+                        </div>
+
+                        {/* Path Selection Buttons */}
+                        {status === 'current' && !isComplete && (
+                          <div className="flex gap-2 ml-8">
+                            <Button
+                              size="sm"
+                              onClick={() => handleChoice('success')}
+                              className="bg-green-100 hover:bg-green-200 text-green-700 border-green-200 text-xs h-6 px-2"
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Success
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleChoice('failure')}
+                              className="bg-red-100 hover:bg-red-200 text-red-700 border-red-200 text-xs h-6 px-2"
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Failure
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
             </div>
           </div>
 
