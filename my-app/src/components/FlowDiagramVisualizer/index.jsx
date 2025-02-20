@@ -1,3 +1,15 @@
+/**
+ * FlowDiagramVisualizer Component
+ * Main component for the flow diagram visualization and editing interface.
+ * Provides functionality for:
+ * - Creating and editing flow diagram steps
+ * - Managing connections between steps
+ * - Simulating flow execution
+ * - Finding paths in the flow
+ * - Importing/Exporting diagram data
+ * - Guided tour functionality
+ */
+
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import TopActionBar from './TopActionBar';
@@ -8,14 +20,27 @@ import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
 import { TourProvider, useTour } from './TourProvider';
 
+/** Key used for localStorage persistence of flow diagram data */
 const STORAGE_KEY = 'flowDiagramData';
 
+/**
+ * Main content component for the Flow Diagram Visualizer
+ * Manages the state and interactions between different subcomponents
+ * 
+ * @param {Object} props
+ * @param {Function} props.onChangeMode - Callback for changing the application mode
+ */
 const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   console.log('Rendering FlowDiagramVisualizer');
+  
+  // Modal visibility state
   const [showSimulation, setShowSimulation] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
+  
+  // Tour functionality
   const { startTour } = useTour();
   
+  // Initialize flow diagram hook with storage key
   const {
     steps,
     addStep,
@@ -31,11 +56,19 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     showSaveNotification
   } = useFlowDiagram(STORAGE_KEY);
 
+  /**
+   * Debug logging for steps and connections changes
+   */
   useEffect(() => {
     console.log('Current steps:', steps);
     console.log('Current connections:', connections);
   }, [steps, connections]);
 
+  /**
+   * Handles adding a new step to the diagram
+   * @param {Object} stepData - Data for the new step
+   * @returns {string} ID of the newly created step
+   */
   const handleAddStep = (stepData) => {
     console.log('Adding step:', stepData);
     const stepId = addStep(stepData);
@@ -45,9 +78,10 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+      {/* Toast notifications */}
       <Toaster richColors />
 
-      {/* Save success notification */}
+      {/* Save success notification overlay */}
       {showSaveNotification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
@@ -61,10 +95,11 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
         </div>
       )}
 
+      {/* Main content container with gradient background */}
       <div className="container mx-auto p-4 max-w-full min-h-screen 
                     bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
                     dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
-        {/* Header */}
+        {/* Header section */}
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5 tracking-wide">
             Flow Diagram Builder
@@ -74,7 +109,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           </p>
         </div>
 
-        {/* Top Action Bar */}
+        {/* Action bar with main controls */}
         <TopActionBar
           onChangeMode={onChangeMode}
           onSimulate={() => setShowSimulation(true)}
@@ -86,6 +121,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           startTour={startTour}
         />
         
+        {/* Main step panel for diagram editing */}
         <div className="mt-8 bg-background rounded-xl border shadow-sm">
           <StepPanel
             steps={steps}
@@ -98,6 +134,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           />
         </div>
 
+        {/* Modals */}
         {showSimulation && (
           <SimulationModal
             steps={steps}
@@ -122,6 +159,11 @@ FlowDiagramVisualizerContent.propTypes = {
   onChangeMode: PropTypes.func.isRequired,
 };
 
+/**
+ * Wrapper component that provides tour functionality to the main content
+ * @param {Object} props
+ * @param {Function} props.onChangeMode - Callback for changing the application mode
+ */
 const FlowDiagramVisualizer = ({ onChangeMode }) => {
   return (
     <TourProvider>

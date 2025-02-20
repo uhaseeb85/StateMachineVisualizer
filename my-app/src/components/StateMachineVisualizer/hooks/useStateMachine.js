@@ -1,27 +1,73 @@
+/**
+ * Custom hook for managing state machine configuration
+ * Provides functionality for:
+ * - Creating and managing states and rules
+ * - Importing/Exporting state machine configuration
+ * - Theme management (dark/light mode)
+ * - Change logging and persistence
+ * - Excel/CSV data import with validation
+ */
+
 import { useState, useEffect } from 'react';
 import { parseExcelFile, validateExcelData, generateId } from '../utils';
 import * as XLSX from 'xlsx-js-style';
 import { toast } from 'sonner';
 
+/**
+ * @typedef {Object} Rule
+ * @property {string} id - Unique identifier for the rule
+ * @property {string} condition - Rule condition/description
+ * @property {string} nextState - ID of the target state if rule matches
+ */
+
+/**
+ * @typedef {Object} State
+ * @property {string} id - Unique identifier for the state
+ * @property {string} name - Display name of the state
+ * @property {Rule[]} rules - Array of rules for this state
+ */
+
+/**
+ * @typedef {Object} ChangeLogEntry
+ * @property {string} timestamp - Timestamp of the change
+ * @property {string} message - Description of the change
+ */
+
+/**
+ * Hook for managing state machine configuration and operations
+ * @returns {Object} State machine management methods and state
+ */
 export default function useStateMachine() {
+  // Core state management
   const [states, setStates] = useState([]);
   const [selectedState, setSelectedState] = useState(null);
+  
+  // Theme management
   const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // UI state
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+  
+  // Change logging
   const [changeLog, setChangeLog] = useState(() => {
     // Initialize changeLog from localStorage
     const savedChangeLog = localStorage.getItem('changeLog');
     return savedChangeLog ? JSON.parse(savedChangeLog) : [];
   });
 
+  /** Maximum number of entries to keep in change log */
   const MAX_HISTORY_ENTRIES = 2000;
 
-  // Save changeLog to localStorage whenever it changes
+  /**
+   * Persist change log to localStorage on updates
+   */
   useEffect(() => {
     localStorage.setItem('changeLog', JSON.stringify(changeLog));
   }, [changeLog]);
 
-  // Load saved states and dark mode preference
+  /**
+   * Load saved states and theme preference on initialization
+   */
   useEffect(() => {
     const savedFlow = localStorage.getItem('ivrFlow');
     if (savedFlow) {
@@ -32,17 +78,25 @@ export default function useStateMachine() {
     setIsDarkMode(darkModePreference === null ? false : darkModePreference === 'true');
   }, []);
 
-  // Update dark mode
+  /**
+   * Update theme and persist preference
+   */
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
     localStorage.setItem('darkMode', isDarkMode);
   }, [isDarkMode]);
 
+  /**
+   * Toggles between light and dark theme
+   */
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
   };
 
-  // Helper function to add timestamped entries to the change log
+  /**
+   * Adds a new entry to the change log
+   * @param {string} message - Description of the change
+   */
   const addToChangeLog = (message) => {
     const timestamp = new Date().toLocaleString();
     setChangeLog(prev => {
@@ -51,6 +105,10 @@ export default function useStateMachine() {
     });
   };
 
+  /**
+   * Saves current state machine configuration to localStorage
+   * Shows a temporary success notification
+   */
   const saveFlow = () => {
     localStorage.setItem('ivrFlow', JSON.stringify(states));
     setShowSaveNotification(true);
@@ -58,6 +116,10 @@ export default function useStateMachine() {
     addToChangeLog('Saved state machine configuration');
   };
 
+  /**
+   * Adds a new state to the state machine
+   * @param {string} name - Name of the new state
+   */
   const addState = (name) => {
     if (name.trim()) {
       const newState = {
@@ -70,6 +132,10 @@ export default function useStateMachine() {
     }
   };
 
+  /**
+   * Deletes a state if it's not referenced by other states' rules
+   * @param {string} stateId - ID of the state to delete
+   */
   const handleDeleteState = (stateId) => {
     // Find the state we want to delete
     const stateToDelete = states.find(s => s.id === stateId);
@@ -91,6 +157,10 @@ export default function useStateMachine() {
     addToChangeLog(`Deleted state: ${stateToDelete.name}`);
   };
 
+  /**
+   * Imports state machine configuration from a JSON file
+   * @param {Event} event - File input change event
+   */
   const handleImport = async (event) => {
     try {
       const file = event.target.files[0];
@@ -104,6 +174,11 @@ export default function useStateMachine() {
     }
   };
 
+  /**
+   * Imports state machine configuration from an Excel file
+   * Processes Source Node, Destination Node, and Rule List columns
+   * @param {Event} event - File input change event
+   */
   const handleExcelImport = async (event) => {
     try {
       const file = event.target.files[0];
@@ -122,7 +197,7 @@ export default function useStateMachine() {
       });
       localStorage.setItem('lastImportedCSV', JSON.stringify(jsonData));
 
-      // Process only required columns for the application
+      // Process data and create states
       const stateMap = new Map();
       
       // Find required column indices
@@ -134,7 +209,7 @@ export default function useStateMachine() {
         throw new Error('Required columns not found: "Source Node", "Destination Node", "Rule List"');
       }
 
-      // Process data rows (skip header)
+      // Process rows and build state machine
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row.some(cell => cell)) continue;
@@ -178,6 +253,7 @@ export default function useStateMachine() {
 
       setStates(newStates);
       toast.success(`Import successful! Created ${newStates.length} states.`);
+      addToChangeLog(`Imported Excel configuration: ${newStates.length} states created`);
 
     } catch (error) {
       console.error('Import error:', error);
@@ -185,6 +261,9 @@ export default function useStateMachine() {
     }
   };
 
+  /**
+   * Exports current state machine configuration to a JSON file
+   */
   const exportConfiguration = () => {
     const content = JSON.stringify(states, null, 2);
     const blob = new Blob([content], { type: 'application/json' });
@@ -201,6 +280,12 @@ export default function useStateMachine() {
     addToChangeLog(`Exported state machine configuration to: ${fileName}`);
   };
 
+  /**
+   * Imports rule dictionary from Excel/CSV file
+   * Validates required columns and creates rule mappings
+   * @param {Event} event - File input change event
+   * @returns {Promise<void>}
+   */
   const handleRuleDictionaryImport = async (event) => {
     try {
       const file = event.target.files[0];
@@ -279,24 +364,21 @@ export default function useStateMachine() {
     }
   };
 
-
   return {
     states,
     setStates,
     selectedState,
     setSelectedState,
     isDarkMode,
-    toggleTheme,
     showSaveNotification,
+    changeLog,
+    toggleTheme,
+    saveFlow,
     addState,
     handleDeleteState,
-    saveFlow,
     handleImport,
     handleExcelImport,
     exportConfiguration,
-    handleRuleDictionaryImport,
-    changeLog,
-    setChangeLog,
-    addToChangeLog
+    handleRuleDictionaryImport
   };
 }

@@ -1,9 +1,55 @@
+/**
+ * Custom hook for managing state machine simulation
+ * Provides functionality for:
+ * - Starting and resetting simulation
+ * - Stepping through states and rules
+ * - Managing simulation path and history
+ * - Handling rule outcomes and state transitions
+ * - Undo functionality
+ */
+
 import { useState } from 'react';
 
+/**
+ * @typedef {Object} Rule
+ * @property {string} id - Unique identifier for the rule
+ * @property {string} [nextState] - ID of the next state if rule succeeds
+ */
+
+/**
+ * @typedef {Object} State
+ * @property {string} id - Unique identifier for the state
+ * @property {Rule[]} rules - Array of rules for this state
+ */
+
+/**
+ * @typedef {Object} PathItem
+ * @property {'state' | 'rule'} type - Type of path item
+ * @property {string} id - ID of the state or rule
+ */
+
+/**
+ * @typedef {Object} SimulationState
+ * @property {string | null} currentState - ID of the current state
+ * @property {string | null} currentRule - ID of the current rule being evaluated
+ * @property {PathItem[]} path - Array tracking simulation history
+ * @property {'initial' | 'active' | 'evaluating' | 'deciding' | 'completed'} status - Current simulation status
+ */
+
+/**
+ * Hook for managing state machine simulation
+ * @param {State[]} states - Array of states in the state machine
+ * @returns {Object} Simulation management methods and state
+ */
 export default function useSimulation(states) {
+  // Modal visibility state
   const [showSimulation, setShowSimulation] = useState(false);
-  const [startState, setStartState] = useState(null);
   const [showStartModal, setShowStartModal] = useState(false);
+  
+  // Simulation configuration
+  const [startState, setStartState] = useState(null);
+  
+  // Core simulation state
   const [simulationState, setSimulationState] = useState({
     currentState: null,
     currentRule: null,
@@ -11,8 +57,13 @@ export default function useSimulation(states) {
     status: 'initial'
   });
 
+  /** Flag indicating if undo operation is available */
   const canUndo = simulationState.path.length > 1;
 
+  /**
+   * Undoes the last action in the simulation
+   * Restores the previous state or rule evaluation
+   */
   const undo = () => {
     if (!canUndo) return;
 
@@ -46,6 +97,10 @@ export default function useSimulation(states) {
     });
   };
 
+  /**
+   * Starts the simulation from the selected start state
+   * If no start state is selected, uses the first state
+   */
   const startSimulation = () => {
     if (states.length === 0) {
       alert("Please add at least one state to simulate");
@@ -70,6 +125,11 @@ export default function useSimulation(states) {
     setShowSimulation(true);
   };
 
+  /**
+   * Handles clicking on a state in the simulation
+   * Transitions to the first rule of the clicked state
+   * @param {string} stateId - ID of the clicked state
+   */
   const handleStateClick = (stateId) => {
     if (simulationState.status !== 'active') return;
 
@@ -93,6 +153,11 @@ export default function useSimulation(states) {
     }));
   };
 
+  /**
+   * Handles clicking on a rule in the simulation
+   * Transitions to decision state for rule evaluation
+   * @param {string} ruleId - ID of the clicked rule
+   */
   const handleRuleClick = (ruleId) => {
     if (simulationState.status !== 'evaluating') return;
     
@@ -102,12 +167,23 @@ export default function useSimulation(states) {
     }));
   };
 
+  /**
+   * Handles the outcome of a rule evaluation
+   * On success: Transitions to the next state specified by the rule
+   * On failure: Moves to the next rule in the current state
+   * @param {'success' | 'failure'} outcome - Result of rule evaluation
+   */
   const handleOutcome = (outcome) => {
     if (simulationState.status !== 'deciding') return;
 
     const currentState = states.find(s => s.id === simulationState.currentState);
     const currentRule = currentState?.rules.find(r => r.id === simulationState.currentRule);
 
+    /**
+     * Helper function to find a state by its ID
+     * @param {string} stateId - ID of the state to find
+     * @returns {State | undefined} Found state or undefined
+     */
     const findStateById = (stateId) => {
       return states.find(s => String(s.id) === String(stateId));
     };
@@ -150,6 +226,10 @@ export default function useSimulation(states) {
     }
   };
 
+  /**
+   * Resets the simulation to its initial state
+   * Uses the selected start state or the first state
+   */
   const resetSimulation = () => {
     const initialStateId = startState || states[0].id;
     const initialState = states.find(s => String(s.id) === String(initialStateId));

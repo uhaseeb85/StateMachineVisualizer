@@ -1,14 +1,27 @@
+/**
+ * Custom hook for managing a flow diagram's state and operations.
+ * Handles steps, connections, and persistence of the diagram data.
+ */
+
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 
+/**
+ * @param {string} storageKey - Key used for localStorage persistence
+ * @returns {Object} Flow diagram management methods and state
+ */
 const useFlowDiagram = (storageKey) => {
+  // State for managing steps and their connections in the flow diagram
   const [steps, setSteps] = useState([]);
   const [connections, setConnections] = useState([]);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
 
-  // Load data from localStorage
+  /**
+   * Effect hook to load saved diagram data from localStorage on component mount
+   * and when storageKey changes
+   */
   useEffect(() => {
     console.log('Loading data from storage key:', storageKey);
     const savedData = localStorage.getItem(storageKey);
@@ -28,7 +41,10 @@ const useFlowDiagram = (storageKey) => {
     }
   }, [storageKey]);
 
-  // Save data to localStorage
+  /**
+   * Saves the current flow diagram state to localStorage
+   * Shows a success notification upon completion
+   */
   const saveFlow = () => {
     console.log('Saving flow diagram data');
     localStorage.setItem(storageKey, JSON.stringify({ steps, connections }));
@@ -37,6 +53,14 @@ const useFlowDiagram = (storageKey) => {
     toast.success('Flow diagram saved successfully');
   };
 
+  /**
+   * Adds a new step to the flow diagram
+   * @param {Object} stepData - Data for the new step
+   * @param {string} stepData.name - Name of the step
+   * @param {string} [stepData.description] - Description of the step
+   * @param {Object} [stepData.position] - Position coordinates {x, y}
+   * @returns {string} ID of the newly created step
+   */
   const addStep = (stepData) => {
     console.log('Adding new step:', stepData);
     const newStep = {
@@ -53,6 +77,11 @@ const useFlowDiagram = (storageKey) => {
     return newStep.id;
   };
 
+  /**
+   * Updates an existing step's properties
+   * @param {string} id - ID of the step to update
+   * @param {Object} updates - Object containing properties to update
+   */
   const updateStep = (id, updates) => {
     console.log('Updating step:', id, 'with:', updates);
     setSteps((prev) =>
@@ -62,6 +91,10 @@ const useFlowDiagram = (storageKey) => {
     );
   };
 
+  /**
+   * Removes a step and all its associated connections from the diagram
+   * @param {string} id - ID of the step to remove
+   */
   const removeStep = (id) => {
     console.log('Removing step:', id);
     setSteps((prev) => prev.filter((step) => step.id !== id));
@@ -72,6 +105,13 @@ const useFlowDiagram = (storageKey) => {
     );
   };
 
+  /**
+   * Adds a connection between two steps
+   * @param {string} fromStepId - ID of the source step
+   * @param {string} toStepId - ID of the target step
+   * @param {string} type - Type of connection ('success' or 'failure')
+   * @returns {boolean} True if connection was added, false if it already exists
+   */
   const addConnection = (fromStepId, toStepId, type) => {
     console.log('Adding connection:', { fromStepId, toStepId, type });
     // Check if connection already exists
@@ -111,6 +151,12 @@ const useFlowDiagram = (storageKey) => {
     return true;
   };
 
+  /**
+   * Removes a specific connection between steps
+   * @param {string} fromStepId - ID of the source step
+   * @param {string} toStepId - ID of the target step
+   * @param {string} type - Type of connection to remove
+   */
   const removeConnection = (fromStepId, toStepId, type) => {
     console.log('Removing connection:', { fromStepId, toStepId, type });
     setConnections((prev) =>
@@ -125,12 +171,19 @@ const useFlowDiagram = (storageKey) => {
     );
   };
 
+  /**
+   * Clears all steps and connections from the diagram
+   */
   const clearAll = () => {
     console.log('Clearing all data');
     setSteps([]);
     setConnections([]);
   };
 
+  /**
+   * Exports the flow diagram data to a CSV file
+   * Includes step information and their success/failure connections
+   */
   const exportData = () => {
     // Convert data to CSV format
     const csvData = steps.map(step => ({
@@ -152,6 +205,11 @@ const useFlowDiagram = (storageKey) => {
     window.URL.revokeObjectURL(url);
   };
 
+  /**
+   * Imports flow diagram data from a CSV file
+   * @param {File} file - CSV file to import
+   * @returns {Promise} Resolves when import is complete, rejects on error
+   */
   const importData = (file) => {
     console.log('Starting import of file:', file.name);
     return new Promise((resolve, reject) => {
@@ -247,6 +305,7 @@ const useFlowDiagram = (storageKey) => {
     });
   };
 
+  // Return the hook's public interface
   return {
     steps,
     connections,

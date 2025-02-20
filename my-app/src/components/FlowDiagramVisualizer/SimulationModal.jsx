@@ -1,3 +1,14 @@
+/**
+ * SimulationModal Component
+ * A modal dialog that provides interactive simulation functionality for a flow diagram.
+ * Features include:
+ * - Step-by-step flow simulation with success/failure paths
+ * - Visual representation of the simulation path
+ * - Undo/Reset capabilities
+ * - Export simulation as image
+ * - Support for main steps and sub-steps
+ */
+
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import html2canvas from 'html2canvas';
@@ -21,14 +32,48 @@ import {
   Undo2
 } from 'lucide-react';
 
+/**
+ * @typedef {Object} Step
+ * @property {string} id - Unique identifier for the step
+ * @property {string} name - Display name of the step
+ * @property {string} [description] - Optional description of the step
+ * @property {string} [parentId] - ID of parent step if this is a sub-step
+ */
+
+/**
+ * @typedef {Object} Connection
+ * @property {string} fromStepId - ID of the source step
+ * @property {string} toStepId - ID of the target step
+ * @property {string} type - Type of connection ('success' or 'failure')
+ */
+
+/**
+ * @typedef {Object} PathItem
+ * @property {Step} step - The step object
+ * @property {'current' | 'success' | 'failure' | 'end'} status - Current status of the step in the simulation
+ */
+
+/**
+ * SimulationModal Component
+ * @param {Object} props
+ * @param {Step[]} props.steps - Array of steps in the flow diagram
+ * @param {Connection[]} props.connections - Array of connections between steps
+ * @param {Function} props.onClose - Callback function when modal is closed
+ */
 const SimulationModal = ({ steps, connections, onClose }) => {
+  // Modal state
   const [isOpen, setIsOpen] = useState(true);
+  
+  // Simulation state
   const [currentStep, setCurrentStep] = useState(null);
   const [simulationPath, setSimulationPath] = useState([]);
   const [isComplete, setIsComplete] = useState(false);
 
+  /**
+   * Initialize simulation with the starting step
+   * Starting step is identified as the one with no incoming connections
+   */
   useEffect(() => {
-    // Find the first step (one that has no incoming connections)
     const startStep = steps.find((step) =>
       !connections.some((conn) => conn.toStepId === step.id)
     );
@@ -38,11 +83,19 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   }, [steps, connections]);
 
+  /**
+   * Handles modal close and triggers parent callback
+   */
   const handleClose = () => {
     setIsOpen(false);
     onClose();
   };
 
+  /**
+   * Handles user choice in simulation (success/failure)
+   * Updates the simulation path and moves to the next step
+   * @param {'success' | 'failure'} type - Type of choice made
+   */
   const handleChoice = (type) => {
     const nextConnection = connections.find(
       (conn) => conn.fromStepId === currentStep.id && conn.type === type
@@ -103,6 +156,10 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  /**
+   * Resets the simulation to its initial state
+   * Returns to the starting step and clears the path
+   */
   const handleReset = () => {
     const startStep = steps.find((step) =>
       !connections.some((conn) => conn.toStepId === step.id)
@@ -114,6 +171,10 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  /**
+   * Undoes the last step in the simulation
+   * Removes the last step from the path and updates the current step
+   */
   const handleUndo = () => {
     if (simulationPath.length <= 1) return;
     
@@ -128,6 +189,11 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     setIsComplete(false);
   };
 
+  /**
+   * Exports the current simulation state as a PNG image
+   * Temporarily modifies styling for better export quality
+   * Prompts for filename and downloads the image
+   */
   const handleExportImage = async () => {
     try {
       const element = document.querySelector('.simulation-content');
@@ -200,6 +266,11 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  /**
+   * Returns the appropriate icon component based on step status
+   * @param {'current' | 'success' | 'failure' | 'end'} status - Status of the step
+   * @returns {JSX.Element} Icon component
+   */
   const getStatusIcon = (status) => {
     switch (status) {
       case 'success':
@@ -215,6 +286,12 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  /**
+   * Generates CSS classes for step cards based on their status and type
+   * @param {'current' | 'success' | 'failure' | 'end'} status - Status of the step
+   * @param {boolean} isSubStep - Whether the step is a sub-step
+   * @returns {string} CSS classes string
+   */
   const getStepCardClasses = (status, isSubStep) => {
     let baseClasses = "p-3 min-w-[200px] rounded-lg border ";
     
@@ -387,22 +464,18 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 };
 
 SimulationModal.propTypes = {
-  steps: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      description: PropTypes.string,
-      expectedResponse: PropTypes.string,
-    })
-  ).isRequired,
-  connections: PropTypes.arrayOf(
-    PropTypes.shape({
-      fromStepId: PropTypes.string.isRequired,
-      toStepId: PropTypes.string.isRequired,
-      type: PropTypes.oneOf(['success', 'failure']).isRequired,
-    })
-  ).isRequired,
-  onClose: PropTypes.func.isRequired,
+  steps: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    parentId: PropTypes.string
+  })).isRequired,
+  connections: PropTypes.arrayOf(PropTypes.shape({
+    fromStepId: PropTypes.string.isRequired,
+    toStepId: PropTypes.string.isRequired,
+    type: PropTypes.oneOf(['success', 'failure']).isRequired
+  })).isRequired,
+  onClose: PropTypes.func.isRequired
 };
 
 export default SimulationModal; 

@@ -1,3 +1,13 @@
+/**
+ * PathFinderModal Component
+ * A modal dialog that provides path finding functionality in a flow diagram.
+ * Features include:
+ * - Finding paths between selected start and end steps
+ * - Finding paths through intermediate steps
+ * - Detecting loops in the flow
+ * - Exporting results
+ */
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
@@ -20,30 +30,64 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+/**
+ * @typedef {Object} Step
+ * @property {string} id - Unique identifier for the step
+ * @property {string} name - Display name of the step
+ * @property {string} [parentId] - ID of parent step if this is a sub-step
+ */
+
+/**
+ * @typedef {Object} Connection
+ * @property {string} fromStepId - ID of the source step
+ * @property {string} toStepId - ID of the target step
+ * @property {string} type - Type of connection ('success' or 'failure')
+ */
+
+/**
+ * PathFinderModal Component
+ * @param {Object} props
+ * @param {Step[]} props.steps - Array of steps in the flow diagram
+ * @param {Connection[]} props.connections - Array of connections between steps
+ * @param {Function} props.onClose - Callback function when modal is closed
+ */
 const PathFinderModal = ({ steps, connections, onClose }) => {
+  // Modal state
   const [isOpen, setIsOpen] = useState(true);
   
-  // State Selection
+  /**
+   * State for step selection and search mode
+   * searchMode can be: 'endSteps', 'specificEnd', or 'intermediateStep'
+   */
   const [selectedStartStep, setSelectedStartStep] = useState('');
   const [selectedEndStep, setSelectedEndStep] = useState('');
   const [selectedIntermediateStep, setSelectedIntermediateStep] = useState('');
   const [searchMode, setSearchMode] = useState('endSteps');
 
-  // Search State
+  // Search state management
   const [paths, setPaths] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [progress, setProgress] = useState(0);
   const shouldContinueRef = useRef(true);
 
-  // Pagination
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const pathsPerPage = 250;
 
+  /**
+   * Handles modal close and triggers parent callback
+   */
   const handleClose = () => {
     setIsOpen(false);
     onClose();
   };
 
+  /**
+   * Core path finding algorithm using depth-first search
+   * @param {string} startStepId - ID of the starting step
+   * @param {string} [endStepId] - Optional ID of target end step
+   * @param {string} [intermediateStepId] - Optional ID of required intermediate step
+   */
   const findPaths = useCallback(async (startStepId, endStepId = null, intermediateStepId = null) => {
     try {
       const startStep = steps.find(s => s.id === startStepId);
@@ -55,12 +99,19 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       let allPaths = [];
       let processedSteps = 0;
       const totalSteps = steps.length;
-      const maxPathLength = totalSteps * 2; // Allow for longer paths but prevent infinite loops
+      const maxPathLength = totalSteps * 2; // Prevent infinite loops while allowing for revisits
 
       setPaths([]);
       setIsSearching(true);
       setProgress(0);
 
+      /**
+       * Recursive DFS function to find all possible paths
+       * @param {Step} currentStep - Current step being processed
+       * @param {Array} currentPath - Current path being built
+       * @param {Array} rulePath - Path of rules/connections taken
+       * @param {number} depth - Current recursion depth
+       */
       const dfs = async (currentStep, currentPath = [], rulePath = [], depth = 0) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
@@ -163,6 +214,9 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     }
   }, [steps, connections]);
 
+  /**
+   * Initiates path finding based on current selection and mode
+   */
   const handleFindPaths = async () => {
     if (!selectedStartStep) return;
     
@@ -179,11 +233,18 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     }
   };
 
+  /**
+   * Cancels ongoing path finding operation
+   */
   const handleCancel = () => {
     shouldContinueRef.current = false;
     setIsSearching(false);
   };
 
+  /**
+   * Detects loops in the flow diagram using DFS
+   * A loop is detected when a step is revisited in the current path
+   */
   const handleDetectLoops = async () => {
     try {
       setIsSearching(true);
@@ -195,6 +256,13 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       const visited = new Set();
       const stack = new Set();
 
+      /**
+       * DFS implementation for loop detection
+       * @param {Step} currentStep - Current step being processed
+       * @param {Array} path - Current path being explored
+       * @param {Array} rulePath - Path of rules/connections taken
+       * @param {Array} failedRulesPath - Path of failed rules
+       */
       const dfs = async (currentStep, path = [], rulePath = [], failedRulesPath = []) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
@@ -650,22 +718,17 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
 };
 
 PathFinderModal.propTypes = {
-  steps: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      description: PropTypes.string,
-      expectedResponse: PropTypes.string,
-    })
-  ).isRequired,
-  connections: PropTypes.arrayOf(
-    PropTypes.shape({
-      fromStepId: PropTypes.string.isRequired,
-      toStepId: PropTypes.string.isRequired,
-      type: PropTypes.oneOf(['success', 'failure']).isRequired,
-    })
-  ).isRequired,
-  onClose: PropTypes.func.isRequired,
+  steps: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    parentId: PropTypes.string
+  })).isRequired,
+  connections: PropTypes.arrayOf(PropTypes.shape({
+    fromStepId: PropTypes.string.isRequired,
+    toStepId: PropTypes.string.isRequired,
+    type: PropTypes.string.isRequired
+  })).isRequired,
+  onClose: PropTypes.func.isRequired
 };
 
 export default PathFinderModal; 
