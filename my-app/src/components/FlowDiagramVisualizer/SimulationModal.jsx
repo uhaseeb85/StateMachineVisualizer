@@ -279,12 +279,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                             <div className="flex items-center gap-2 justify-center">
                               {getStatusIcon(status)}
                               <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">
-                                {isSubStep ? (
-                                  <>
-                                    <span className="text-gray-500 dark:text-gray-400">{steps.find(s => s.id === step.parentId)?.name} → </span>
-                                    {step.name}
-                                  </>
-                                ) : step.name}
+                                {step.name}
                               </span>
                             </div>
                             {step.description && (
