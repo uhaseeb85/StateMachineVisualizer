@@ -181,19 +181,35 @@ const useFlowDiagram = (storageKey) => {
   };
 
   /**
-   * Exports the flow diagram data to a CSV file
-   * Includes step information and their success/failure connections
+   * Exports the flow diagram data to a CSV format
+   * Includes step information, parent-child relationships, and connections
    */
   const exportData = () => {
-    // Convert data to CSV format
-    const csvData = steps.map(step => ({
-      'Step ID': step.id,
-      'Step Name': step.name,
-      'Description': step.description,
-      'Expected Response': step.expectedResponse,
-      'Success Step ID': connections.find(c => c.fromStepId === step.id && c.type === 'success')?.toStepId || '',
-      'Failure Step ID': connections.find(c => c.fromStepId === step.id && c.type === 'failure')?.toStepId || ''
-    }));
+    // Convert data to CSV format with parent-child relationships
+    const csvData = steps.map(step => {
+      // Find parent step if this is a sub-step
+      const parentStep = steps.find(s => s.id === step.parentId);
+      
+      // Find parent's parent if it exists (for nested sub-steps)
+      const grandParentStep = parentStep ? steps.find(s => s.id === parentStep.parentId) : null;
+
+      // Find connections for this step
+      const successConnection = connections.find(c => c.fromStepId === step.id && c.type === 'success');
+      const failureConnection = connections.find(c => c.fromStepId === step.id && c.type === 'failure');
+
+      return {
+        'Step ID': step.id,
+        'Step Name': step.name,
+        'Description': step.description || '',
+        'Expected Response': step.expectedResponse || '',
+        'Parent Step ID': step.parentId || '',
+        'Parent Step Name': parentStep ? parentStep.name : '',
+        'Grand Parent Step ID': parentStep?.parentId || '',
+        'Grand Parent Step Name': grandParentStep ? grandParentStep.name : '',
+        'Success Step ID': successConnection?.toStepId || '',
+        'Failure Step ID': failureConnection?.toStepId || ''
+      };
+    });
 
     const csv = Papa.unparse(csvData);
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -207,8 +223,9 @@ const useFlowDiagram = (storageKey) => {
 
   /**
    * Imports flow diagram data from a CSV file
+   * Handles parent-child relationships and connections
    * @param {File} file - CSV file to import
-   * @returns {Promise} Resolves when import is complete, rejects on error
+   * @returns {Promise} Resolves when import is complete
    */
   const importData = (file) => {
     console.log('Starting import of file:', file.name);
@@ -238,46 +255,60 @@ const useFlowDiagram = (storageKey) => {
               return;
             }
 
-            console.log('Processing CSV rows...');
+            // First pass: Create all steps
             results.data.forEach((row, index) => {
-              console.log(`Processing row ${index + 1}:`, row);
               if (row['Step ID'] && row['Step Name']) {
                 const newStep = {
                   id: row['Step ID'],
                   name: row['Step Name'],
                   description: row['Description'] || '',
                   expectedResponse: row['Expected Response'] || '',
+                  parentId: row['Parent Step ID'] || null,
                   position: { x: 0, y: 0 } // Default position
                 };
-                console.log('Created step:', newStep);
                 newSteps.push(newStep);
-
-                if (row['Success Step ID']) {
-                  const successConnection = {
-                    fromStepId: row['Step ID'],
-                    toStepId: row['Success Step ID'],
-                    type: 'success'
-                  };
-                  console.log('Created success connection:', successConnection);
-                  newConnections.push(successConnection);
-                }
-
-                if (row['Failure Step ID']) {
-                  const failureConnection = {
-                    fromStepId: row['Step ID'],
-                    toStepId: row['Failure Step ID'],
-                    type: 'failure'
-                  };
-                  console.log('Created failure connection:', failureConnection);
-                  newConnections.push(failureConnection);
-                }
-              } else {
-                console.warn('Skipping invalid row:', row);
               }
             });
 
-            console.log('Final imported steps:', newSteps);
-            console.log('Final imported connections:', newConnections);
+            // Second pass: Create connections
+            results.data.forEach((row) => {
+              if (!row['Step ID']) return;
+
+              // Add success connection if exists
+              if (row['Success Step ID']) {
+                // Verify target step exists
+                if (newSteps.some(s => s.id === row['Success Step ID'])) {
+                  newConnections.push({
+                    fromStepId: row['Step ID'],
+                    toStepId: row['Success Step ID'],
+                    type: 'success'
+                  });
+                }
+              }
+
+              // Add failure connection if exists
+              if (row['Failure Step ID']) {
+                // Verify target step exists
+                if (newSteps.some(s => s.id === row['Failure Step ID'])) {
+                  newConnections.push({
+                    fromStepId: row['Step ID'],
+                    toStepId: row['Failure Step ID'],
+                    type: 'failure'
+                  });
+                }
+              }
+            });
+
+            // Validate parent-child relationships
+            newSteps.forEach(step => {
+              if (step.parentId) {
+                const parentExists = newSteps.some(s => s.id === step.parentId);
+                if (!parentExists) {
+                  console.warn(`Parent step ${step.parentId} not found for step ${step.name}, removing parent reference`);
+                  step.parentId = null;
+                }
+              }
+            });
 
             if (newSteps.length === 0) {
               console.error('No valid steps found in CSV');
