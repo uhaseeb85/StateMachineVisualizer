@@ -140,21 +140,55 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       
       const finalFileName = fileName.endsWith('.png') ? fileName : `${fileName}.png`;
 
-      // Set background color before capture
+      // Store original styles and scroll position
+      const originalClasses = element.className;
       const originalBg = element.style.background;
-      element.style.background = getComputedStyle(element).backgroundColor;
+      const originalHeight = element.style.height;
+      const originalOverflow = element.style.overflow;
+      const originalPosition = element.scrollTop;
+
+      // Temporarily modify for export
+      element.className = `${originalClasses} !bg-white`;
+      element.style.height = 'auto';
+      element.style.overflow = 'visible';
+      
+      // Remove dark mode classes
+      document.querySelectorAll('.simulation-content [class*="dark:"]').forEach(el => {
+        el.className = el.className.split(' ').filter(c => !c.startsWith('dark:')).join(' ');
+      });
+
+      // Set light mode colors for export
+      const cards = element.querySelectorAll('.Card');
+      cards.forEach(card => {
+        if (card.textContent.includes('END')) {
+          card.style.backgroundColor = '#f9fafb'; // gray-50
+        } else if (card.classList.contains('border-dashed')) {
+          card.style.backgroundColor = '#f0fdf4'; // green-50
+        } else {
+          card.style.backgroundColor = '#eff6ff'; // blue-50
+        }
+      });
 
       const canvas = await html2canvas(element, {
-        backgroundColor: null,
+        backgroundColor: '#ffffff',
         scale: window.devicePixelRatio,
         useCORS: true,
         logging: false,
         allowTaint: true,
+        height: element.scrollHeight,
+        windowHeight: element.scrollHeight
       });
 
-      // Restore original background
+      // Restore original styling
+      element.className = originalClasses;
       element.style.background = originalBg;
-
+      element.style.height = originalHeight;
+      element.style.overflow = originalOverflow;
+      element.scrollTop = originalPosition;
+      cards.forEach(card => {
+        card.style.backgroundColor = '';
+      });
+      
       // Create download link
       const link = document.createElement('a');
       link.download = finalFileName;
@@ -182,7 +216,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   };
 
   const getStepCardClasses = (status, isSubStep) => {
-    let baseClasses = "p-3 min-w-[200px] rounded-lg ";
+    let baseClasses = "p-3 min-w-[200px] rounded-lg border ";
     
     // Status-based styling
     const statusClasses = status === 'current' ? 'ring-1 ring-blue-300 bg-blue-50 dark:bg-blue-900/30' : 
@@ -194,7 +228,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     // Different styling for main steps and sub-steps
     const stepTypeClasses = isSubStep ? 
       'border-dashed bg-opacity-60 dark:bg-opacity-60' : 
-      'border-solid bg-white dark:bg-gray-800 shadow-sm';
+      'border-solid shadow-sm';
 
     return `${baseClasses} ${statusClasses} ${stepTypeClasses}`;
   };
@@ -327,18 +361,18 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
           {/* Simulation Complete */}
           {isComplete && (
-            <Card className="mt-4 p-4 bg-gray-50/50 dark:bg-gray-900/50 border-gray-200/50">
+            <Card className="mt-4 p-4 bg-white border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium text-gray-700 dark:text-gray-200">Simulation Complete</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <h3 className="font-medium text-gray-700">Simulation Complete</h3>
+                  <p className="text-sm text-gray-500 mt-1">
                     The flow has reached an end point.
                   </p>
                 </div>
                 <Button 
                   variant="outline" 
                   onClick={handleReset}
-                  className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="hover:bg-gray-100"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Start Over
