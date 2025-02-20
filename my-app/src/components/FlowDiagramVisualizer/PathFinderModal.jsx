@@ -342,6 +342,9 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     shouldContinueRef.current = true;
   };
 
+  /**
+   * Exports the found paths as an HTML file with proper formatting
+   */
   const exportResults = () => {
     const htmlContent = `
       <!DOCTYPE html>
@@ -354,96 +357,96 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             max-width: 95%;
             margin: 20px auto;
             padding: 20px;
-            font-size: 75%;
           }
           .path {
             background-color: #f9fafb;
             padding: 16px;
             margin-bottom: 16px;
             border-radius: 8px;
+            border: 1px solid #e5e7eb;
+          }
+          .path-header {
             display: flex;
-            flex-wrap: wrap;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            position: relative;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
           }
           .path-number {
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            background-color: #4b5563;
-            color: white;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             font-weight: bold;
+            color: #4b5563;
           }
-          .state {
-            background-color: white;
+          .path-length {
+            color: #6b7280;
+            font-size: 0.9em;
+          }
+          .step {
+            display: inline-flex;
+            align-items: center;
+            margin: 4px 0;
+          }
+          .step-name {
+            background-color: #fff;
             padding: 6px 12px;
             border: 1px solid #e5e7eb;
             border-radius: 6px;
-            display: inline-block;
-            white-space: nowrap;
+            margin: 0 4px;
+          }
+          .step-name.sub-step {
+            border-style: dashed;
+            background-color: #f0fdf4;
           }
           .arrow {
             color: #9ca3af;
+            margin: 0 8px;
+          }
+          .rule {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
             margin: 0 4px;
+            font-size: 0.9em;
           }
-          .rules-container {
-            display: inline-flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            align-items: center;
-          }
-          .success-rule {
+          .rule.success {
             background-color: #d1fae5;
             color: #047857;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin: 2px 0;
-            display: inline-block;
-            white-space: nowrap;
           }
-          .failed-rule {
+          .rule.failure {
             background-color: #fee2e2;
             color: #b91c1c;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin: 2px 0;
-            display: inline-block;
-            white-space: nowrap;
-          }
-          h1 {
-            font-size: 1.5em;
           }
         </style>
       </head>
       <body>
         <h1>Flow Diagram Paths</h1>
-        ${currentPaths.map((path, index) => `
+        <p>Total paths found: ${paths.length}</p>
+        ${paths.map((path, index) => `
           <div class="path">
-            <div class="path-number">${index + 1}</div>
-            ${path.steps.map((step, stepIndex) => `
-              <span class="state">${step}</span>
-              ${stepIndex < path.steps.length - 1 ? `
-                <span class="arrow">→</span>
-                <div class="rules-container">
-                  ${path.failedRules[stepIndex]?.length > 0 ? 
-                    path.failedRules[stepIndex].map(rule => 
-                      `<span class="failed-rule">❌ ${rule}</span>`
-                    ).join('') : ''
-                  }
-                  <span class="success-rule">✓ ${path.rules[stepIndex]}</span>
+            <div class="path-header">
+              <span class="path-number">Path ${index + 1}</span>
+              <span class="path-length">${path.steps.length} steps</span>
+            </div>
+            <div class="steps">
+              ${path.steps.map((step, stepIndex) => `
+                <div class="step">
+                  <span class="step-name ${step.isSubStep ? 'sub-step' : ''}">${step.name}</span>
+                  ${stepIndex < path.steps.length - 1 ? `
+                    <span class="arrow">→</span>
+                    <span class="rule ${path.rules[stepIndex].type}">
+                      ${path.rules[stepIndex].type === 'success' ? '✓' : '❌'}
+                      ${path.rules[stepIndex].type}
+                    </span>
+                    <span class="arrow">→</span>
+                  ` : ''}
                 </div>
-                <span class="arrow">→</span>
-              ` : ''}
-            `).join('')}
+              `).join('')}
+            </div>
           </div>
         `).join('')}
+        <div style="margin-top: 20px; color: #6b7280; font-size: 0.9em;">
+          Generated on: ${new Date().toLocaleString()}
+        </div>
       </body>
       </html>
     `;
@@ -466,6 +469,8 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    toast.success('Paths exported successfully');
   };
 
   // Calculate pagination values
