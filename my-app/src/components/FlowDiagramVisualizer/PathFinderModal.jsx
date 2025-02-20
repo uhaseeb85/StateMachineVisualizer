@@ -45,97 +45,121 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   };
 
   const findPaths = useCallback(async (startStepId, endStepId = null, intermediateStepId = null) => {
-    const startStep = steps.find(s => s.id === startStepId);
-    if (!startStep) {
-      toast.error('Start step not found');
-        return;
-    }
-
-    let allPaths = [];
-    let visited = new Set();
-    let totalSteps = steps.length;
-    let processedSteps = 0;
-
-    const dfs = async (currentStep, currentPath = [], rulePath = [], failedRulesPath = [], foundIntermediate = false) => {
-      if (!shouldContinueRef.current) {
-        throw new Error('Search cancelled');
-      }
-
-      currentPath.push(currentStep.name);
-      visited.add(currentStep.id);
-      
-      processedSteps++;
-      setProgress(Math.min((processedSteps / (totalSteps * 2)) * 100, 99));
-
-      // Add delay to prevent UI freezing
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Check if current path is valid based on search mode
-      if (intermediateStepId) {
-        if (currentStep.id === endStepId && foundIntermediate) {
-          allPaths.push({
-            steps: [...currentPath],
-            rules: [...rulePath],
-            failedRules: [...failedRulesPath]
-          });
-          setPaths([...allPaths]);
-        }
-      } else if (endStepId) {
-        if (currentStep.id === endStepId) {
-          allPaths.push({
-            steps: [...currentPath],
-            rules: [...rulePath],
-            failedRules: [...failedRulesPath]
-          });
-          setPaths([...allPaths]);
-        }
-      } else {
-        // Check if it's an end step (no outgoing connections)
-        const outgoingConnections = connections.filter(conn => conn.fromStepId === currentStep.id);
-        if (outgoingConnections.length === 0) {
-          allPaths.push({
-            steps: [...currentPath],
-            rules: [...rulePath],
-            failedRules: [...failedRulesPath]
-          });
-          setPaths([...allPaths]);
-        }
-      }
-
-      // Explore next steps
-      const outgoingConnections = connections.filter(conn => conn.fromStepId === currentStep.id);
-      for (let i = 0; i < outgoingConnections.length; i++) {
-        const connection = outgoingConnections[i];
-        const nextStep = steps.find(s => s.id === connection.toStepId);
-        if (nextStep && !currentPath.includes(nextStep.name)) {
-          const hasFoundIntermediate = foundIntermediate || nextStep.id === intermediateStepId;
-          await dfs(
-            nextStep,
-            [...currentPath],
-            [...rulePath, connection.type],
-            [...failedRulesPath, outgoingConnections.slice(0, i).map(c => c.type)],
-            hasFoundIntermediate
-          );
-        }
-      }
-
-      visited.delete(currentStep.id);
-    };
-
     try {
+      const startStep = steps.find(s => s.id === startStepId);
+      if (!startStep) {
+        toast.error('Start step not found');
+        return;
+      }
+
+      let allPaths = [];
+      let processedSteps = 0;
+      const totalSteps = steps.length;
+      const maxPathLength = totalSteps * 2; // Allow for longer paths but prevent infinite loops
+
       setPaths([]);
       setIsSearching(true);
+      setProgress(0);
+
+      const dfs = async (currentStep, currentPath = [], rulePath = [], depth = 0) => {
+        if (!shouldContinueRef.current) {
+          throw new Error('Search cancelled');
+        }
+
+        // Prevent infinite loops by limiting path length
+        if (depth > maxPathLength) {
+          return;
+        }
+
+        // Update progress
+        processedSteps++;
+        const progressValue = Math.min((processedSteps / (totalSteps * 2)) * 100, 99);
+        setProgress(progressValue);
+
+        // Add delay to prevent UI freezing
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const newPath = [...currentPath, {
+          id: currentStep.id,
+          name: currentStep.name,
+          isSubStep: !!currentStep.parentId
+        }];
+
+        // Check if we've reached our target based on search mode
+        if (endStepId) {
+          if (currentStep.id === endStepId) {
+            if (!intermediateStepId || newPath.some(step => step.id === intermediateStepId)) {
+              allPaths.push({
+                steps: newPath,
+                rules: [...rulePath]
+              });
+              setPaths([...allPaths]);
+            }
+          }
+        } else {
+          // For finding paths to end steps, check if this is an end step
+          const outgoingConnections = connections.filter(conn => conn.fromStepId === currentStep.id);
+          if (outgoingConnections.length === 0) {
+            allPaths.push({
+              steps: newPath,
+              rules: [...rulePath]
+            });
+            setPaths([...allPaths]);
+          }
+        }
+
+        // Get all possible next steps
+        const outgoingConnections = connections.filter(conn => conn.fromStepId === currentStep.id);
+        
+        for (const connection of outgoingConnections) {
+          try {
+            const nextStep = steps.find(s => s.id === connection.toStepId);
+            if (!nextStep) continue;
+
+            // Check for cycles in the current path
+            const cycleCount = newPath.filter(step => step.id === nextStep.id).length;
+            if (cycleCount >= 2) continue; // Allow revisiting a step once but prevent infinite loops
+
+            // If the next step is a sub-step, make sure we're coming from its parent
+            if (nextStep.parentId && nextStep.parentId !== currentStep.id) {
+              const parent = steps.find(s => s.id === nextStep.parentId);
+              if (parent && !newPath.some(step => step.id === parent.id)) {
+                continue; // Skip if we haven't visited the parent step
+              }
+            }
+
+            await dfs(
+              nextStep,
+              newPath,
+              [...rulePath, { type: connection.type, from: currentStep.name, to: nextStep.name }],
+              depth + 1
+            );
+          } catch (error) {
+            console.error('Error processing connection:', error);
+            continue; // Continue with next connection if one fails
+          }
+        }
+      };
+
       await dfs(startStep);
       setProgress(100);
+
+      if (allPaths.length === 0) {
+        toast.info('No paths found for the selected criteria.');
+      } else {
+        toast.success(`Found ${allPaths.length} possible path${allPaths.length === 1 ? '' : 's'}.`);
+      }
     } catch (error) {
       if (error.message === 'Search cancelled') {
         console.log('Search was cancelled');
+        toast.info('Search cancelled');
       } else {
-        console.error('Error during search:', error);
-        toast.error('An error occurred during path finding');
+        console.error('Error during path finding:', error);
+        toast.error(`Error during path finding: ${error.message}`);
       }
     } finally {
       setIsSearching(false);
+      setProgress(0);
     }
   }, [steps, connections]);
 
@@ -387,6 +411,36 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     setCurrentPage(1);
   }, [paths]);
 
+  // Update the path rendering in the return section
+  const renderPath = (path) => (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      {path.steps.map((step, stepIndex) => (
+        <React.Fragment key={stepIndex}>
+          <span className={`px-3 py-1.5 rounded-md border
+            ${step.isSubStep 
+              ? 'bg-green-50 dark:bg-green-900/30 border-dashed' 
+              : 'bg-blue-50 dark:bg-blue-900/30 border-solid'}`}>
+            {step.name}
+          </span>
+          {stepIndex < path.steps.length - 1 && (
+            <div className="flex items-center gap-2">
+              <ArrowRight className="w-4 h-4 text-gray-400" />
+              <div className="space-y-1">
+                <span className={`px-2 py-1 rounded block
+                  ${path.rules[stepIndex].type === 'success'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'}`}>
+                  {path.rules[stepIndex].type === 'success' ? '✓' : '❌'} {path.rules[stepIndex].type}
+                </span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-gray-400" />
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
@@ -549,38 +603,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                     key={index}
                     className="p-4 bg-gray-50 dark:bg-gray-700/50"
                   >
-                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                      {path.steps.map((step, stepIndex) => (
-                        <React.Fragment key={stepIndex}>
-                          <span className="px-3 py-1.5 bg-white dark:bg-gray-700 rounded-md
-                                       border border-gray-200 dark:border-gray-600">
-                            {step}
-                          </span>
-                          {stepIndex < path.steps.length - 1 && (
-                            <div className="flex items-center gap-2">
-                              <ArrowRight className="w-4 h-4 text-gray-400" />
-                              <div className="space-y-1">
-                                {path.failedRules[stepIndex]?.length > 0 && (
-                                  <div className="space-y-1">
-                                    {path.failedRules[stepIndex].map((rule, ruleIndex) => (
-                                      <span key={ruleIndex} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 
-                                                       text-red-700 dark:text-red-300 rounded block">
-                                        ❌ {rule}
-                                      </span>
-                ))}
-              </div>
-                                )}
-                                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 
-                                              text-green-700 dark:text-green-300 rounded block">
-                                  ✓ {path.rules[stepIndex]}
-                                </span>
-            </div>
-                              <ArrowRight className="w-4 h-4 text-gray-400" />
-          </div>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </div>
+                    {renderPath(path)}
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                       Path length: {path.steps.length} steps, {path.rules.length} transitions
                     </div>
