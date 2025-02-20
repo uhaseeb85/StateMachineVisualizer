@@ -286,7 +286,7 @@ const StepPanel = ({
   };
 
   return (
-    <div className="flex h-[calc(100vh-24rem)] gap-8 p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
+    <div className="flex h-[calc(100vh-16rem)] gap-8 p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
       {/* Left Panel - Steps List */}
       <div className="w-1/3 border rounded-xl p-6 bg-background overflow-y-auto">
         <div className="space-y-4">
