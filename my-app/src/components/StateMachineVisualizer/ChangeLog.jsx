@@ -15,6 +15,7 @@
 import PropTypes from 'prop-types';
 import { X, ArrowUpFromLine, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { toast } from 'sonner';
 
 const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
   // Early return if modal is not open
@@ -52,8 +53,9 @@ const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
    */
   const resetHistory = () => {
     if (window.confirm('Are you sure you want to clear the local history? This cannot be undone.')) {
-      setChangeLog([]);
       localStorage.removeItem('changeLog');
+      setChangeLog([]);
+      toast.success('History cleared successfully');
     }
   };
 

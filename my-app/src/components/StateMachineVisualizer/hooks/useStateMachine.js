@@ -101,7 +101,9 @@ export default function useStateMachine() {
     const timestamp = new Date().toLocaleString();
     setChangeLog(prev => {
       const newLog = [{ timestamp, message }, ...prev];
-      return newLog.slice(0, MAX_HISTORY_ENTRIES);
+      const updatedLog = newLog.slice(0, MAX_HISTORY_ENTRIES);
+      localStorage.setItem('changeLog', JSON.stringify(updatedLog));
+      return updatedLog;
     });
   };
 
@@ -372,6 +374,8 @@ export default function useStateMachine() {
     isDarkMode,
     showSaveNotification,
     changeLog,
+    setChangeLog,
+    addToChangeLog,
     toggleTheme,
     saveFlow,
     addState,
