@@ -19,6 +19,7 @@ import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, ArrowRight, Upload, Edit2, Check, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const RulesPanel = ({
   states,
@@ -28,7 +29,7 @@ const RulesPanel = ({
   onRuleDictionaryImport,
   loadedDictionary,
   setLoadedDictionary,
-  addToChangeLog,
+  addToChangeLog = () => {},
   loadedStateDictionary
 }) => {
   // Rule editing states
@@ -171,6 +172,11 @@ const RulesPanel = ({
    * Saves changes to an edited rule
    */
   const saveEditedRule = () => {
+    if (!editingRuleCondition.trim() || !newRuleNextState) {
+      toast.error('Please provide both a condition and target state');
+      return;
+    }
+
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
         const updatedRules = state.rules.map(rule => {
@@ -369,14 +375,31 @@ const RulesPanel = ({
                 <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
                   <div className="flex items-center gap-2">
                     <ArrowRight className="w-4 h-4 text-gray-400" />
-                    <button
-                      onClick={(e) => handleTargetStateClick(rule.nextState, e)}
-                      className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
-                               rounded hover:bg-gray-200 dark:hover:bg-gray-600
-                               text-blue-500 dark:text-white"
-                    >
-                      {targetState?.name}
-                    </button>
+                    {isEditing ? (
+                      <select
+                        value={newRuleNextState}
+                        onChange={(e) => setNewRuleNextState(e.target.value)}
+                        className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
+                                 rounded hover:bg-gray-200 dark:hover:bg-gray-600
+                                 text-gray-700 dark:text-white border-none"
+                      >
+                        <option value="">Select target state</option>
+                        {states.map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button
+                        onClick={(e) => handleTargetStateClick(rule.nextState, e)}
+                        className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
+                                 rounded hover:bg-gray-200 dark:hover:bg-gray-600
+                                 text-blue-500 dark:text-white"
+                      >
+                        {targetState?.name}
+                      </button>
+                    )}
                   </div>
                 </div>
 
