@@ -264,7 +264,6 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             onRuleDictionaryImport={handleRuleDictionaryImport}
             loadedDictionary={loadedDictionary}
             setLoadedDictionary={setLoadedDictionary}
-            setChangeLog={setChangeLog}
             addToChangeLog={addToChangeLog}
             loadedStateDictionary={loadedStateDictionary}
           />
