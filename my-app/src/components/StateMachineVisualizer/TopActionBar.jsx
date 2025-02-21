@@ -181,6 +181,20 @@ const TopActionBar = ({
               Pathfinder
             </Button>
 
+             {/* Simulation Button */}
+             <Button 
+              onClick={onSimulate}
+              title="Run a simulation of your state machine to test its behavior"
+              className="simulation-button bg-green-600 text-white text-sm
+                       hover:bg-green-500 hover:scale-105
+                       dark:bg-green-700 dark:hover:bg-green-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Play className="w-4 h-4" />
+              Simulate
+            </Button>
+
             {/* Mode Switch Button */}
             <Button
               onClick={onChangeMode}
@@ -195,19 +209,7 @@ const TopActionBar = ({
               Switch Mode
             </Button>
 
-            {/* Simulation Button */}
-            <Button 
-              onClick={onSimulate}
-              title="Run a simulation of your state machine to test its behavior"
-              className="simulation-button bg-green-600 text-white text-sm
-                       hover:bg-green-500 hover:scale-105
-                       dark:bg-green-700 dark:hover:bg-green-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Play className="w-4 h-4" />
-              Simulate
-            </Button>
+           
           </div>
         </div>
       </div>
