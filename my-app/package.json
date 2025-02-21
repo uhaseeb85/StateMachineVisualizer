@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:tomcat": "cross-env DEPLOYMENT_ENV=tomcat vite build",
+    "build:vercel": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -37,6 +39,7 @@
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
+    "cross-env": "^7.0.3",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
@@ -50,6 +53,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "homepage": "/visualizer"
+  "description": ""
 }
