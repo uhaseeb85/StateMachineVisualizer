@@ -37,6 +37,85 @@ npm run dev
 
 4. Open your browser and navigate to `http://localhost:5173`
 
+## Deployment
+
+### Local Tomcat Deployment
+
+Follow these steps to deploy the application to your local Tomcat server:
+
+#### Prerequisites
+
+1. Apache Tomcat 9.0 or higher installed
+2. Node.js (v18.17.0 or higher)
+3. npm (v6.0.0 or higher)
+
+#### Build Configuration
+
+1. Install the required build dependency:
+   ```bash
+   npm install --save-dev cross-env
+   ```
+
+2. The project already includes the necessary configuration in:
+   - `vite.config.js` - Handles correct path configuration for Tomcat deployment
+   - `package.json` - Includes the Tomcat-specific build command
+
+#### Build and Deploy
+
+1. Build the application for Tomcat:
+   ```bash
+   npm run build:tomcat
+   ```
+   This will create a `dist` directory with the build files.
+
+2. Create and set up the Tomcat deployment directory:
+   ```bash
+   mkdir "%TOMCAT_HOME%\webapps\visualizer"
+   ```
+   copy contents of dist directory to "%TOMCAT_HOME%\webapps\visualizer\"
+
+   create below directories
+   ```bash
+   mkdir "%TOMCAT_HOME%\webapps\visualizer\META-INF"
+   mkdir "%TOMCAT_HOME%\webapps\visualizer\WEB-INF"
+   ```
+
+3. Create the required Tomcat configuration files:
+
+   In `%TOMCAT_HOME%\webapps\visualizer\META-INF\context.xml`:
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <Context antiResourceLocking="false" privileged="true">
+   </Context>
+   ```
+
+   In `%TOMCAT_HOME%\webapps\visualizer\WEB-INF\web.xml`:
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+            version="4.0">
+       <display-name>Flow Diagram Application</display-name>
+       <error-page>
+           <error-code>404</error-code>
+           <location>/visualizer/index.html</location>
+       </error-page>
+   </web-app>
+   ```
+
+#### Start Tomcat
+
+1. Start Tomcat server:
+   ```bash
+   "%TOMCAT_HOME%\bin\startup.bat"
+   ```
+
+2. Access the application:
+   ```
+   http://localhost:8080/visualizer/
+   ```
+
 ## Usage Guide
 
 ### State Management
