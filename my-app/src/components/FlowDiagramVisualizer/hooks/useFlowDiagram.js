@@ -83,12 +83,39 @@ const useFlowDiagram = (storageKey) => {
    * @param {Object} updates - Object containing properties to update
    */
   const updateStep = (id, updates) => {
-    console.log('Updating step:', id, 'with:', updates);
-    setSteps((prev) =>
-      prev.map((step) =>
+    console.log('useFlowDiagram.updateStep called with:', { id, updates });
+    
+    // Validate inputs
+    if (!id || !updates) {
+      console.error('Invalid id or updates:', { id, updates });
+      return;
+    }
+
+    setSteps((prev) => {
+      // Find the step to update
+      const stepToUpdate = prev.find(step => step.id === id);
+      if (!stepToUpdate) {
+        console.error('Step not found:', id);
+        return prev;
+      }
+
+      // Create new steps array with the update
+      const newSteps = prev.map((step) =>
         step.id === id ? { ...step, ...updates } : step
-      )
-    );
+      );
+
+      console.log('Updating steps from:', prev, 'to:', newSteps);
+
+      // Save to localStorage after update
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ steps: newSteps, connections }));
+        console.log('Successfully saved to localStorage');
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+
+      return newSteps;
+    });
   };
 
   /**

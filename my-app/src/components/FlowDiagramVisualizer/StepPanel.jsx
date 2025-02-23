@@ -83,6 +83,7 @@ const StepPanel = ({
       setSelectedStep(null);
       setConnectionType(null);
     } else {
+      console.log('Setting selected step:', step);
       setSelectedStep(step);
     }
   };
@@ -145,6 +146,31 @@ const StepPanel = ({
       setSelectedStep(null);
     }
     toast.success('Step and all sub-steps removed');
+  };
+
+  const handleUpdateStep = (stepId, updates) => {
+    console.log('handleUpdateStep called with:', { stepId, updates });
+    if (!stepId || !updates) {
+      console.error('Invalid stepId or updates:', { stepId, updates });
+      return;
+    }
+    
+    // Find the step in the steps array to verify it exists
+    const stepToUpdate = steps.find(s => s.id === stepId);
+    if (!stepToUpdate) {
+      console.error('Step not found:', stepId);
+      return;
+    }
+    
+    // Create the updated step object
+    const updatedStep = { ...stepToUpdate, ...updates };
+    console.log('Updating step from:', stepToUpdate, 'to:', updatedStep);
+    
+    // Call the update function
+    onUpdateStep(stepId, updates);
+    
+    // Update local state to reflect changes immediately
+    setSelectedStep(updatedStep);
   };
 
   const renderStep = (step, level = 0) => {
@@ -340,10 +366,17 @@ const StepPanel = ({
               <div>
                 <label className="text-sm font-medium mb-1 block">Description</label>
                 <Textarea
+                  key={selectedStep.id}
                   placeholder="Step description..."
                   value={selectedStep.description || ''}
-                  onChange={(e) => onUpdateStep(selectedStep.id, { description: e.target.value })}
-                  className="min-h-[80px]"
+                  onChange={(e) => {
+                    console.log('Textarea onChange event:', e.target.value);
+                    handleUpdateStep(selectedStep.id, { description: e.target.value });
+                  }}
+                  className="min-h-[80px] w-full resize-y bg-background text-foreground"
+                  rows={4}
+                  disabled={false}
+                  spellCheck={false}
                 />
               </div>
             </div>
