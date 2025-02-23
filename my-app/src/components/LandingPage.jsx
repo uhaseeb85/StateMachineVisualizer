@@ -199,20 +199,19 @@ const LandingPage = ({ onGetStarted }) => {
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
           {/* About Section */}
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold mb-6">About the Project</h3>
+            <h3 className="text-xl font-semibold mb-6">About</h3>
             <div className="space-y-4 text-sm text-gray-300">
               <p>
-                Visual Flow Builder is a project designed to simplify the creation and visualization 
-                of complex state machines and flow diagrams. Built with modern web technologies and best practices 
-                in mind.
+                Visual Flow Builder helps you create and understand complex workflows through interactive diagrams. 
+                Whether you're designing state machines or mapping out process flows, this tool makes it simple to 
+                visualize, validate, and share your work.
               </p>
               <div className="space-y-2">
-                <p className="text-gray-400 font-medium">Credits:</p>
+                <p className="text-gray-400 font-medium">Acknowledgments:</p>
                 <ul className="list-disc list-inside space-y-1 text-gray-300">
-                  <li>UI Design inspired by Shadcn templates</li>
-                  <li>Icons provided by Lucide</li>
-                  <li>Animation library by Framer Motion</li>
-                  <li>Flow visualization powered by React Flow</li>
+                  <li>Design elements from Shadcn UI</li>
+                  <li>Interface icons by Lucide</li>
+                  <li>Smooth animations by Framer</li>
                 </ul>
               </div>
               <p className="text-gray-400 mt-6 text-center">
