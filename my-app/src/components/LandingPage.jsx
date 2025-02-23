@@ -209,13 +209,14 @@ const LandingPage = ({ onGetStarted }) => {
               <div className="space-y-2">
                 <p className="text-gray-400 font-medium">Acknowledgments:</p>
                 <ul className="list-disc list-inside space-y-1 text-gray-300">
+                  <li>Built with React</li>
                   <li>Design elements from Shadcn UI</li>
                   <li>Interface icons by Lucide</li>
                   <li>Smooth animations by Framer</li>
                 </ul>
               </div>
               <p className="text-gray-400 mt-6 text-center">
-                Version 1.0.0 • © 2024
+                Version 1.0.0
               </p>
             </div>
           </div>
