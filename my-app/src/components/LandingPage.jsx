@@ -1,66 +1,21 @@
-import { ArrowRight, GitBranch, Zap, Shield, Code2, Workflow, SwitchCamera } from 'lucide-react';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { 
+  GitBranch, 
+  Zap, 
+  Shield, 
+  Code2, 
+  Workflow, 
+  ArrowRight, 
+  Boxes, 
+  Network,
+  FileJson,
+  History,
+  Lightbulb,
+  Sparkles
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
-// Import feature screenshots
-import interactiveDesignImg from '../assets/features/interactive-design.png';
-import simulationImg from '../assets/features/real-time-simulation.png';
-import pathAnalysisImg from '../assets/features/path-analysis.png';
-import dataPersistenceImg from '../assets/features/data-persistence.png';
-import logAnalysisImg from '../assets/features/log-analysis.png';
-
-const ModeCard = ({ title, description, features, icon: Icon, onSelect, color, mainImage }) => (
-  <Card 
-    className={`p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg
-                transform transition-all duration-200 hover:scale-[1.02] overflow-hidden
-                border-2 hover:border-${color}-500 cursor-pointer
-                hover:shadow-xl transition-all duration-300`}
-    onClick={onSelect}
-  >
-    <div className="flex flex-col h-full">
-      <div className={`w-16 h-16 bg-${color}-100 dark:bg-${color}-900/50 rounded-xl 
-                    flex items-center justify-center mb-6`}>
-        <Icon className={`w-8 h-8 text-${color}-600 dark:text-${color}-400`} />
-      </div>
-      
-      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-        {title}
-      </h3>
-      
-      <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
-        {description}
-      </p>
-
-      {/* Main Feature Image */}
-      <div className="relative mb-6 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-        <img 
-          src={mainImage} 
-          alt={title}
-          className="w-full h-48 object-cover transition-all duration-500"
-        />
-      </div>
-
-      <div className="space-y-4 flex-grow">
-        {features.map((feature, index) => (
-          <div key={index} className="flex items-start gap-3">
-            <div className={`w-5 h-5 rounded-full bg-${color}-100 dark:bg-${color}-900/50 
-                          flex items-center justify-center flex-shrink-0 mt-1`}>
-              <feature.icon className={`w-3 h-3 text-${color}-600 dark:text-${color}-400`} />
-            </div>
-            <span className="text-gray-700 dark:text-gray-300">{feature.text}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className={`mt-8 w-full h-12 flex items-center justify-center gap-2 
-                    text-${color}-600 dark:text-${color}-400 font-medium
-                    border-t border-gray-100 dark:border-gray-700 pt-4`}>
-        Select {title}
-        <ArrowRight className="w-5 h-5" />
-      </div>
-    </div>
-  </Card>
-);
+import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
 
 const LandingPage = ({ onGetStarted }) => {
   const handleModeSelect = (mode) => {
@@ -68,125 +23,203 @@ const LandingPage = ({ onGetStarted }) => {
     onGetStarted();
   };
 
-  const modes = [
+  const features = [
     {
-      title: "State Machine Visualizer",
-      description: "Design and validate complex state machines with rules and transitions.",
-      color: "blue",
-      icon: Workflow,
-      mainImage: interactiveDesignImg,
-      features: [
-        {
-          icon: GitBranch,
-          text: "Create modify and test state machines with an intuitive interface"
-        },
-        {
-          icon: Shield,
-          text: "Import rule and state dictionaries for consistent documentation"
-        },
-        {
-          icon: Zap,
-          text: "Real-time simulation with interactive state transitions"
-        },
-        {
-          icon: Code2,
-          text: "Advanced log analysis and Splunk integration"
-        },
-        {
-          icon: Code2,
-          text: "Import/Export flows in CSV format"
-        }
-      ]
+      icon: Boxes,
+      title: "State Management",
+      description: "Create and manage complex state machines with an intuitive interface",
+      color: "blue"
     },
     {
-      title: "Flow Diagram Builder",
-      description: "Create linear or branching flow diagrams with success/failure paths.",
-      color: "green",
-      icon: GitBranch,
-      mainImage: pathAnalysisImg,
-      features: [
-        {
-          icon: Workflow,
-          text: "Suitable for documenting API flows and requirements involving multiple steps."
-        },
-        {
-          icon: Workflow,
-          text: "Build step-by-step flows with success and failure branches"
-        },
-        {
-          icon: Shield,
-          text: "Organize steps hierarchically with sub-steps"
-        },
-        {
-          icon: Zap,
-          text: "Interactive flow simulation and path analysis"
-        },
-        {
-          icon: Code2,
-          text: "Import/Export flows in CSV format"
-        }
-      ]
+      icon: Network,
+      title: "Flow Visualization",
+      description: "Visualize API process flows and transitions interactively",
+      color: "green"
+    },
+    {
+      icon: FileJson,
+      title: "Import/Export",
+      description: "Support for JSON and CSV formats with data persistence",
+      color: "purple"
+    },
+    {
+      icon: History,
+      title: "Version Control",
+      description: "Track changes and maintain history of modifications",
+      color: "orange"
+    },
+    {
+      icon: Lightbulb,
+      title: "Path Validation",
+      description: "Interactive validation of state transitions and rules",
+      color: "yellow"
+    },
+    {
+      icon: Sparkles,
+      title: "Simulation",
+      description: "Try out flows with real-time simulation and testing",
+      color: "pink"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 
-                    dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
       {/* Hero Section */}
-      <div className="container mx-auto px-4 pt-20 pb-16">
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            Visual Flow Builder
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-            Choose your visualization mode to get started. Each mode offers specialized features
-            for different types of flow visualization and validation.
-          </p>
+      <div className="relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+        
+        <div className="relative pt-24 pb-16 sm:pt-32 sm:pb-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <motion.h1 
+                className="text-4xl font-bold tracking-tight sm:text-6xl bg-clip-text text-transparent 
+                         bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                Visual Flow Builder
+              </motion.h1>
+              <motion.p 
+                className="mt-6 text-lg leading-8 text-gray-300"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                Design, visualize, and validate complex workflows with our intuitive interface.
+                Build state machines and flow diagrams with ease.
+              </motion.p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Mode Selection Grid */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-          {modes.map((mode, index) => (
-            <ModeCard
-              key={index}
-              {...mode}
-              onSelect={() => handleModeSelect(index === 0 ? 'stateMachine' : 'flowDiagram')}
-            />
+      {/* Mode Selection */}
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* State Machine Mode */}
+          <motion.div 
+            className="group relative rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent p-8 hover:from-blue-500/20 
+                     transition-all duration-300 cursor-pointer"
+            onClick={() => handleModeSelect('stateMachine')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-2 rounded-lg bg-blue-500/20">
+                  <Workflow className="w-6 h-6 text-blue-400" />
+                </div>
+                <h3 className="text-2xl font-semibold">State Machine Visualizer</h3>
+              </div>
+              <p className="text-gray-400 mb-6">
+                Design and validate complex state machines with rules and transitions.
+                Perfect for modeling system behaviors and decision flows.
+              </p>
+              <AnimatedDemo mode="stateMachine" />
+            </div>
+            <Button 
+              className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 
+                       group-hover:bg-blue-500 group-hover:text-white transition-all duration-300"
+            >
+              Start Building
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </motion.div>
+
+          {/* Flow Diagram Mode */}
+          <motion.div 
+            className="group relative rounded-3xl bg-gradient-to-b from-green-500/10 to-transparent p-8 hover:from-green-500/20 
+                     transition-all duration-300 cursor-pointer"
+            onClick={() => handleModeSelect('flowDiagram')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-2 rounded-lg bg-green-500/20">
+                  <GitBranch className="w-6 h-6 text-green-400" />
+                </div>
+                <h3 className="text-2xl font-semibold">Flow Diagram Builder</h3>
+              </div>
+              <p className="text-gray-400 mb-6">
+                Create linear or branching flow diagrams with success/failure paths.
+                Ideal for API flows and process documentation.
+              </p>
+              <AnimatedDemo mode="flowDiagram" />
+            </div>
+            <Button 
+              className="w-full bg-green-500/20 hover:bg-green-500/30 text-green-400 
+                       group-hover:bg-green-500 group-hover:text-white transition-all duration-300"
+            >
+              Start Building
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Features Grid */}
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
+        <motion.h2 
+          className="text-3xl font-bold text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          Powerful Features
+        </motion.h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              className={`rounded-xl bg-${feature.color}-500/10 p-6 hover:bg-${feature.color}-500/20 
+                       transition-all duration-300`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <div className={`p-2 rounded-lg bg-${feature.color}-500/20 w-fit mb-4`}>
+                <feature.icon className={`w-6 h-6 text-${feature.color}-400`} />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+              <p className="text-gray-400">{feature.description}</p>
+            </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Additional Features Showcase */}
-      <div className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-12">
-          Common Features
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="p-6 bg-white dark:bg-gray-800">
-            <img src={simulationImg} alt="Simulation" className="w-full h-48 object-cover rounded-lg mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Real-time Simulation</h3>
-            <p className="text-gray-600 dark:text-gray-300">Test your flows in real-time with interactive simulations.</p>
-          </Card>
-          <Card className="p-6 bg-white dark:bg-gray-800">
-            <img src={dataPersistenceImg} alt="Data Persistence" className="w-full h-48 object-cover rounded-lg mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Data Persistence</h3>
-            <p className="text-gray-600 dark:text-gray-300">Your work can be saved and can be exported/imported.</p>
-          </Card>
-          <Card className="p-6 bg-white dark:bg-gray-800">
-            <img src={logAnalysisImg} alt="Path Analysis" className="w-full h-48 object-cover rounded-lg mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Path Analysis</h3>
-            <p className="text-gray-600 dark:text-gray-300">Analyze all possible paths and identify potential issues.</p>
-          </Card>
-        </div>
-      </div>
-
-      {/* Switch Mode Hint */}
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400">
-          <SwitchCamera className="w-5 h-5" />
-          <span>You can switch between modes anytime using the mode switch button</span>
+      {/* Technologies and Credits Section */}
+      <div className="border-t border-gray-800">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
+          {/* About Section */}
+          <div className="max-w-2xl mx-auto">
+            <h3 className="text-xl font-semibold mb-6">About the Project</h3>
+            <div className="space-y-4 text-sm text-gray-300">
+              <p>
+                Visual Flow Builder is a project designed to simplify the creation and visualization 
+                of complex state machines and flow diagrams. Built with modern web technologies and best practices 
+                in mind.
+              </p>
+              <div className="space-y-2">
+                <p className="text-gray-400 font-medium">Credits:</p>
+                <ul className="list-disc list-inside space-y-1 text-gray-300">
+                  <li>UI Design inspired by Shadcn templates</li>
+                  <li>Icons provided by Lucide</li>
+                  <li>Animation library by Framer Motion</li>
+                  <li>Flow visualization powered by React Flow</li>
+                </ul>
+              </div>
+              <p className="text-gray-400 mt-6 text-center">
+                Version 1.0.0 • © 2024
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
