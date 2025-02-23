@@ -583,11 +583,15 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                          text-sm dark:bg-gray-700 dark:text-white px-3"
               >
                 <option value="">Select Starting Step</option>
-                {steps.map(step => (
-                  <option key={step.id} value={step.id}>
-                    {step.name}
-                  </option>
-                ))}
+                {steps.map(step => {
+                  // Find parent step if this is a sub-step
+                  const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
+                  return (
+                    <option key={step.id} value={step.id}>
+                      {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
+                    </option>
+                  );
+                })}
               </select>
 
               {(searchMode === 'specificStep' || searchMode === 'intermediateStep') && (
@@ -598,11 +602,15 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Target Step</option>
-                  {steps.map(step => (
-                    <option key={step.id} value={step.id}>
-                      {step.name}
-                    </option>
-                  ))}
+                  {steps.map(step => {
+                    // Find parent step if this is a sub-step
+                    const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
+                    return (
+                      <option key={step.id} value={step.id}>
+                        {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
+                      </option>
+                    );
+                  })}
                 </select>
               )}
 
@@ -614,11 +622,15 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Intermediate Step</option>
-                  {steps.map(step => (
-                    <option key={step.id} value={step.id}>
-                      {step.name}
-                    </option>
-                  ))}
+                  {steps.map(step => {
+                    // Find parent step if this is a sub-step
+                    const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
+                    return (
+                      <option key={step.id} value={step.id}>
+                        {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
+                      </option>
+                    );
+                  })}
                 </select>
               )}
 
