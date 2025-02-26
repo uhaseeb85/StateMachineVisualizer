@@ -18,7 +18,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, ArrowRight, Upload, Edit2, Check, X } from 'lucide-react';
+import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const RulesPanel = ({
@@ -38,6 +38,7 @@ const RulesPanel = ({
   const [selectedRuleId, setSelectedRuleId] = useState(null);
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [editingRuleCondition, setEditingRuleCondition] = useState("");
+  const [insertingBeforeRuleId, setInsertingBeforeRuleId] = useState(null);
 
   // Get current state details
   const currentState = states.find(state => state.id === selectedState);
@@ -235,6 +236,74 @@ const RulesPanel = ({
     })).filter(item => item.description);
   };
 
+  /**
+   * Inserts a new rule before the specified rule
+   * @param {string} beforeRuleId - ID of the rule to insert before
+   */
+  const insertRuleBefore = () => {
+    if (!newRuleCondition.trim() || !newRuleNextState) return;
+
+    const updatedStates = states.map(state => {
+      if (state.id === selectedState) {
+        // Find the index of the rule we're inserting before
+        const targetIndex = state.rules.findIndex(rule => rule.id === insertingBeforeRuleId);
+        
+        if (targetIndex === -1) return state;
+        
+        // Create the new rule
+        const newRule = {
+          id: Date.now(),
+          condition: newRuleCondition.trim(),
+          nextState: newRuleNextState,
+        };
+        
+        // Create new rules array with the inserted rule
+        const updatedRules = [
+          ...state.rules.slice(0, targetIndex),
+          newRule,
+          ...state.rules.slice(targetIndex)
+        ];
+        
+        addToChangeLog(`Inserted new rule before rule ${targetIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+        
+        return {
+          ...state,
+          rules: updatedRules,
+        };
+      }
+      return state;
+    });
+
+    setStates(updatedStates);
+    setNewRuleCondition("");
+    setNewRuleNextState("");
+    setInsertingBeforeRuleId(null);
+  };
+
+  /**
+   * Begins the process of inserting a rule before another rule
+   * @param {string} ruleId - ID of the rule to insert before
+   */
+  const handleInsertBefore = (ruleId) => {
+    setInsertingBeforeRuleId(ruleId);
+    setSelectedRuleId(null);
+    setEditingRuleId(null);
+    // Focus on the condition input
+    setTimeout(() => {
+      const input = document.getElementById('ruleConditionInput');
+      if (input) input.focus();
+    }, 0);
+  };
+
+  /**
+   * Cancels rule insertion mode
+   */
+  const handleCancelInsert = () => {
+    setInsertingBeforeRuleId(null);
+    setNewRuleCondition("");
+    setNewRuleNextState("");
+  };
+
   // Render placeholder when no state is selected
   if (!selectedState) {
     return (
@@ -302,10 +371,11 @@ const RulesPanel = ({
       <div className="mb-4">
         <div className="flex gap-2">
           <Input
+            id="ruleConditionInput"
             type="text"
             value={newRuleCondition}
             onChange={(e) => setNewRuleCondition(e.target.value)}
-            placeholder="Enter rule condition"
+            placeholder={insertingBeforeRuleId ? "Enter rule to insert" : "Enter rule condition"}
             className="flex-1"
           />
           <select
@@ -320,33 +390,51 @@ const RulesPanel = ({
               </option>
             ))}
           </select>
-          <Button
-            onClick={addRule}
-            disabled={!newRuleCondition.trim() || !newRuleNextState}
-          >
-            Add Rule
-          </Button>
+          {insertingBeforeRuleId ? (
+            <>
+              <Button
+                onClick={insertRuleBefore}
+                disabled={!newRuleCondition.trim() || !newRuleNextState}
+              >
+                Insert Rule
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleCancelInsert}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={addRule}
+              disabled={!newRuleCondition.trim() || !newRuleNextState}
+            >
+              Add Rule
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Rules List Section */}
       <div className="space-y-2">
-        {currentState?.rules.map(rule => {
+        {currentState?.rules.map((rule, index) => {
           const targetState = states.find(s => s.id === rule.nextState);
           const ruleDescriptions = getRuleDescriptions(rule.condition);
           const isSelected = selectedRuleId === rule.id;
           const isEditing = editingRuleId === rule.id;
+          const isInsertingBefore = insertingBeforeRuleId === rule.id;
 
           return (
             <div key={rule.id} className="flex flex-col gap-1">
               {/* Rule Item */}
-              <div className="grid grid-cols-[1fr,auto,1fr,auto] gap-4 items-center 
+              <div className={`grid grid-cols-[1fr,auto,1fr,auto] gap-4 items-center 
                            bg-white dark:bg-gray-700 p-1 rounded-lg
                            hover:bg-gray-50 dark:hover:bg-gray-600
                            transform transition-all duration-200 hover:scale-[1.02]
                            hover:shadow-sm cursor-pointer group
-                           border border-transparent hover:border-gray-200 dark:hover:border-gray-500
-                           relative">
+                           border ${isInsertingBefore ? 'border-blue-300 dark:border-blue-600' : 'border-transparent hover:border-gray-200 dark:hover:border-gray-500'}
+                           relative`}>
                 {/* Rule Condition */}
                 <div 
                   onClick={() => !isEditing && handleRuleClick(rule.id)}
@@ -431,6 +519,17 @@ const RulesPanel = ({
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleInsertBefore(rule.id)}
+                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
+                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                                 group-hover:opacity-100 transition-opacity"
+                        title="Insert rule before this one"
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleEditRule(rule.id)}
                         className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
                                  hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
@@ -454,6 +553,13 @@ const RulesPanel = ({
                     </>
                   )}
                 </div>
+
+                {/* Insert Indicator */}
+                {isInsertingBefore && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    Inserting here
+                  </div>
+                )}
               </div>
 
               {/* Rule Description */}
