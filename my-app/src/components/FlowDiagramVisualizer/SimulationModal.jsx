@@ -3,13 +3,13 @@
  * A modal dialog that provides interactive simulation functionality for a flow diagram.
  * Features include:
  * - Step-by-step flow simulation with success/failure paths
- * - Visual representation of the simulation path
+ * - Visual representation of the simulation path with animated arrows
  * - Undo/Reset capabilities
  * - Export simulation as image
  * - Support for main steps and sub-steps
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import html2canvas from 'html2canvas';
 import {
@@ -27,10 +27,9 @@ import {
   RotateCcw,
   X,
   Camera,
-  PanelLeftClose,
-  PanelBottomClose,
-  Undo2
+  Undo2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 /**
  * @typedef {Object} Step
@@ -68,6 +67,9 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const [currentStep, setCurrentStep] = useState(null);
   const [simulationPath, setSimulationPath] = useState([]);
   const [isComplete, setIsComplete] = useState(false);
+  
+  // Ref for layout container (used for auto-scrolling)
+  const simulationContainerRef = useRef(null);
 
   /**
    * Initialize simulation with the starting step
@@ -82,6 +84,113 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       setSimulationPath([{ step: startStep, status: 'current' }]);
     }
   }, [steps, connections]);
+  
+  /**
+   * Auto-scroll to the latest step when simulation path changes
+   */
+  useEffect(() => {
+    if (simulationContainerRef.current && simulationPath.length > 0) {
+      simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
+    }
+  }, [simulationPath]);
+
+  // Add animation styles
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      @keyframes slideIn {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+
+      @keyframes arrowFlow {
+        0% { stroke-dashoffset: 20; }
+        100% { stroke-dashoffset: 0; }
+      }
+
+      .step-card {
+        animation: fadeIn 0.4s ease-out;
+        transition: all 0.3s ease;
+      }
+
+      .step-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      }
+
+      .arrow-path {
+        stroke-dasharray: 5;
+        animation: arrowFlow 1s linear infinite;
+      }
+
+      .success-arrow {
+        stroke: #22c55e;
+      }
+
+      .failure-arrow {
+        stroke: #ef4444;
+      }
+
+      .choice-buttons {
+        animation: slideIn 0.4s ease-out;
+      }
+
+      .arrow-container {
+        position: relative;
+        margin: 16px 0;
+        height: 40px;
+        overflow: visible;
+      }
+
+      .arrow-svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+
+      .sub-step-container {
+        position: relative;
+        margin-left: 40px;
+        padding-left: 20px;
+        border-left: 2px dashed #e5e7eb;
+        width: 75%;
+        margin-bottom: 24px;
+      }
+
+      .sub-step-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 20px;
+        height: 2px;
+        background: #e5e7eb;
+      }
+
+      .end-card {
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+      
+      /* Add spacing between step items */
+      .step-item {
+        margin-bottom: 24px;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
 
   /**
    * Handles modal close and triggers parent callback
@@ -191,8 +300,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
   /**
    * Exports the current simulation state as a PNG image
-   * Temporarily modifies styling for better export quality
-   * Prompts for filename and downloads the image
+   * Ensures all elements are captured, including those outside the viewport
    */
   const handleExportImage = async () => {
     try {
@@ -206,63 +314,94 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       
       const finalFileName = fileName.endsWith('.png') ? fileName : `${fileName}.png`;
 
-      // Store original styles and scroll position
-      const originalClasses = element.className;
-      const originalBg = element.style.background;
-      const originalHeight = element.style.height;
-      const originalOverflow = element.style.overflow;
-      const originalPosition = element.scrollTop;
+      // Show loading toast
+      toast.loading('Preparing export...');
 
-      // Temporarily modify for export
-      element.className = `${originalClasses} !bg-white`;
+      // Store original styles
+      const originalStyles = {
+        height: element.style.height,
+        width: element.style.width,
+        position: element.style.position,
+        overflow: element.style.overflow,
+        maxHeight: element.style.maxHeight,
+        maxWidth: element.style.maxWidth,
+        padding: element.style.padding,
+        background: element.style.background
+      };
+
+      // Temporarily modify the container for better capture
       element.style.height = 'auto';
+      element.style.maxHeight = 'none';
       element.style.overflow = 'visible';
-      
-      // Remove dark mode classes
-      document.querySelectorAll('.simulation-content [class*="dark:"]').forEach(el => {
-        el.className = el.className.split(' ').filter(c => !c.startsWith('dark:')).join(' ');
-      });
+      element.style.padding = '50px';
+      element.style.background = '#ffffff';
 
-      // Set light mode colors for export
-      const cards = element.querySelectorAll('.Card');
-      cards.forEach(card => {
-        if (card.textContent.includes('END')) {
-          card.style.backgroundColor = '#f9fafb'; // gray-50
-        } else if (card.classList.contains('border-dashed')) {
-          card.style.backgroundColor = '#f0fdf4'; // green-50
-        } else {
-          card.style.backgroundColor = '#eff6ff'; // blue-50
+      // Pause animations temporarily
+      const animationStyles = document.createElement('style');
+      animationStyles.textContent = `
+        .arrow-path, .step-card {
+          animation: none !important;
+          transition: none !important;
         }
-      });
+      `;
+      document.head.appendChild(animationStyles);
 
-      const canvas = await html2canvas(element, {
+      // Set up html2canvas options
+      const options = {
         backgroundColor: '#ffffff',
-        scale: window.devicePixelRatio,
+        scale: 2, // Higher resolution
         useCORS: true,
-        logging: false,
         allowTaint: true,
-        height: element.scrollHeight,
-        windowHeight: element.scrollHeight
-      });
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.documentElement.offsetWidth * 2,
+        windowHeight: document.documentElement.offsetHeight * 2,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.querySelector('.simulation-content');
+          
+          // Remove dark mode classes in cloned element
+          clonedElement.querySelectorAll('[class*="dark:"]').forEach(el => {
+            el.className = el.className.split(' ').filter(c => !c.startsWith('dark:')).join(' ');
+          });
 
-      // Restore original styling
-      element.className = originalClasses;
-      element.style.background = originalBg;
-      element.style.height = originalHeight;
-      element.style.overflow = originalOverflow;
-      element.scrollTop = originalPosition;
-      cards.forEach(card => {
-        card.style.backgroundColor = '';
-      });
+          // Make all SVGs visible
+          clonedElement.querySelectorAll('svg').forEach(svg => {
+            svg.style.overflow = 'visible';
+            svg.style.visibility = 'visible';
+          });
+
+          // Make all step cards visible
+          clonedElement.querySelectorAll('.step-card').forEach(card => {
+            card.style.opacity = '1';
+            card.style.visibility = 'visible';
+            card.style.transform = 'none';
+            card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+          });
+        }
+      };
+
+      // Create canvas and download
+      const canvas = await html2canvas(element, options);
       
-      // Create download link
+      // Restore original styles
+      Object.assign(element.style, originalStyles);
+      
+      // Remove temporary animation styles
+      document.head.removeChild(animationStyles);
+
+      // Create and trigger download
       const link = document.createElement('a');
       link.download = finalFileName;
       link.href = canvas.toDataURL('image/png');
       link.click();
+      
+      toast.dismiss();
+      toast.success('Diagram exported successfully');
     } catch (error) {
       console.error('Error exporting simulation:', error);
-      alert('Failed to export simulation image');
+      toast.dismiss();
+      toast.error('Failed to export simulation image');
     }
   };
 
@@ -274,13 +413,13 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="h-4 w-4 text-green-500/70" />;
+        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case 'failure':
-        return <XCircle className="h-4 w-4 text-red-500/70" />;
+        return <XCircle className="h-5 w-5 text-red-500" />;
       case 'current':
-        return <ArrowRight className="h-4 w-4 text-blue-500/70" />;
+        return <ArrowRight className="h-5 w-5 text-blue-500" />;
       case 'end':
-        return <X className="h-4 w-4 text-gray-500/70" />;
+        return <X className="h-5 w-5 text-gray-500" />;
       default:
         return null;
     }
@@ -293,21 +432,60 @@ const SimulationModal = ({ steps, connections, onClose }) => {
    * @returns {string} CSS classes string
    */
   const getStepCardClasses = (status, isSubStep) => {
-    let baseClasses = "p-3 min-w-[200px] rounded-lg border ";
+    let baseClasses = "p-4 rounded-lg border ";
     
     // Status-based styling
-    const statusClasses = status === 'current' ? 'ring-1 ring-blue-300 bg-blue-50 dark:bg-blue-900/30' : 
-                         status === 'success' ? 'bg-green-50 dark:bg-green-900/30' :
-                         status === 'failure' ? 'bg-red-50 dark:bg-red-900/30' :
-                         status === 'end' ? 'bg-gray-50 dark:bg-gray-800' :
+    const statusClasses = status === 'current' ? 'ring-2 ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : 
+                         status === 'success' ? 'bg-green-50 dark:bg-green-900/30 border-green-200' :
+                         status === 'failure' ? 'bg-red-50 dark:bg-red-900/30 border-red-200' :
+                         status === 'end' ? 'bg-gray-50 dark:bg-gray-800 border-gray-200' :
                          'bg-gray-50 dark:bg-gray-800';
 
     // Different styling for main steps and sub-steps
     const stepTypeClasses = isSubStep ? 
-      'border-dashed bg-opacity-60 dark:bg-opacity-60' : 
-      'border-solid shadow-sm';
+      'border-dashed bg-opacity-70 dark:bg-opacity-70' : 
+      'border-solid shadow-md';
 
     return `${baseClasses} ${statusClasses} ${stepTypeClasses}`;
+  };
+
+  /**
+   * Renders an arrow between steps with animation
+   * @param {'success' | 'failure'} type - Type of connection
+   * @returns {JSX.Element} SVG arrow element
+   */
+  const renderArrow = (type) => {
+    const color = type === 'success' ? '#22c55e' : '#ef4444';
+    const arrowId = `${type}-arrow-${Date.now()}`;
+    
+    return (
+      <div className="arrow-container">
+        <svg className="arrow-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+          <defs>
+            <marker
+              id={arrowId}
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+            </marker>
+          </defs>
+          <path
+            className={`arrow-path ${type}-arrow`}
+            d="M 10,20 L 90,20"
+            stroke={color}
+            strokeWidth="2"
+            fill="none"
+            strokeDasharray="5,5"
+            markerEnd={`url(#${arrowId})`}
+          />
+        </svg>
+      </div>
+    );
   };
 
   return (
@@ -316,6 +494,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle>Flow Simulation</DialogTitle>
+            
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -324,7 +503,8 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 title="Export as image"
                 className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-4 w-4 mr-2" />
+                Export
               </Button>
               <Button
                 variant="outline"
@@ -334,7 +514,8 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 title="Undo last step"
                 className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <Undo2 className="h-4 w-4" />
+                <Undo2 className="h-4 w-4 mr-2" />
+                Undo
               </Button>
               <Button
                 variant="outline"
@@ -344,7 +525,8 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 title="Reset simulation"
                 className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <RotateCcw className="h-4 w-4" />
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
               </Button>
             </div>
           </div>
@@ -352,8 +534,11 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
         <div className="flex-1 overflow-hidden">
           {/* Simulation Content */}
-          <div className="simulation-content h-[calc(90vh-8rem)] border rounded-lg p-6 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto">
-            <div className="flex flex-col gap-6">
+          <div 
+            ref={simulationContainerRef}
+            className="simulation-content h-[calc(90vh-8rem)] border rounded-lg p-8 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto"
+          >
+            <div className="flex flex-col max-w-2xl mx-auto">
               {simulationPath.map(({ step, status }, index) => {
                 // Find any sub-steps that follow this step
                 const subSteps = simulationPath.slice(index + 1).filter(item => 
@@ -363,71 +548,71 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 // Check if this is a sub-step
                 const isSubStep = step.parentId;
                 
-                // Calculate the offset based on depth
-                const mainStepOffset = index * 24; // Reduced from 32px to 24px
-                const subStepOffset = isSubStep ? 40 : 0; // Reduced from 48px to 40px
-                const totalOffset = mainStepOffset + subStepOffset;
-                
                 // Only render if this is a main step or if its parent was already rendered
                 if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
                   return (
-                    <div key={`${step.id}-${index}`} 
-                         className="relative flex flex-col"
-                         style={{ marginLeft: `${totalOffset}px` }}>
-                      <div className="relative flex flex-col items-start gap-2">
-                        <div className="relative flex items-center">
-                          {/* Vertical line from parent */}
-                          {isSubStep && (
-                            <div className="absolute -left-6 -top-3 h-6 border-l-2 border-gray-200 dark:border-gray-700" />
-                          )}
-                          
-                          {/* Horizontal line to sub-step */}
-                          {isSubStep && (
-                            <div className="absolute -left-6 top-1/2 w-6 border-t-2 border-gray-200 dark:border-gray-700" />
-                          )}
-
-                          <Card className={`w-[240px] ${getStepCardClasses(status, isSubStep)}`}>
-                            <div className="flex items-center gap-2 justify-center">
-                              {getStatusIcon(status)}
-                              <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">
-                                {step.name}
-                              </span>
-                            </div>
+                    <div key={`${step.id}-${index}`} className={`step-item ${isSubStep ? "sub-step-container" : ""}`}>
+                      <Card 
+                        className={`
+                          step-card
+                          ${getStepCardClasses(status, isSubStep)} 
+                          w-full
+                        `}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`status-icon ${status} transition-all duration-300`}>
+                            {getStatusIcon(status)}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                              {step.name}
+                            </h3>
                             {step.description && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                 {step.description}
                               </p>
                             )}
-                          </Card>
-
-                          {/* Straight line to next step */}
-                          {index < simulationPath.length - 1 && !isSubStep && !simulationPath[index + 1].step.parentId && (
-                            <div className="absolute -right-8 top-1/2 w-8 border-t-2 border-gray-200 dark:border-gray-700" />
-                          )}
+                          </div>
                         </div>
 
                         {/* Path Selection Buttons */}
                         {status === 'current' && !isComplete && (
-                          <div className="flex gap-2 ml-8">
+                          <div className="choice-buttons flex gap-2 mt-4 justify-end">
                             <Button
                               size="sm"
                               onClick={() => handleChoice('success')}
-                              className="bg-green-100 hover:bg-green-200 text-green-700 border-green-200 text-xs h-6 px-2"
+                              className="
+                                bg-green-100 hover:bg-green-200 text-green-700 
+                                border-green-200 px-3 py-1
+                                transform transition-all duration-200 hover:scale-105
+                              "
                             >
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
                               Success
                             </Button>
                             <Button
                               size="sm"
                               onClick={() => handleChoice('failure')}
-                              className="bg-red-100 hover:bg-red-200 text-red-700 border-red-200 text-xs h-6 px-2"
+                              className="
+                                bg-red-100 hover:bg-red-200 text-red-700 
+                                border-red-200 px-3 py-1
+                                transform transition-all duration-200 hover:scale-105
+                              "
                             >
-                              <XCircle className="h-3 w-3 mr-1" />
+                              <XCircle className="h-4 w-4 mr-2" />
                               Failure
                             </Button>
                           </div>
                         )}
-                      </div>
+                      </Card>
+
+                      {/* Animated Arrow */}
+                      {index < simulationPath.length - 1 && 
+                       !isSubStep && 
+                       !simulationPath[index + 1].step.parentId &&
+                       simulationPath[index + 1].step.id !== 'end' && (
+                        renderArrow(simulationPath[index].status)
+                      )}
                     </div>
                   );
                 }
@@ -438,7 +623,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
           {/* Simulation Complete */}
           {isComplete && (
-            <Card className="mt-4 p-4 bg-white border-gray-200">
+            <Card className="mt-4 p-4 bg-white border-gray-200 end-card">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium text-gray-700">Simulation Complete</h3>
