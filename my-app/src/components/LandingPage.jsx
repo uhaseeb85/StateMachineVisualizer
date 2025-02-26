@@ -198,7 +198,7 @@ const LandingPage = ({ onGetStarted }) => {
       <div className="border-t border-gray-800">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
           {/* About Section */}
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl">
             <h3 className="text-xl font-semibold mb-6">About</h3>
             <div className="space-y-4 text-sm text-gray-300">
               <p>
@@ -215,7 +215,7 @@ const LandingPage = ({ onGetStarted }) => {
                   <li>Smooth animations by Framer</li>
                 </ul>
               </div>
-              <p className="text-gray-400 mt-6 text-center">
+              <p className="text-gray-400 mt-6">
                 Version 1.0.0
               </p>
             </div>
