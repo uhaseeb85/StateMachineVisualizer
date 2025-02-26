@@ -28,6 +28,8 @@ import {
   X,
   Camera,
   Undo2,
+  Columns,
+  AlignRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -67,6 +69,9 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const [currentStep, setCurrentStep] = useState(null);
   const [simulationPath, setSimulationPath] = useState([]);
   const [isComplete, setIsComplete] = useState(false);
+  
+  // View mode state
+  const [stairView, setStairView] = useState(false);
   
   // Ref for layout container (used for auto-scrolling)
   const simulationContainerRef = useRef(null);
@@ -111,6 +116,12 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       @keyframes arrowFlow {
         0% { stroke-dashoffset: 20; }
         100% { stroke-dashoffset: 0; }
+      }
+      
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
       }
 
       .step-card {
@@ -184,6 +195,47 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       /* Add spacing between step items */
       .step-item {
         margin-bottom: 24px;
+      }
+      
+      /* Stair view styles */
+      .stair-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .stair-step {
+        margin-left: calc(var(--step-level) * 30px);
+        width: calc(50% - (var(--step-level) * 30px));
+        transition: all 0.3s ease;
+      }
+      
+      .stair-step.sub-step-container {
+        width: calc(37.5% - (var(--step-level) * 30px));
+      }
+      
+      .stair-arrow {
+        margin-left: calc(var(--step-level) * 30px);
+        width: calc(50% - (var(--step-level) * 30px));
+      }
+      
+      /* View toggle button styles */
+      .view-toggle {
+        transition: all 0.2s ease;
+      }
+      
+      .view-toggle.active {
+        background-color: #f3f4f6;
+        color: #1f2937;
+      }
+      
+      .view-toggle:hover {
+        transform: translateY(-1px);
+      }
+      
+      /* Current step highlight in stair view */
+      .stair-current {
+        box-shadow: 0 0 0 2px #3b82f6, 0 8px 16px rgba(59, 130, 246, 0.2);
       }
     `;
     document.head.appendChild(styleSheet);
@@ -336,6 +388,33 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       element.style.padding = '50px';
       element.style.background = '#ffffff';
 
+      // If in stair view, adjust the container width to ensure all steps are visible
+      if (stairView) {
+        // Find the maximum step level to calculate required width
+        let maxStepLevel = 0;
+        simulationPath.forEach(({ step }, index) => {
+          const level = getStepLevel(step, index);
+          if (level > maxStepLevel) maxStepLevel = level;
+        });
+        
+        // Set minimum width to accommodate the most indented step
+        const minWidth = (maxStepLevel * 30) + 500; // 500px base width + indentation
+        element.style.minWidth = `${minWidth}px`;
+        
+        // Ensure all step cards are fully visible
+        element.querySelectorAll('.stair-step').forEach(stepEl => {
+          const isSubStep = stepEl.classList.contains('sub-step-container');
+          stepEl.style.width = isSubStep ? '37.5%' : '50%';
+          stepEl.style.marginLeft = stepEl.style.getPropertyValue('--step-level') * 30 + 'px';
+        });
+        
+        // Ensure all arrows are visible
+        element.querySelectorAll('.stair-arrow').forEach(arrowEl => {
+          arrowEl.style.width = '50%';
+          arrowEl.style.marginLeft = arrowEl.style.getPropertyValue('--step-level') * 30 + 'px';
+        });
+      }
+
       // Pause animations temporarily
       const animationStyles = document.createElement('style');
       animationStyles.textContent = `
@@ -389,6 +468,14 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       
       // Remove temporary animation styles
       document.head.removeChild(animationStyles);
+      
+      // If in stair view, restore original styles for step elements
+      if (stairView) {
+        element.querySelectorAll('.stair-step, .stair-arrow').forEach(el => {
+          el.style.width = '';
+          el.style.marginLeft = '';
+        });
+      }
 
       // Create and trigger download
       const link = document.createElement('a');
@@ -452,15 +539,21 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   /**
    * Renders an arrow between steps with animation
    * @param {'success' | 'failure'} type - Type of connection
+   * @param {number} index - Index of the arrow in the sequence
+   * @param {number} level - Nesting level for stair view
    * @returns {JSX.Element} SVG arrow element
    */
-  const renderArrow = (type) => {
+  const renderArrow = (type, index, level = 0) => {
     const color = type === 'success' ? '#22c55e' : '#ef4444';
-    const arrowId = `${type}-arrow-${Date.now()}`;
+    const arrowId = `${type}-arrow-${Date.now()}-${index}`;
     
     return (
-      <div className="arrow-container">
-        <svg className="arrow-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+      <div className={`arrow-container ${stairView ? 'stair-arrow' : ''}`} style={stairView ? {'--step-level': level} : {}}>
+        <svg 
+          className="arrow-svg" 
+          viewBox="0 0 100 40" 
+          preserveAspectRatio="none"
+        >
           <defs>
             <marker
               id={arrowId}
@@ -488,6 +581,32 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     );
   };
 
+  /**
+   * Toggles between standard and stair view modes
+   */
+  const toggleViewMode = () => {
+    setStairView(prev => !prev);
+  };
+
+  /**
+   * Calculates the nesting level for a step in the stair view
+   * @param {Object} step - The step object
+   * @param {number} index - Index in the simulation path
+   * @returns {number} Nesting level
+   */
+  const getStepLevel = (step, index) => {
+    if (step.parentId) {
+      // Find the parent step's index
+      const parentIndex = simulationPath.findIndex(item => item.step.id === step.parentId);
+      if (parentIndex >= 0) {
+        // Parent level + 1
+        return getStepLevel(simulationPath[parentIndex].step, parentIndex) + 1;
+      }
+    }
+    // For main steps, use their position in the path
+    return index;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-[95vw] h-[90vh] overflow-hidden">
@@ -496,6 +615,29 @@ const SimulationModal = ({ steps, connections, onClose }) => {
             <DialogTitle>Flow Simulation</DialogTitle>
             
             <div className="flex gap-2">
+              <div className="flex mr-2 border rounded-md overflow-hidden">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleViewMode}
+                  title="Standard View"
+                  className={`view-toggle rounded-none ${!stairView ? 'active' : ''}`}
+                >
+                  <Columns className="h-4 w-4 mr-2" />
+                  Standard
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleViewMode}
+                  title="Stair View"
+                  className={`view-toggle rounded-none ${stairView ? 'active' : ''}`}
+                >
+                  <AlignRight className="h-4 w-4 mr-2" />
+                  Stair
+                </Button>
+              </div>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -536,9 +678,9 @@ const SimulationModal = ({ steps, connections, onClose }) => {
           {/* Simulation Content */}
           <div 
             ref={simulationContainerRef}
-            className="simulation-content h-[calc(90vh-8rem)] border rounded-lg p-8 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto"
+            className={`simulation-content h-[calc(90vh-8rem)] border rounded-lg p-8 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto ${stairView ? 'stair-container' : ''}`}
           >
-            <div className="flex flex-col max-w-2xl mx-auto">
+            <div className={`flex flex-col ${stairView ? 'w-full' : 'max-w-2xl mx-auto'}`}>
               {simulationPath.map(({ step, status }, index) => {
                 // Find any sub-steps that follow this step
                 const subSteps = simulationPath.slice(index + 1).filter(item => 
@@ -548,14 +690,22 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 // Check if this is a sub-step
                 const isSubStep = step.parentId;
                 
+                // Calculate step level for stair view
+                const stepLevel = stairView ? getStepLevel(step, index) : 0;
+                
                 // Only render if this is a main step or if its parent was already rendered
                 if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
                   return (
-                    <div key={`${step.id}-${index}`} className={`step-item ${isSubStep ? "sub-step-container" : ""}`}>
+                    <div 
+                      key={`${step.id}-${index}`} 
+                      className={`step-item ${isSubStep ? "sub-step-container" : ""} ${stairView ? 'stair-step' : ''}`}
+                      style={stairView ? {'--step-level': stepLevel} : {}}
+                    >
                       <Card 
                         className={`
                           step-card
                           ${getStepCardClasses(status, isSubStep)} 
+                          ${stairView && status === 'current' ? 'stair-current' : ''}
                           w-full
                         `}
                       >
@@ -611,7 +761,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                        !isSubStep && 
                        !simulationPath[index + 1].step.parentId &&
                        simulationPath[index + 1].step.id !== 'end' && (
-                        renderArrow(simulationPath[index].status)
+                        renderArrow(simulationPath[index].status, index, stepLevel)
                       )}
                     </div>
                   );
