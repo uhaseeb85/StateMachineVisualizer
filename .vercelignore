@@ -1,0 +1,6 @@
+.git
+node_modules
+my-app/node_modules
+my-app/dist
+.vscode
+.cursor 
