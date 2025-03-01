@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "cd my-app && npm install && npm run build",
-    "build:vercel": "cd my-app && npm install && npm run build:vercel",
+    "build:vercel": "chmod +x build.sh && ./build.sh",
     "build:tomcat": "cd my-app && npm install && npm run build:tomcat",
     "build:openshift": "cd my-app && npm install && npm run build:openshift",
     "start": "cd my-app && npm run start",
