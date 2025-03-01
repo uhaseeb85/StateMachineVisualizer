@@ -1,13 +1,22 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'DEPLOYMENT_TARGET', choices: ['tomcat', 'openshift'], description: 'Where to deploy the application')
+    }
+
     environment {
         NODE_VERSION = '18.17.0'
         NPM_CONFIG_CACHE = "${WORKSPACE}\\.npm"
-        // Tomcat settings
+        
+        // Tomcat settings (used only if DEPLOYMENT_TARGET is 'tomcat')
         TOMCAT_HOME = 'C:\\Program Files\\Apache Software Foundation\\Tomcat 9.0'
         TOMCAT_HOST = 'localhost'
         TOMCAT_PORT = '8080'
+        
+        // OpenShift settings (used only if DEPLOYMENT_TARGET is 'openshift')
+        OPENSHIFT_PROJECT = 'visual-flow-builder'
+        IMAGE_REGISTRY = 'image-registry.openshift-image-registry.svc:5000'
     }
 
     stages {
@@ -22,24 +31,36 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                // Clean npm cache and node_modules
-                bat 'if exist node_modules rmdir /s /q node_modules'
-                bat 'if exist package-lock.json del package-lock.json'
-                bat 'npm cache clean --force'
-                
-                // Install dependencies
-                bat 'npm install'
+                dir('my-app') {
+                    // Clean npm cache and node_modules
+                    bat 'if exist node_modules rmdir /s /q node_modules'
+                    bat 'if exist package-lock.json del package-lock.json'
+                    bat 'npm cache clean --force'
+                    
+                    // Install dependencies
+                    bat 'npm install'
+                }
             }
         }
 
         stage('Build') {
             steps {
-                // Build for Tomcat
-                bat 'npm run build:tomcat'
+                dir('my-app') {
+                    script {
+                        if (params.DEPLOYMENT_TARGET == 'tomcat') {
+                            bat 'npm run build:tomcat'
+                        } else if (params.DEPLOYMENT_TARGET == 'openshift') {
+                            bat 'npm run build:openshift'
+                        }
+                    }
+                }
             }
         }
 
         stage('Deploy to Tomcat') {
+            when {
+                expression { params.DEPLOYMENT_TARGET == 'tomcat' }
+            }
             steps {
                 script {
                     // Stop Tomcat
@@ -56,7 +77,7 @@ pipeline {
                     
                     // Copy build files
                     bat '''
-                        xcopy /E /I dist\\* "%TOMCAT_HOME%\\webapps\\visualizer\\"
+                        xcopy /E /I my-app\\dist\\* "%TOMCAT_HOME%\\webapps\\visualizer\\"
                     '''
                     
                     // Create META-INF and context.xml
@@ -89,11 +110,47 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to OpenShift') {
+            when {
+                expression { params.DEPLOYMENT_TARGET == 'openshift' }
+            }
+            steps {
+                script {
+                    // Login to OpenShift (assuming oc client is installed and configured)
+                    withCredentials([string(credentialsId: 'openshift-token', variable: 'OC_TOKEN')]) {
+                        bat "oc login --token=${OC_TOKEN} --server=https://your-openshift-api-server"
+                    }
+                    
+                    // Create or switch to project
+                    bat "oc project ${OPENSHIFT_PROJECT} || oc new-project ${OPENSHIFT_PROJECT}"
+                    
+                    // Apply ConfigMap
+                    bat "oc apply -f openshift-configmap.yaml"
+                    
+                    // Start a new build
+                    bat "oc start-build visual-flow-builder --from-dir=my-app --follow"
+                    
+                    // Apply deployment
+                    bat "oc apply -f openshift-deployment.yaml"
+                    
+                    // Wait for deployment to complete
+                    bat "oc rollout status deployment/visual-flow-builder"
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "Deployment successful! Access the application at: http://${TOMCAT_HOST}:${TOMCAT_PORT}/visualizer/"
+            script {
+                if (params.DEPLOYMENT_TARGET == 'tomcat') {
+                    echo "Deployment successful! Access the application at: http://${TOMCAT_HOST}:${TOMCAT_PORT}/visualizer/"
+                } else if (params.DEPLOYMENT_TARGET == 'openshift') {
+                    def route = bat(script: "oc get route visual-flow-builder -o jsonpath='{.spec.host}'", returnStdout: true).trim()
+                    echo "Deployment successful! Access the application at: https://${route}"
+                }
+            }
         }
         failure {
             echo "Deployment failed! Check the logs for details"
