@@ -16,9 +16,16 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: visual-flow-builder
         image: ${IMAGE_REGISTRY}/${NAMESPACE}/visual-flow-builder:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          runAsNonRoot: true
         ports:
         - containerPort: 8080
         envFrom:
@@ -33,14 +40,14 @@ spec:
             memory: "256Mi"
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8080
           initialDelaySeconds: 30
           timeoutSeconds: 3
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 8080
           initialDelaySeconds: 10
           timeoutSeconds: 3

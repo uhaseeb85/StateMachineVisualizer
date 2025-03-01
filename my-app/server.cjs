@@ -17,6 +17,11 @@ app.use(helmet({
 // Compression middleware
 app.use(compression());
 
+// Health check endpoint for OpenShift
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Serve static files
 app.use(BASE_PATH, express.static(path.join(__dirname, 'dist')));
 

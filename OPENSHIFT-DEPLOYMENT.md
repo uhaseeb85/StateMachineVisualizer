@@ -75,6 +75,24 @@ The application uses the following environment variables:
 - `NODE_ENV`: The Node.js environment (default: "production")
 - `PORT`: The port the Express server will listen on (default: 8080)
 - `BASE_PATH`: The base path for the application (default: "/")
+- `TZ`: Timezone (default: "UTC")
+
+## Security Considerations
+
+The deployment is configured with OpenShift security best practices:
+
+- Container runs as a non-root user (UID 1000)
+- Security context restricts privileges
+- All capabilities are dropped
+- Seccomp profile is set to RuntimeDefault
+- Resource limits are defined
+
+## Health Checks
+
+The application includes:
+
+- A `/health` endpoint for liveness and readiness probes
+- Configured probes in the OpenShift deployment
 
 ## Troubleshooting
 
@@ -102,7 +120,7 @@ oc rollout restart deployment visual-flow-builder
 
 ## Express Server Details
 
-The application uses Express.js to serve the static React files and handle routing. The server configuration is in `server.cjs` and includes:
+The application uses Express.js to serve the static React files and handle routing. The server configuration in `server.cjs` includes:
 
 - Static file serving
 - SPA routing (all routes serve index.html)

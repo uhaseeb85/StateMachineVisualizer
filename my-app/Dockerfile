@@ -31,12 +31,20 @@ COPY --from=build /app/dist ./dist
 # Copy server file
 COPY server.cjs ./
 
+# Fix permissions for OpenShift (runs with random user ID)
+RUN chown -R 1000:0 /app && \
+    chmod -R g=u /app && \
+    chmod -R 775 /app
+
 # Expose port
 EXPOSE 8080
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
+
+# Set user to non-root
+USER 1000
 
 # Start the Express server
 CMD ["node", "server.cjs"] 

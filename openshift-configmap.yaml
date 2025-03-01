@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: visual-flow-builder-config
 data:
-  OPENSHIFT_DEPLOYMENT: "true"
-  BASE_PATH: "/"
   NODE_ENV: "production"
-  PORT: "8080" 
+  PORT: "8080"
+  BASE_PATH: "/"
+  TZ: "UTC" 
