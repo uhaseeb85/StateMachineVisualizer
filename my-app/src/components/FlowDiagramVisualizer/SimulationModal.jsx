@@ -756,13 +756,14 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                         )}
                       </Card>
 
-                      {/* Animated Arrow */}
+                      {/* Commented out the Animated Arrow to maintain consistency with step-to-substep transitions
                       {index < simulationPath.length - 1 && 
                        !isSubStep && 
                        !simulationPath[index + 1].step.parentId &&
                        simulationPath[index + 1].step.id !== 'end' && (
                         renderArrow(simulationPath[index].status, index, stepLevel)
                       )}
+                      */}
                     </div>
                   );
                 }
