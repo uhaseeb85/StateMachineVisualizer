@@ -431,7 +431,15 @@ const RulesPanel = ({
               min="0"
               max="99"
               value={newRulePriority}
-              onChange={(e) => setNewRulePriority(parseInt(e.target.value, 10) || 50)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  setNewRulePriority(0);
+                } else {
+                  const parsed = parseInt(value, 10);
+                  setNewRulePriority(isNaN(parsed) ? 50 : parsed);
+                }
+              }}
               className="w-full"
             />
           </div>
@@ -535,7 +543,15 @@ const RulesPanel = ({
                       min="0"
                       max="99"
                       value={editingRulePriority}
-                      onChange={(e) => setEditingRulePriority(parseInt(e.target.value, 10) || 50)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          setEditingRulePriority(0);
+                        } else {
+                          const parsed = parseInt(value, 10);
+                          setEditingRulePriority(isNaN(parsed) ? 50 : parsed);
+                        }
+                      }}
                       className="w-16 text-sm"
                     />
                   ) : (

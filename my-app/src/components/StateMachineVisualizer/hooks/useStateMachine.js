@@ -220,9 +220,19 @@ export default function useStateMachine() {
         const sourceNode = row[sourceNodeIndex]?.toString().trim();
         const destNode = row[destNodeIndex]?.toString().trim();
         const ruleList = row[ruleListIndex]?.toString().trim();
+        
         // Get priority value if column exists, default to 50 if not present
-        const priority = priorityIndex !== -1 ? 
-          (parseInt(row[priorityIndex], 10) || 50) : 50;
+        let priority = 50; // Default value
+        if (priorityIndex !== -1) {
+          const priorityValue = row[priorityIndex];
+          // Check if the value is explicitly 0 or a valid number
+          if (priorityValue === 0 || priorityValue === '0') {
+            priority = 0;
+          } else if (priorityValue) {
+            const parsedPriority = parseInt(priorityValue, 10);
+            priority = isNaN(parsedPriority) ? 50 : parsedPriority;
+          }
+        }
 
         if (!sourceNode || !destNode || !ruleList) continue;
 
