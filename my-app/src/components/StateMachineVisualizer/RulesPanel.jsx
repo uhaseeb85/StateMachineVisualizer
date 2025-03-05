@@ -424,11 +424,11 @@ const RulesPanel = ({
           {/* Priority Input */}
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Priority (1-99)
+              Priority (0-99)
             </label>
             <Input
               type="number"
-              min="1"
+              min="0"
               max="99"
               value={newRulePriority}
               onChange={(e) => setNewRulePriority(parseInt(e.target.value, 10) || 50)}
@@ -532,7 +532,7 @@ const RulesPanel = ({
                   {isEditing ? (
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       max="99"
                       value={editingRulePriority}
                       onChange={(e) => setEditingRulePriority(parseInt(e.target.value, 10) || 50)}
