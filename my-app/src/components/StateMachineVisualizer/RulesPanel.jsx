@@ -98,7 +98,7 @@ const RulesPanel = ({
             priority: newRulePriority
           };
           
-          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${oldRule.priority || 50} → ${newRulePriority})`);
+          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${oldRule.priority !== undefined && oldRule.priority !== null ? oldRule.priority : 50} → ${newRulePriority})`);
           
           return {
             ...state,
@@ -137,7 +137,7 @@ const RulesPanel = ({
       if (state.id === selectedState) {
         const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
         const targetState = states.find(s => s.id === ruleToDelete.nextState);
-        addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition} → ${targetState?.name} (Priority: ${ruleToDelete.priority || 50})`);
+        addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition} → ${targetState?.name} (Priority: ${ruleToDelete.priority !== undefined && ruleToDelete.priority !== null ? ruleToDelete.priority : 50})`);
         
         return {
           ...state,
@@ -205,7 +205,7 @@ const RulesPanel = ({
               "${oldRule.condition} → ${states.find(s => s.id === oldRule.nextState)?.name}" 
               changed to 
               "${newRule.condition} → ${states.find(s => s.id === newRuleNextState)?.name}"
-              (Priority: ${oldRule.priority || 50} → ${editingRulePriority})`);
+              (Priority: ${oldRule.priority !== undefined && oldRule.priority !== null ? oldRule.priority : 50} → ${editingRulePriority})`);
 
             return newRule;
           }
@@ -556,7 +556,7 @@ const RulesPanel = ({
                     />
                   ) : (
                     <span className="text-sm text-gray-700 dark:text-gray-200">
-                      Priority: {rule.priority || 50}
+                      Priority: {rule.priority !== undefined && rule.priority !== null ? rule.priority : 50}
                     </span>
                   )}
                 </div>
