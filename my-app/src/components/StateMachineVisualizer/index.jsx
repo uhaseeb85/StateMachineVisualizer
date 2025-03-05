@@ -153,14 +153,16 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     const lastImportedData = localStorage.getItem('lastImportedCSV');
     let baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
     
-    // Create current state data
+    // Create current state data with updated values
     const currentData = states.flatMap(sourceState => 
       sourceState.rules.map(rule => {
         const destState = states.find(s => s.id === rule.nextState);
+        // Create a basic object with the core fields
         return {
           'Source Node': sourceState.name,
           'Destination Node': destState ? destState.name : rule.nextState,
-          'Rule List': rule.condition
+          'Rule List': rule.condition,
+          'Priority': rule.priority || 50
         };
       })
     );
@@ -168,6 +170,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     // Merge with existing data or use current data only
     let csvData;
     if (baseData.length > 0) {
+      // Get all columns from the base data to preserve original order
       const allColumns = Object.keys(baseData[0]);
       
       csvData = currentData.map(currentRow => {
@@ -178,16 +181,21 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             baseRow['Destination Node'] === currentRow['Destination Node']
         );
 
+        // Use the original column order from the imported CSV
         allColumns.forEach(column => {
-          if (['Source Node', 'Destination Node', 'Rule List'].includes(column)) {
+          if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
             newRow[column] = currentRow[column];
+          } else if (column === 'Priority') {
+            newRow[column] = currentRow['Priority'];
           } else {
             newRow[column] = matchingRow ? matchingRow[column] : '';
           }
         });
+        
         return newRow;
       });
     } else {
+      // If no previous data, create a structure with columns in standard order
       csvData = currentData;
     }
 

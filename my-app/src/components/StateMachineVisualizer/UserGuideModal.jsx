@@ -111,6 +111,10 @@ const UserGuideModal = ({ onClose }) => {
                     <li>&quot;Destination Node&quot;</li>
                     <li>&quot;Rule List&quot;</li>
                   </ul>
+                  <p className="text-gray-600 dark:text-gray-300 mt-2">Optional columns:</p>
+                  <ul className="list-disc list-inside text-gray-600 dark:text-gray-300 ml-4 space-y-1">
+                    <li>&quot;Priority&quot; (numeric values 1-99, default: 50)</li>
+                  </ul>
                   <p className="text-gray-600 dark:text-gray-300 mt-2">Additional columns are preserved</p>
                 </div>
 

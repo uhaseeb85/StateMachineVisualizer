@@ -206,6 +206,7 @@ export default function useStateMachine() {
       const sourceNodeIndex = headers.indexOf('Source Node');
       const destNodeIndex = headers.indexOf('Destination Node');
       const ruleListIndex = headers.indexOf('Rule List');
+      const priorityIndex = headers.indexOf('Priority');
 
       if (sourceNodeIndex === -1 || destNodeIndex === -1 || ruleListIndex === -1) {
         throw new Error('Required columns not found: "Source Node", "Destination Node", "Rule List"');
@@ -219,6 +220,9 @@ export default function useStateMachine() {
         const sourceNode = row[sourceNodeIndex]?.toString().trim();
         const destNode = row[destNodeIndex]?.toString().trim();
         const ruleList = row[ruleListIndex]?.toString().trim();
+        // Get priority value if column exists, default to 50 if not present
+        const priority = priorityIndex !== -1 ? 
+          (parseInt(row[priorityIndex], 10) || 50) : 50;
 
         if (!sourceNode || !destNode || !ruleList) continue;
 
@@ -244,7 +248,8 @@ export default function useStateMachine() {
         sourceState.rules.push({
           id: generateId(),
           condition: ruleList,
-          nextState: targetState.id
+          nextState: targetState.id,
+          priority: priority
         });
       }
 

@@ -38,7 +38,9 @@ const RulesPanel = ({
   const [selectedRuleId, setSelectedRuleId] = useState(null);
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [editingRuleCondition, setEditingRuleCondition] = useState("");
+  const [editingRulePriority, setEditingRulePriority] = useState(50);
   const [insertingBeforeRuleId, setInsertingBeforeRuleId] = useState(null);
+  const [newRulePriority, setNewRulePriority] = useState(50);
 
   // Get current state details
   const currentState = states.find(state => state.id === selectedState);
@@ -71,24 +73,28 @@ const RulesPanel = ({
   };
 
   /**
-   * Adds a new rule or updates an existing one with the same condition
-   * Validates input and updates the state machine configuration
+   * Adds a new rule to the current state
    */
   const addRule = () => {
-    if (!newRuleCondition.trim() || !newRuleNextState) return;
+    if (!newRuleCondition.trim() || !newRuleNextState) {
+      toast.error('Please provide both a condition and target state');
+      return;
+    }
 
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
+        // Check if rule with same condition already exists
         const existingRuleIndex = state.rules.findIndex(
-          rule => rule.condition.toLowerCase() === newRuleCondition.trim().toLowerCase()
+          rule => rule.condition.trim() === newRuleCondition.trim()
         );
-
+        
         if (existingRuleIndex !== -1) {
           // Update existing rule's target state
           const updatedRules = [...state.rules];
           updatedRules[existingRuleIndex] = {
             ...updatedRules[existingRuleIndex],
-            nextState: newRuleNextState
+            nextState: newRuleNextState,
+            priority: newRulePriority
           };
           
           addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
@@ -107,6 +113,7 @@ const RulesPanel = ({
               id: Date.now(),
               condition: newRuleCondition.trim(),
               nextState: newRuleNextState,
+              priority: newRulePriority
             }],
           };
         }
@@ -117,6 +124,7 @@ const RulesPanel = ({
     setStates(updatedStates);
     setNewRuleCondition("");
     setNewRuleNextState("");
+    setNewRulePriority(50);
   };
 
   /**
@@ -167,6 +175,7 @@ const RulesPanel = ({
     setEditingRuleId(ruleId);
     setEditingRuleCondition(rule.condition);
     setNewRuleNextState(rule.nextState);
+    setEditingRulePriority(rule.priority || 50);
   };
 
   /**
@@ -186,7 +195,8 @@ const RulesPanel = ({
             const newRule = {
               ...rule,
               condition: editingRuleCondition.trim(),
-              nextState: newRuleNextState
+              nextState: newRuleNextState,
+              priority: editingRulePriority
             };
 
             addToChangeLog(`Edited rule in state "${state.name}": 
@@ -207,6 +217,7 @@ const RulesPanel = ({
     setEditingRuleId(null);
     setEditingRuleCondition("");
     setNewRuleNextState("");
+    setEditingRulePriority(50);
   };
 
   /**
@@ -238,37 +249,33 @@ const RulesPanel = ({
 
   /**
    * Inserts a new rule before the specified rule
-   * @param {string} beforeRuleId - ID of the rule to insert before
    */
   const insertRuleBefore = () => {
-    if (!newRuleCondition.trim() || !newRuleNextState) return;
+    if (!newRuleCondition.trim() || !newRuleNextState) {
+      toast.error('Please provide both a condition and target state');
+      return;
+    }
 
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
-        // Find the index of the rule we're inserting before
-        const targetIndex = state.rules.findIndex(rule => rule.id === insertingBeforeRuleId);
-        
-        if (targetIndex === -1) return state;
-        
-        // Create the new rule
+        const ruleIndex = state.rules.findIndex(rule => rule.id === insertingBeforeRuleId);
+        if (ruleIndex === -1) return state;
+
         const newRule = {
           id: Date.now(),
           condition: newRuleCondition.trim(),
           nextState: newRuleNextState,
+          priority: newRulePriority
         };
-        
-        // Create new rules array with the inserted rule
-        const updatedRules = [
-          ...state.rules.slice(0, targetIndex),
-          newRule,
-          ...state.rules.slice(targetIndex)
-        ];
-        
-        addToChangeLog(`Inserted new rule before rule ${targetIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
-        
+
+        const updatedRules = [...state.rules];
+        updatedRules.splice(ruleIndex, 0, newRule);
+
+        addToChangeLog(`Inserted new rule before rule #${ruleIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+
         return {
           ...state,
-          rules: updatedRules,
+          rules: updatedRules
         };
       }
       return state;
@@ -277,6 +284,7 @@ const RulesPanel = ({
     setStates(updatedStates);
     setNewRuleCondition("");
     setNewRuleNextState("");
+    setNewRulePriority(50);
     setInsertingBeforeRuleId(null);
   };
 
@@ -367,52 +375,77 @@ const RulesPanel = ({
         </div>
       )}
 
-      {/* Add Rule Section */}
-      <div className="mb-4">
-        <div className="flex gap-2">
-          <Input
-            id="ruleConditionInput"
-            type="text"
-            value={newRuleCondition}
-            onChange={(e) => setNewRuleCondition(e.target.value)}
-            placeholder={insertingBeforeRuleId ? "Enter rule to insert" : "Enter rule condition"}
-            className="flex-1"
-          />
-          <select
-            value={newRuleNextState}
-            onChange={(e) => setNewRuleNextState(e.target.value)}
-            className="px-3 py-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            <option value="">Select target state</option>
-            {states.map((state) => (
-              <option key={state.id} value={state.id}>
-                {state.name}
-              </option>
-            ))}
-          </select>
-          {insertingBeforeRuleId ? (
-            <>
-              <Button
-                onClick={insertRuleBefore}
-                disabled={!newRuleCondition.trim() || !newRuleNextState}
-              >
-                Insert Rule
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handleCancelInsert}
-              >
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button
-              onClick={addRule}
-              disabled={!newRuleCondition.trim() || !newRuleNextState}
+      {/* Add Rule Form */}
+      <div className="mb-6 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Add New Rule
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr,auto,auto] gap-4 items-end">
+          {/* Condition Input */}
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Condition
+            </label>
+            <Input
+              value={newRuleCondition}
+              onChange={(e) => setNewRuleCondition(e.target.value)}
+              placeholder="Enter rule condition"
+              className="w-full"
+            />
+          </div>
+
+          {/* Visual Separator */}
+          <div className="hidden md:block">
+            <div className="h-2 w-[1px] bg-gray-300 dark:bg-gray-500 mx-auto" />
+          </div>
+
+          {/* Target State Selector */}
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Target State
+            </label>
+            <select
+              value={newRuleNextState}
+              onChange={(e) => setNewRuleNextState(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
             >
-              Add Rule
+              <option value="">Select target state</option>
+              {states.map((state) => (
+                <option key={state.id} value={state.id}>
+                  {state.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Priority Input */}
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Priority (1-99)
+            </label>
+            <Input
+              type="number"
+              min="1"
+              max="99"
+              value={newRulePriority}
+              onChange={(e) => setNewRulePriority(parseInt(e.target.value, 10) || 50)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Add Button */}
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              &nbsp;
+            </label>
+            <Button
+              onClick={insertingBeforeRuleId ? insertRuleBefore : addRule}
+              disabled={!newRuleCondition.trim() || !newRuleNextState}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              {insertingBeforeRuleId ? 'Insert Rule' : 'Add Rule'}
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -428,7 +461,7 @@ const RulesPanel = ({
           return (
             <div key={rule.id} className="flex flex-col gap-1">
               {/* Rule Item */}
-              <div className={`grid grid-cols-[1fr,auto,1fr,auto] gap-4 items-center 
+              <div className={`grid grid-cols-[1fr,auto,1fr,auto,auto] gap-4 items-center 
                            bg-white dark:bg-gray-700 p-1 rounded-lg
                            hover:bg-gray-50 dark:hover:bg-gray-600
                            transform transition-all duration-200 hover:scale-[1.02]
@@ -489,6 +522,24 @@ const RulesPanel = ({
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* Priority */}
+                <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      min="1"
+                      max="99"
+                      value={editingRulePriority}
+                      onChange={(e) => setEditingRulePriority(parseInt(e.target.value, 10) || 50)}
+                      className="w-16 text-sm"
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-700 dark:text-gray-200">
+                      Priority: {rule.priority || 50}
+                    </span>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -602,7 +653,8 @@ RulesPanel.propTypes = {
     rules: PropTypes.arrayOf(PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       condition: PropTypes.string.isRequired,
-      nextState: PropTypes.string.isRequired
+      nextState: PropTypes.string.isRequired,
+      priority: PropTypes.number
     }))
   })).isRequired,
   // Currently selected state ID
