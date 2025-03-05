@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { parseExcelFile, validateExcelData, generateId } from '../utils';
+import { parseExcelFile, validateExcelData, generateId, sortRulesByPriority } from '../utils';
 import * as XLSX from 'xlsx-js-style';
 import { toast } from 'sonner';
 
@@ -228,9 +228,12 @@ export default function useStateMachine() {
           // Check if the value is explicitly 0 or a valid number
           if (priorityValue === 0 || priorityValue === '0') {
             priority = 0;
-          } else if (priorityValue) {
+          } else if (priorityValue !== undefined && priorityValue !== null && priorityValue !== '') {
             const parsedPriority = parseInt(priorityValue, 10);
-            priority = isNaN(parsedPriority) ? 50 : parsedPriority;
+            if (!isNaN(parsedPriority)) {
+              // Ensure priority is within -99 to 99 range
+              priority = Math.max(-99, Math.min(99, parsedPriority));
+            }
           }
         }
 
@@ -268,9 +271,14 @@ export default function useStateMachine() {
         throw new Error('No valid states found in the file');
       }
 
+      // Sort rules by priority (lower values first)
+      newStates.forEach(state => {
+        state.rules = sortRulesByPriority(state.rules);
+      });
+
       setStates(newStates);
-      toast.success(`Import successful! Created ${newStates.length} states.`);
-      addToChangeLog(`Imported Excel configuration: ${newStates.length} states created`);
+      toast.success(`Import successful! Created ${newStates.length} states with sorted rules.`);
+      addToChangeLog(`Imported Excel configuration: ${newStates.length} states created with rules sorted by priority`);
 
     } catch (error) {
       console.error('Import error:', error);

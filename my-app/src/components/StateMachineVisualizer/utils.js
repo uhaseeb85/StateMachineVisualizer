@@ -80,4 +80,20 @@ export const validateExcelData = (rows) => {
     ruleListIndex,
     headers
   };
+};
+
+/**
+ * Sorts an array of rules by priority (ascending)
+ * @param {Array} rules - Array of rule objects with priority property
+ * @returns {Array} - Sorted array of rules
+ */
+export const sortRulesByPriority = (rules) => {
+  if (!Array.isArray(rules)) return rules;
+  
+  return [...rules].sort((a, b) => {
+    // Handle undefined, null values and convert to number if needed
+    const priorityA = a.priority !== undefined && a.priority !== null ? Number(a.priority) : 50;
+    const priorityB = b.priority !== undefined && b.priority !== null ? Number(b.priority) : 50;
+    return priorityA - priorityB;
+  });
 }; 

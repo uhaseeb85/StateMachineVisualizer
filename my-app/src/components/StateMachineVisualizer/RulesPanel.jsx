@@ -14,12 +14,13 @@
  * negations (using ! prefix). Each rule defines a transition to a target state.
  */
 
-import { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
+import { useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle } from "lucide-react";
+import { toast } from "sonner";
+import { sortRulesByPriority } from "./utils";
 
 const RulesPanel = ({
   states,
@@ -102,20 +103,22 @@ const RulesPanel = ({
           
           return {
             ...state,
-            rules: updatedRules
+            rules: sortRulesByPriority(updatedRules)
           };
         } else {
           // Add new rule
           addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
           
+          const newRules = [...state.rules, {
+            id: Date.now(),
+            condition: newRuleCondition.trim(),
+            nextState: newRuleNextState,
+            priority: newRulePriority
+          }];
+          
           return {
             ...state,
-            rules: [...state.rules, {
-              id: Date.now(),
-              condition: newRuleCondition.trim(),
-              nextState: newRuleNextState,
-              priority: newRulePriority
-            }],
+            rules: sortRulesByPriority(newRules)
           };
         }
       }
@@ -211,7 +214,7 @@ const RulesPanel = ({
           }
           return rule;
         });
-        return { ...state, rules: updatedRules };
+        return { ...state, rules: sortRulesByPriority(updatedRules) };
       }
       return state;
     });
@@ -278,7 +281,7 @@ const RulesPanel = ({
 
         return {
           ...state,
-          rules: updatedRules
+          rules: sortRulesByPriority(updatedRules)
         };
       }
       return state;
@@ -424,11 +427,11 @@ const RulesPanel = ({
           {/* Priority Input */}
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Priority (0-99)
+              Priority (-99 to +99)
             </label>
             <Input
               type="number"
-              min="0"
+              min="-99"
               max="99"
               value={newRulePriority}
               onChange={(e) => {
@@ -437,7 +440,8 @@ const RulesPanel = ({
                   setNewRulePriority(0);
                 } else {
                   const parsed = parseInt(value, 10);
-                  setNewRulePriority(isNaN(parsed) ? 50 : parsed);
+                  setNewRulePriority(isNaN(parsed) ? 50 : 
+                    Math.max(-99, Math.min(99, parsed))); // Clamp values between -99 and 99
                 }
               }}
               className="w-full"
@@ -540,7 +544,7 @@ const RulesPanel = ({
                   {isEditing ? (
                     <Input
                       type="number"
-                      min="0"
+                      min="-99"
                       max="99"
                       value={editingRulePriority}
                       onChange={(e) => {
@@ -549,7 +553,8 @@ const RulesPanel = ({
                           setEditingRulePriority(0);
                         } else {
                           const parsed = parseInt(value, 10);
-                          setEditingRulePriority(isNaN(parsed) ? 50 : parsed);
+                          setEditingRulePriority(isNaN(parsed) ? 50 : 
+                            Math.max(-99, Math.min(99, parsed))); // Clamp values between -99 and 99
                         }
                       }}
                       className="w-16 text-sm"
