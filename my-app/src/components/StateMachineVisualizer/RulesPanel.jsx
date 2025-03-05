@@ -91,13 +91,14 @@ const RulesPanel = ({
         if (existingRuleIndex !== -1) {
           // Update existing rule's target state
           const updatedRules = [...state.rules];
+          const oldRule = { ...updatedRules[existingRuleIndex] };
           updatedRules[existingRuleIndex] = {
             ...updatedRules[existingRuleIndex],
             nextState: newRuleNextState,
             priority: newRulePriority
           };
           
-          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${oldRule.priority || 50} → ${newRulePriority})`);
           
           return {
             ...state,
@@ -105,7 +106,7 @@ const RulesPanel = ({
           };
         } else {
           // Add new rule
-          addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+          addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
           
           return {
             ...state,
@@ -135,7 +136,8 @@ const RulesPanel = ({
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
         const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
-        addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition}`);
+        const targetState = states.find(s => s.id === ruleToDelete.nextState);
+        addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition} → ${targetState?.name} (Priority: ${ruleToDelete.priority || 50})`);
         
         return {
           ...state,
@@ -202,7 +204,8 @@ const RulesPanel = ({
             addToChangeLog(`Edited rule in state "${state.name}": 
               "${oldRule.condition} → ${states.find(s => s.id === oldRule.nextState)?.name}" 
               changed to 
-              "${newRule.condition} → ${states.find(s => s.id === newRuleNextState)?.name}"`);
+              "${newRule.condition} → ${states.find(s => s.id === newRuleNextState)?.name}"
+              (Priority: ${oldRule.priority || 50} → ${editingRulePriority})`);
 
             return newRule;
           }
@@ -271,7 +274,7 @@ const RulesPanel = ({
         const updatedRules = [...state.rules];
         updatedRules.splice(ruleIndex, 0, newRule);
 
-        addToChangeLog(`Inserted new rule before rule #${ruleIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name}`);
+        addToChangeLog(`Inserted new rule before rule #${ruleIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
 
         return {
           ...state,
