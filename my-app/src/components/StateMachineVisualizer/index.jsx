@@ -150,28 +150,38 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Merges current state data with previously imported data
    */
   const handleExportCSV = () => {
+    console.log('Starting CSV export...');
     const lastImportedData = localStorage.getItem('lastImportedCSV');
     let baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+    console.log('Base data from localStorage:', baseData);
     
     // Create current state data with updated values
+    console.log('Current states:', states);
     const currentData = states.flatMap(sourceState => 
       sourceState.rules.map(rule => {
+        console.log(`Processing rule in state ${sourceState.name}:`, rule);
+        console.log(`  - Priority value: ${rule.priority}, Type: ${typeof rule.priority}`);
         const destState = states.find(s => s.id === rule.nextState);
         // Create a basic object with the core fields
-        return {
+        const exportRow = {
           'Source Node': sourceState.name,
           'Destination Node': destState ? destState.name : rule.nextState,
           'Rule List': rule.condition,
-          'Priority': rule.priority || 50
+          'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50
         };
+        console.log('  - Exported row:', exportRow);
+        return exportRow;
       })
     );
+    
+    console.log('Final currentData array:', currentData);
 
     // Merge with existing data or use current data only
     let csvData;
     if (baseData.length > 0) {
       // Get all columns from the base data to preserve original order
       const allColumns = Object.keys(baseData[0]);
+      console.log('Columns from base data:', allColumns);
       
       csvData = currentData.map(currentRow => {
         const newRow = {};
@@ -180,6 +190,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             baseRow['Source Node'] === currentRow['Source Node'] &&
             baseRow['Destination Node'] === currentRow['Destination Node']
         );
+        console.log('Matching row from base data:', matchingRow);
 
         // Use the original column order from the imported CSV
         allColumns.forEach(column => {
@@ -187,11 +198,13 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             newRow[column] = currentRow[column];
           } else if (column === 'Priority') {
             newRow[column] = currentRow['Priority'];
+            console.log(`Setting Priority for ${currentRow['Source Node']} -> ${currentRow['Destination Node']}: ${currentRow['Priority']}`);
           } else {
             newRow[column] = matchingRow ? matchingRow[column] : '';
           }
         });
         
+        console.log('Final row for CSV:', newRow);
         return newRow;
       });
     } else {
@@ -199,11 +212,57 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
       csvData = currentData;
     }
 
+    console.log('Final CSV data to be exported:', csvData);
+
     // Generate and download the CSV file
     const wb = XLSX.utils.book_new();
+    
+    // Create worksheet with explicit cell types
     const ws = XLSX.utils.json_to_sheet(csvData);
+    
+    // Find the column index for Priority
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    let priorityCol = -1;
+    
+    // Look for the Priority column
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
+      if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
+        priorityCol = C;
+        break;
+      }
+    }
+    
+    console.log('Priority column index:', priorityCol);
+    
+    // If we found the Priority column, explicitly set cell types for all values
+    if (priorityCol !== -1) {
+      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
+        if (ws[cellAddress]) {
+          const value = ws[cellAddress].v;
+          console.log(`Setting explicit cell type for priority at ${cellAddress}:`, value);
+          
+          // Force numeric type for priority values
+          ws[cellAddress] = {
+            t: 'n',  // numeric type
+            v: value === 0 || value === '0' ? 0 : (value || 50),
+            w: value === 0 || value === '0' ? '0' : (value || '50').toString()
+          };
+        }
+      }
+    }
+    
+    // Use the modified worksheet
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, 'state_machine_export.csv');
+    
+    // Export as CSV (which might have issues with zero values)
+    XLSX.writeFile(wb, 'state_machine_export.csv', { bookType: 'csv', rawNumbers: true });
+    
+    // Also export as XLSX which should preserve numeric values better
+    XLSX.writeFile(wb, 'state_machine_export.xlsx', { bookType: 'xlsx', rawNumbers: true });
+    
+    console.log('CSV and XLSX files have been generated');
   };
 
   return (
