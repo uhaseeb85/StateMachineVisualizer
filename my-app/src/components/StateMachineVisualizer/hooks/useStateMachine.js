@@ -50,9 +50,30 @@ export default function useStateMachine() {
   
   // Change logging
   const [changeLog, setChangeLog] = useState(() => {
-    // Initialize changeLog from localStorage
-    const savedChangeLog = localStorage.getItem('changeLog');
-    return savedChangeLog ? JSON.parse(savedChangeLog) : [];
+    // Initialize changeLog from localStorage with robust error handling
+    try {
+      const savedChangeLog = localStorage.getItem('changeLog');
+      if (!savedChangeLog) return [];
+      
+      const parsedLog = JSON.parse(savedChangeLog);
+      if (!Array.isArray(parsedLog)) {
+        console.error('Stored changeLog is not an array, resetting');
+        localStorage.removeItem('changeLog');
+        return [];
+      }
+      
+      // Validate each entry has the required structure
+      return parsedLog.filter(entry => 
+        entry && typeof entry === 'object' && 
+        typeof entry.timestamp === 'string' && 
+        typeof entry.message === 'string'
+      );
+    } catch (error) {
+      console.error('Error parsing changeLog from localStorage:', error);
+      // If there's an error, clear the corrupted data
+      localStorage.removeItem('changeLog');
+      return [];
+    }
   });
 
   /** Maximum number of entries to keep in change log */
@@ -62,7 +83,16 @@ export default function useStateMachine() {
    * Persist change log to localStorage on updates
    */
   useEffect(() => {
-    localStorage.setItem('changeLog', JSON.stringify(changeLog));
+    if (!Array.isArray(changeLog)) {
+      console.error('changeLog is not an array, not saving to localStorage');
+      return;
+    }
+    
+    try {
+      localStorage.setItem('changeLog', JSON.stringify(changeLog));
+    } catch (error) {
+      console.error('Error saving changeLog to localStorage:', error);
+    }
   }, [changeLog]);
 
   /**
@@ -98,13 +128,24 @@ export default function useStateMachine() {
    * @param {string} message - Description of the change
    */
   const addToChangeLog = (message) => {
-    const timestamp = new Date().toLocaleString();
-    setChangeLog(prev => {
-      const newLog = [{ timestamp, message }, ...prev];
-      const updatedLog = newLog.slice(0, MAX_HISTORY_ENTRIES);
-      localStorage.setItem('changeLog', JSON.stringify(updatedLog));
-      return updatedLog;
-    });
+    if (!message || typeof message !== 'string') {
+      console.warn('Invalid message passed to addToChangeLog:', message);
+      return;
+    }
+    
+    try {
+      const timestamp = new Date().toLocaleString();
+      const newEntry = { timestamp, message };
+      
+      setChangeLog(prev => {
+        // Ensure prev is an array
+        const prevLog = Array.isArray(prev) ? prev : [];
+        const newLog = [newEntry, ...prevLog];
+        return newLog.slice(0, MAX_HISTORY_ENTRIES);
+      });
+    } catch (error) {
+      console.error('Error in addToChangeLog:', error);
+    }
   };
 
   /**
@@ -207,6 +248,7 @@ export default function useStateMachine() {
       const destNodeIndex = headers.indexOf('Destination Node');
       const ruleListIndex = headers.indexOf('Rule List');
       const priorityIndex = headers.indexOf('Priority');
+      const operationIndex = headers.indexOf('Operation / Edge Effect');
 
       if (sourceNodeIndex === -1 || destNodeIndex === -1 || ruleListIndex === -1) {
         throw new Error('Required columns not found: "Source Node", "Destination Node", "Rule List"');
@@ -237,6 +279,15 @@ export default function useStateMachine() {
           }
         }
 
+        // Get operation value if column exists
+        let operation = '';
+        if (operationIndex !== -1) {
+          const operationValue = row[operationIndex];
+          if (operationValue !== undefined && operationValue !== null) {
+            operation = operationValue.toString().trim();
+          }
+        }
+
         if (!sourceNode || !destNode || !ruleList) continue;
 
         // Create states if they don't exist
@@ -262,7 +313,8 @@ export default function useStateMachine() {
           id: generateId(),
           condition: ruleList,
           nextState: targetState.id,
-          priority: priority
+          priority: priority,
+          operation: operation
         });
       }
 

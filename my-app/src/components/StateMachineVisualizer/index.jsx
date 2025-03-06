@@ -161,7 +161,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           'Source Node': sourceState.name,
           'Destination Node': destState ? destState.name : rule.nextState,
           'Rule List': rule.condition,
-          'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50
+          'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50,
+          'Operation / Edge Effect': rule.operation || ''
         };
       })
     );
@@ -186,6 +187,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             newRow[column] = currentRow[column];
           } else if (column === 'Priority') {
             newRow[column] = currentRow['Priority'];
+          } else if (column === 'Operation / Edge Effect') {
+            newRow[column] = currentRow['Operation / Edge Effect'];
           } else {
             newRow[column] = matchingRow ? matchingRow[column] : '';
           }

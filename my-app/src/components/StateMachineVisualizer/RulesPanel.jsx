@@ -40,8 +40,10 @@ const RulesPanel = ({
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [editingRuleCondition, setEditingRuleCondition] = useState("");
   const [editingRulePriority, setEditingRulePriority] = useState(50);
+  const [editingRuleOperation, setEditingRuleOperation] = useState("");
   const [insertingBeforeRuleId, setInsertingBeforeRuleId] = useState(null);
   const [newRulePriority, setNewRulePriority] = useState(50);
+  const [newRuleOperation, setNewRuleOperation] = useState("");
 
   // Get current state details
   const currentState = states.find(state => state.id === selectedState);
@@ -96,7 +98,8 @@ const RulesPanel = ({
           updatedRules[existingRuleIndex] = {
             ...updatedRules[existingRuleIndex],
             nextState: newRuleNextState,
-            priority: newRulePriority
+            priority: newRulePriority,
+            operation: newRuleOperation
           };
           
           addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${oldRule.priority !== undefined && oldRule.priority !== null ? oldRule.priority : 50} → ${newRulePriority})`);
@@ -113,7 +116,8 @@ const RulesPanel = ({
             id: Date.now(),
             condition: newRuleCondition.trim(),
             nextState: newRuleNextState,
-            priority: newRulePriority
+            priority: newRulePriority,
+            operation: newRuleOperation
           }];
           
           return {
@@ -129,6 +133,7 @@ const RulesPanel = ({
     setNewRuleCondition("");
     setNewRuleNextState("");
     setNewRulePriority(50);
+    setNewRuleOperation("");
   };
 
   /**
@@ -181,6 +186,7 @@ const RulesPanel = ({
     setEditingRuleCondition(rule.condition);
     setNewRuleNextState(rule.nextState);
     setEditingRulePriority(rule.priority || 50);
+    setEditingRuleOperation(rule.operation || "");
   };
 
   /**
@@ -197,18 +203,21 @@ const RulesPanel = ({
         const updatedRules = state.rules.map(rule => {
           if (rule.id === editingRuleId) {
             const oldRule = { ...rule };
+            const oldTargetState = states.find(s => s.id === oldRule.nextState)?.name || 'unknown';
+            const newTargetState = states.find(s => s.id === newRuleNextState)?.name || 'unknown';
+            
             const newRule = {
               ...rule,
               condition: editingRuleCondition.trim(),
               nextState: newRuleNextState,
-              priority: editingRulePriority
+              priority: editingRulePriority,
+              operation: editingRuleOperation
             };
 
-            addToChangeLog(`Edited rule in state "${state.name}": 
-              "${oldRule.condition} → ${states.find(s => s.id === oldRule.nextState)?.name}" 
-              changed to 
-              "${newRule.condition} → ${states.find(s => s.id === newRuleNextState)?.name}"
-              (Priority: ${oldRule.priority !== undefined && oldRule.priority !== null ? oldRule.priority : 50} → ${editingRulePriority})`);
+            // Create a clean, single-line message for the change log
+            const changeMessage = `Edited rule in state "${state.name}": "${oldRule.condition} → ${oldTargetState}" changed to "${newRule.condition} → ${newTargetState}" (Priority: ${oldRule.priority !== undefined && oldRule.priority !== null ? oldRule.priority : 50} → ${editingRulePriority})`;
+            
+            addToChangeLog(changeMessage);
 
             return newRule;
           }
@@ -224,6 +233,7 @@ const RulesPanel = ({
     setEditingRuleCondition("");
     setNewRuleNextState("");
     setEditingRulePriority(50);
+    setEditingRuleOperation("");
   };
 
   /**
@@ -232,6 +242,7 @@ const RulesPanel = ({
   const handleCancelEdit = () => {
     setEditingRuleId(null);
     setEditingRuleCondition("");
+    setEditingRuleOperation("");
   };
 
   /**
@@ -271,7 +282,8 @@ const RulesPanel = ({
           id: Date.now(),
           condition: newRuleCondition.trim(),
           nextState: newRuleNextState,
-          priority: newRulePriority
+          priority: newRulePriority,
+          operation: newRuleOperation
         };
 
         const updatedRules = [...state.rules];
@@ -291,6 +303,7 @@ const RulesPanel = ({
     setNewRuleCondition("");
     setNewRuleNextState("");
     setNewRulePriority(50);
+    setNewRuleOperation("");
     setInsertingBeforeRuleId(null);
   };
 
@@ -316,6 +329,7 @@ const RulesPanel = ({
     setInsertingBeforeRuleId(null);
     setNewRuleCondition("");
     setNewRuleNextState("");
+    setNewRuleOperation("");
   };
 
   // Render placeholder when no state is selected
@@ -384,9 +398,14 @@ const RulesPanel = ({
       {/* Add Rule Form */}
       <div className="mb-6 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Add New Rule
+          {insertingBeforeRuleId ? 'Insert New Rule' : 'Add New Rule'}
+          {insertingBeforeRuleId && (
+            <span className="ml-2 text-xs text-blue-500">
+              (Inserting before selected rule)
+            </span>
+          )}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr,auto,auto] gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr,auto,auto,auto] gap-4 items-end">
           {/* Condition Input */}
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -448,18 +467,43 @@ const RulesPanel = ({
             />
           </div>
 
-          {/* Add Button */}
+          {/* Operation Input */}
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Operation
+            </label>
+            <Input
+              value={newRuleOperation}
+              onChange={(e) => setNewRuleOperation(e.target.value)}
+              placeholder="Enter rule operation"
+              className="w-full"
+            />
+          </div>
+
+          {/* Add/Insert Button */}
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
               &nbsp;
             </label>
-            <Button
-              onClick={insertingBeforeRuleId ? insertRuleBefore : addRule}
-              disabled={!newRuleCondition.trim() || !newRuleNextState}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              {insertingBeforeRuleId ? 'Insert Rule' : 'Add Rule'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={insertingBeforeRuleId ? insertRuleBefore : addRule}
+                disabled={!newRuleCondition.trim() || !newRuleNextState}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                {insertingBeforeRuleId ? 'Insert Rule' : 'Add Rule'}
+              </Button>
+              
+              {insertingBeforeRuleId && (
+                <Button
+                  onClick={handleCancelInsert}
+                  variant="outline"
+                  className="border-gray-300 hover:bg-gray-100"
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -476,7 +520,7 @@ const RulesPanel = ({
           return (
             <div key={rule.id} className="flex flex-col gap-1">
               {/* Rule Item */}
-              <div className={`grid grid-cols-[1fr,auto,1fr,auto,auto] gap-4 items-center 
+              <div className={`grid grid-cols-[1fr,auto,1fr,auto,auto,auto] gap-4 items-center 
                            bg-white dark:bg-gray-700 p-1 rounded-lg
                            hover:bg-gray-50 dark:hover:bg-gray-600
                            transform transition-all duration-200 hover:scale-[1.02]
@@ -566,6 +610,23 @@ const RulesPanel = ({
                   )}
                 </div>
 
+                {/* Operation */}
+                <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
+                  {isEditing ? (
+                    <Input
+                      value={editingRuleOperation}
+                      onChange={(e) => setEditingRuleOperation(e.target.value)}
+                      className="w-full"
+                    />
+                  ) : (
+                    rule.operation ? (
+                      <span className="text-sm text-gray-700 dark:text-gray-200">
+                        Operation: {rule.operation}
+                      </span>
+                    ) : null
+                  )}
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex items-center gap-1">
                   {isEditing ? (
@@ -631,8 +692,19 @@ const RulesPanel = ({
 
                 {/* Insert Indicator */}
                 {isInsertingBefore && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
-                    Inserting here
+                  <div className="absolute -top-3 left-0 right-0 flex justify-between items-center">
+                    <div className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full shadow-md flex items-center">
+                      <span>Inserting new rule before this one</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelInsert}
+                        className="ml-2 h-5 w-5 p-0 text-white hover:text-blue-100 hover:bg-blue-600"
+                        title="Cancel insertion"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -678,7 +750,8 @@ RulesPanel.propTypes = {
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       condition: PropTypes.string.isRequired,
       nextState: PropTypes.string.isRequired,
-      priority: PropTypes.number
+      priority: PropTypes.number,
+      operation: PropTypes.string
     }))
   })).isRequired,
   // Currently selected state ID

@@ -21,41 +21,52 @@ const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
   // Early return if modal is not open
   if (!isOpen) return null;
 
+  // Ensure changeLog is an array to prevent errors
+  const safeChangeLog = Array.isArray(changeLog) ? changeLog : [];
+
   /**
    * Exports the change history to a text file
-   * Creates a formatted text file with numbered entries and timestamps
    */
   const exportToFile = () => {
-    // Format each log entry with number and timestamp
-    const content = changeLog.map((entry, index) => 
-      `${index + 1}. [${entry.timestamp}] ${entry.message}`
-    ).join('\n');
+    try {
+      // Format each log entry with number and timestamp
+      const content = safeChangeLog.map((entry, index) => {
+        const timestamp = entry?.timestamp || 'Unknown time';
+        const message = entry?.message || 'No message';
+        return `${index + 1}. [${timestamp}] ${message}`;
+      }).join('\n');
 
-    // Create and trigger download
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `state-machine-history-${new Date().toISOString().split('T')[0]}.txt`;
-    
-    // Programmatically click the link to start download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up the URL object
-    URL.revokeObjectURL(url);
+      // Create and trigger download
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `state-machine-history-${new Date().toISOString().split('T')[0]}.txt`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting history:', error);
+      toast.error('Failed to export history');
+    }
   };
 
   /**
    * Resets the change history after user confirmation
-   * Clears both state and localStorage
    */
   const resetHistory = () => {
-    if (window.confirm('Are you sure you want to clear the local history? This cannot be undone.')) {
-      localStorage.removeItem('changeLog');
-      setChangeLog([]);
-      toast.success('History cleared successfully');
+    try {
+      if (window.confirm('Are you sure you want to clear the local history? This cannot be undone.')) {
+        localStorage.removeItem('changeLog');
+        setChangeLog([]);
+        toast.success('History cleared successfully');
+      }
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      toast.error('Failed to clear history');
     }
   };
 
@@ -107,27 +118,35 @@ const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
         </div>
 
         {/* Change Log List */}
-        <div className="flex-1 overflow-y-auto">
-          {changeLog && changeLog.length > 0 ? (
+        <div className="flex-1 overflow-y-auto p-4">
+          {safeChangeLog.length > 0 ? (
             <ul className="space-y-2">
-              {changeLog.map((entry, index) => (
-                <li 
-                  key={index}
-                  className="flex items-center gap-4 text-sm bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md"
-                >
-                  {/* Timestamp */}
-                  <span className="min-w-[180px] text-xs font-mono bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                    {entry.timestamp}
-                  </span>
-                  {/* Change Message */}
-                  <span className="text-gray-900 dark:text-gray-100 flex-1">
-                    {entry.message}
-                  </span>
-                </li>
-              ))}
+              {safeChangeLog.map((entry, index) => {
+                // Safely extract values with fallbacks
+                const timestamp = entry?.timestamp || 'Unknown time';
+                const message = entry?.message || 'No message';
+                
+                return (
+                  <li 
+                    key={index}
+                    className="flex items-center gap-4 text-sm bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md"
+                  >
+                    {/* Timestamp */}
+                    <span className="min-w-[180px] text-xs font-mono bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                      {timestamp}
+                    </span>
+                    {/* Change Message */}
+                    <span className="text-gray-900 dark:text-gray-100 flex-1">
+                      {message}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">No changes recorded yet.</p>
+            <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+              No changes recorded yet.
+            </p>
           )}
         </div>
       </div>
@@ -138,9 +157,9 @@ const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
 ChangeLog.propTypes = {
   // Array of change log entries
   changeLog: PropTypes.arrayOf(PropTypes.shape({
-    timestamp: PropTypes.string.isRequired,
-    message: PropTypes.string.isRequired
-  })).isRequired,
+    timestamp: PropTypes.string,
+    message: PropTypes.string
+  })),
   // Modal visibility control
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
