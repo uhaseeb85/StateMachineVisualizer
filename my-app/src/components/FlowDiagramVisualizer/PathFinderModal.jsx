@@ -260,17 +260,25 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
        * DFS implementation for loop detection
        * @param {Step} currentStep - Current step being processed
        * @param {Array} path - Current path being explored
+       * @param {Array} pathSteps - Array of complete step objects in the path
        * @param {Array} rulePath - Path of rules/connections taken
        * @param {Array} failedRulesPath - Path of failed rules
        */
-      const dfs = async (currentStep, path = [], rulePath = [], failedRulesPath = []) => {
+      const dfs = async (currentStep, path = [], pathSteps = [], rulePath = [], failedRulesPath = []) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
         }
 
         if (stack.has(currentStep.id)) {
-          const loopStartIndex = path.findIndex(p => p === currentStep.name);
-          const loopSteps = [...path.slice(loopStartIndex), currentStep.name];
+          const loopStartIndex = path.findIndex(p => p === currentStep.id);
+          
+          // Create proper step objects for the loop
+          const loopSteps = [...pathSteps.slice(loopStartIndex), { 
+            id: currentStep.id, 
+            name: currentStep.name,
+            isSubStep: !!currentStep.parentId 
+          }];
+          
           const loopRules = [...rulePath.slice(loopStartIndex)];
           const loopFailedRules = [...failedRulesPath.slice(loopStartIndex)];
 
@@ -286,7 +294,14 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
 
         visited.add(currentStep.id);
         stack.add(currentStep.id);
-        path.push(currentStep.name);
+        
+        // Store both the ID and the full step object
+        path.push(currentStep.id);
+        pathSteps.push({ 
+          id: currentStep.id, 
+          name: currentStep.name,
+          isSubStep: !!currentStep.parentId 
+        });
 
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -297,7 +312,8 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             await dfs(
               nextStep,
               [...path],
-              [...rulePath, connection.type],
+              [...pathSteps],
+              [...rulePath, { type: connection.type }],
               [...failedRulesPath, []]
             );
           }
@@ -328,7 +344,6 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       }
     } finally {
       setIsSearching(false);
-      setProgress(100);
     }
   };
 
@@ -490,10 +505,10 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       {path.steps.map((step, stepIndex) => (
         <React.Fragment key={stepIndex}>
           <span className={`px-3 py-1.5 rounded-md border
-            ${step.isSubStep 
+            ${typeof step === 'object' && step.isSubStep 
               ? 'bg-green-50 dark:bg-green-900/30 border-dashed' 
               : 'bg-blue-50 dark:bg-blue-900/30 border-solid'}`}>
-            {step.name}
+            {typeof step === 'object' ? step.name : step}
           </span>
           {stepIndex < path.steps.length - 1 && (
             <div className="flex items-center gap-2">
