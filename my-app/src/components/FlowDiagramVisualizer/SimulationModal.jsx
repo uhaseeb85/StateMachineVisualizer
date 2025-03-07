@@ -756,7 +756,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
           </DialogFooter>
         </DialogContent>
       ) : (
-        <DialogContent className="max-w-[1200px] h-[85vh] max-h-[900px] flex flex-col overflow-hidden">
+        <DialogContent className="w-[90vw] h-[90vh] max-w-[95%] max-h-[95%] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <div className="flex justify-between items-center">
               <DialogTitle>Flow Simulation</DialogTitle>
@@ -827,7 +827,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
               ref={simulationContainerRef}
               className={`simulation-content flex-grow overflow-auto p-6 border rounded-lg bg-gray-50/50 dark:bg-gray-900/50 ${stairView ? 'stair-container' : ''}`}
             >
-              <div className={`flex flex-col gap-4 pb-12 ${stairView ? 'w-full' : 'max-w-2xl mx-auto'}`}>
+              <div className={`flex flex-col gap-4 pb-12 ${stairView ? 'w-full' : 'max-w-4xl mx-auto'}`}>
                 {/* Main simulation path */}
                 {simulationPath.map(({ step, status }, index) => {
                   // Find any sub-steps that follow this step
@@ -857,12 +857,12 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                             w-full
                           `}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 p-4">
                             <div className={`status-icon ${status} transition-all duration-300`}>
                               {getStatusIcon(status)}
                             </div>
                             <div className="flex-1">
-                              <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                              <h3 className="font-medium text-lg text-gray-800 dark:text-gray-200">
                                 {step.name}
                               </h3>
                               {step.description && (
@@ -881,92 +881,101 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
                 {/* Render next possible steps */}
                 {!isComplete && currentStep && (
-                  <div className="mt-4 space-y-4">
-                    {nextSteps.success.length > 0 && (
-                      <div className="next-steps-section">
-                        <div className="flex items-center mb-2">
-                          <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                          <span className="text-sm text-gray-500">
-                            Success {nextSteps.success.length > 1 ? 'Paths' : 'Path'}
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {nextSteps.success.map((successStep) => (
-                            <Card 
-                              key={successStep.id}
-                              className="
-                                border-green-200 bg-green-50 dark:bg-green-900/30 
-                                hover:bg-green-100 dark:hover:bg-green-900/50
-                                cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
-                              "
-                              onClick={() => handleChoice('success', successStep.id)}
-                            >
-                              <div className="flex items-center gap-3 p-3">
-                                <div className="status-icon preview">
-                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <div className="mt-8">
+                    <h3 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Next Steps</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Success Paths Section */}
+                      {nextSteps.success.length > 0 && (
+                        <div className="next-steps-section">
+                          <div className="flex items-center mb-3">
+                            <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
+                            <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                              Success {nextSteps.success.length > 1 ? 'Paths' : 'Path'}
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            {nextSteps.success.map((successStep) => (
+                              <Card 
+                                key={successStep.id}
+                                className="
+                                  border-green-200 bg-green-50 dark:bg-green-900/30 
+                                  hover:bg-green-100 dark:hover:bg-green-900/50
+                                  cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
+                                "
+                                onClick={() => handleChoice('success', successStep.id)}
+                              >
+                                <div className="flex items-center gap-3 p-4">
+                                  <div className="status-icon preview">
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                      {successStep.name}
+                                    </h3>
+                                    {successStep.description && (
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {successStep.description}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex-1">
-                                  <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                                    {successStep.name}
-                                  </h3>
-                                  {successStep.description && (
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                      {successStep.description}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
+                              </Card>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {nextSteps.failure.length > 0 && (
-                      <div className="next-steps-section">
-                        <div className="flex items-center mb-2">
-                          <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                          <span className="text-sm text-gray-500">
-                            Failure {nextSteps.failure.length > 1 ? 'Paths' : 'Path'}
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {nextSteps.failure.map((failureStep) => (
-                            <Card 
-                              key={failureStep.id}
-                              className="
-                                border-red-200 bg-red-50 dark:bg-red-900/30
-                                hover:bg-red-100 dark:hover:bg-red-900/50
-                                cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
-                              "
-                              onClick={() => handleChoice('failure', failureStep.id)}
-                            >
-                              <div className="flex items-center gap-3 p-3">
-                                <div className="status-icon preview">
-                                  <XCircle className="h-5 w-5 text-red-500" />
+                      {/* Failure Paths Section */}
+                      {nextSteps.failure.length > 0 && (
+                        <div className="next-steps-section">
+                          <div className="flex items-center mb-3">
+                            <XCircle className="h-5 w-5 mr-2 text-red-500" />
+                            <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                              Failure {nextSteps.failure.length > 1 ? 'Paths' : 'Path'}
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            {nextSteps.failure.map((failureStep) => (
+                              <Card 
+                                key={failureStep.id}
+                                className="
+                                  border-red-200 bg-red-50 dark:bg-red-900/30
+                                  hover:bg-red-100 dark:hover:bg-red-900/50
+                                  cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
+                                "
+                                onClick={() => handleChoice('failure', failureStep.id)}
+                              >
+                                <div className="flex items-center gap-3 p-4">
+                                  <div className="status-icon preview">
+                                    <XCircle className="h-5 w-5 text-red-500" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                      {failureStep.name}
+                                    </h3>
+                                    {failureStep.description && (
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {failureStep.description}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex-1">
-                                  <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                                    {failureStep.name}
-                                  </h3>
-                                  {failureStep.description && (
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                      {failureStep.description}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
+                              </Card>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {!nextSteps.success.length && !nextSteps.failure.length && (
-                      <div className="text-sm text-gray-500 dark:text-gray-400 italic text-center mt-2">
-                        No next steps available from this point
-                      </div>
-                    )}
+                      )}
+                      
+                      {/* No paths message */}
+                      {!nextSteps.success.length && !nextSteps.failure.length && (
+                        <div className="col-span-2 text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <p className="text-gray-500 dark:text-gray-400 italic">
+                            No next steps available from this point
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -974,22 +983,37 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
             {/* Simulation Complete */}
             {isComplete && (
-              <Card className="mt-4 p-4 bg-white border-gray-200 end-card">
+              <Card className="mt-8 p-6 bg-white dark:bg-gray-800 border-green-200 dark:border-green-800 end-card max-w-4xl mx-auto">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-700">Simulation Complete</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      The flow has reached an end point.
-                    </p>
+                  <div className="flex items-center">
+                    <div className="mr-4 bg-green-100 dark:bg-green-900/30 p-3 rounded-full">
+                      <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-medium text-gray-800 dark:text-gray-200">Simulation Complete</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        The flow has reached an end point successfully.
+                      </p>
+                    </div>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleReset(false)}
-                    className="hover:bg-gray-100"
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Start Over
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleExportImage}
+                      className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Export Image
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleReset(false)}
+                      className="hover:bg-gray-100 dark:hover:bg-gray-700 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Start Over
+                    </Button>
+                  </div>
                 </div>
               </Card>
             )}
