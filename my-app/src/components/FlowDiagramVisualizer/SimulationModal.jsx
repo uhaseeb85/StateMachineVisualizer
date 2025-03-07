@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,6 +31,7 @@ import {
   Undo2,
   Columns,
   AlignRight,
+  Play,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -64,11 +66,16 @@ import { toast } from 'sonner';
 const SimulationModal = ({ steps, connections, onClose }) => {
   // Modal state
   const [isOpen, setIsOpen] = useState(true);
+  const [showStartSelector, setShowStartSelector] = useState(true);
   
   // Simulation state
   const [currentStep, setCurrentStep] = useState(null);
   const [simulationPath, setSimulationPath] = useState([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [selectedStartStepId, setSelectedStartStepId] = useState('');
+  
+  // Preview next steps
+  const [nextSteps, setNextSteps] = useState({ success: null, failure: null });
   
   // View mode state
   const [stairView, setStairView] = useState(false);
@@ -77,18 +84,67 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const simulationContainerRef = useRef(null);
 
   /**
-   * Initialize simulation with the starting step
-   * Starting step is identified as the one with no incoming connections
+   * Find the default start step (one with no incoming connections)
    */
   useEffect(() => {
-    const startStep = steps.find((step) =>
+    const defaultStartStep = steps.find((step) =>
       !connections.some((conn) => conn.toStepId === step.id)
     );
+    
+    if (defaultStartStep) {
+      setSelectedStartStepId(defaultStartStep.id);
+    } else if (steps.length > 0) {
+      // If there's no clear starting step, select the first one
+      setSelectedStartStepId(steps[0].id);
+    }
+  }, [steps, connections]);
+  
+  /**
+   * Updates the next possible steps based on the current step
+   * @param {Object} step - The current step
+   */
+  const updateNextSteps = (step) => {
+    if (!step) {
+      setNextSteps({ success: null, failure: null });
+      return;
+    }
+
+    const successConnection = connections.find(
+      (conn) => conn.fromStepId === step.id && conn.type === 'success'
+    );
+    
+    const failureConnection = connections.find(
+      (conn) => conn.fromStepId === step.id && conn.type === 'failure'
+    );
+
+    const successStep = successConnection 
+      ? steps.find(s => s.id === successConnection.toStepId)
+      : null;
+      
+    const failureStep = failureConnection 
+      ? steps.find(s => s.id === failureConnection.toStepId)
+      : null;
+
+    setNextSteps({
+      success: successStep,
+      failure: failureStep
+    });
+  };
+  
+  /**
+   * Start the simulation with the selected starting step
+   */
+  const startSimulation = () => {
+    const startStep = steps.find(step => step.id === selectedStartStepId);
     if (startStep) {
       setCurrentStep(startStep);
       setSimulationPath([{ step: startStep, status: 'current' }]);
+      updateNextSteps(startStep);
+      setShowStartSelector(false);
+    } else {
+      toast.error('Please select a valid starting step');
     }
-  }, [steps, connections]);
+  };
   
   /**
    * Auto-scroll to the latest step when simulation path changes
@@ -253,8 +309,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   };
 
   /**
-   * Handles user choice in simulation (success/failure)
-   * Updates the simulation path and moves to the next step
+   * Handles selection of a next step in the simulation
    * @param {'success' | 'failure'} type - Type of choice made
    */
   const handleChoice = (type) => {
@@ -288,6 +343,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       if (!hasOutgoingConnections) {
         setCurrentStep(null);
         setIsComplete(true);
+        setNextSteps({ success: null, failure: null });
         setSimulationPath(prev => [
           ...prev,
           { 
@@ -299,10 +355,14 @@ const SimulationModal = ({ steps, connections, onClose }) => {
             status: 'end' 
           }
         ]);
+      } else {
+        // Update preview of next steps
+        updateNextSteps(nextStep);
       }
     } else {
       setCurrentStep(null);
       setIsComplete(true);
+      setNextSteps({ success: null, failure: null });
       setSimulationPath(prev => [
         ...prev,
         { 
@@ -320,15 +380,24 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   /**
    * Resets the simulation to its initial state
    * Returns to the starting step and clears the path
+   * @param {boolean} [selectNewStart=false] - Whether to show the start selector again
    */
-  const handleReset = () => {
-    const startStep = steps.find((step) =>
-      !connections.some((conn) => conn.toStepId === step.id)
-    );
+  const handleReset = (selectNewStart = false) => {
+    if (selectNewStart) {
+      setShowStartSelector(true);
+      setCurrentStep(null);
+      setSimulationPath([]);
+      setIsComplete(false);
+      setNextSteps({ success: null, failure: null });
+      return;
+    }
+    
+    const startStep = steps.find((step) => step.id === selectedStartStepId);
     if (startStep) {
       setCurrentStep(startStep);
       setSimulationPath([{ step: startStep, status: 'current' }]);
       setIsComplete(false);
+      updateNextSteps(startStep);
     }
   };
 
@@ -347,7 +416,10 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     
     setCurrentStep(lastItem.step);
     setSimulationPath(newPath);
-    setIsComplete(false);
+    setIsComplete(false); // Ensure the simulation is marked as not complete
+    
+    // Update the next steps based on the new current step
+    updateNextSteps(lastItem.step);
   };
 
   /**
@@ -609,10 +681,48 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <div className="flex justify-between items-center">
-            <DialogTitle>Flow Simulation</DialogTitle>
+      {showStartSelector ? (
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Starting Step</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Choose which step to start the simulation from:
+              </div>
+              <select
+                value={selectedStartStepId}
+                onChange={(e) => setSelectedStartStepId(e.target.value)}
+                className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 
+                         bg-white dark:bg-gray-800 px-3 text-sm"
+              >
+                <option value="">Select a step...</option>
+                {steps.map(step => (
+                  <option key={step.id} value={step.id}>
+                    {step.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={startSimulation} 
+              disabled={!selectedStartStepId}
+              className="w-full sm:w-auto"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Start Simulation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      ) : (
+        <DialogContent className="max-w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex justify-between items-center">
+              <DialogTitle>Flow Simulation</DialogTitle>
+            </div>
             
             <div className="flex gap-2">
               <div className="flex mr-2 border rounded-md overflow-hidden">
@@ -662,7 +772,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReset}
+                onClick={() => handleReset(false)}
                 disabled={simulationPath.length <= 1}
                 title="Reset simulation"
                 className="hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -671,130 +781,169 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 Reset
               </Button>
             </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          {/* Simulation Content */}
-          <div 
-            ref={simulationContainerRef}
-            className={`simulation-content h-[calc(90vh-8rem)] border rounded-lg p-8 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto ${stairView ? 'stair-container' : ''}`}
-          >
-            <div className={`flex flex-col ${stairView ? 'w-full' : 'max-w-2xl mx-auto'}`}>
-              {simulationPath.map(({ step, status }, index) => {
-                // Find any sub-steps that follow this step
-                const subSteps = simulationPath.slice(index + 1).filter(item => 
-                  item.step.parentId === step.id
-                );
-                
-                // Check if this is a sub-step
-                const isSubStep = step.parentId;
-                
-                // Calculate step level for stair view
-                const stepLevel = stairView ? getStepLevel(step, index) : 0;
-                
-                // Only render if this is a main step or if its parent was already rendered
-                if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
-                  return (
-                    <div 
-                      key={`${step.id}-${index}`} 
-                      className={`step-item ${isSubStep ? "sub-step-container" : ""} ${stairView ? 'stair-step' : ''}`}
-                      style={stairView ? {'--step-level': stepLevel} : {}}
-                    >
-                      <Card 
-                        className={`
-                          step-card
-                          ${getStepCardClasses(status, isSubStep)} 
-                          ${stairView && status === 'current' ? 'stair-current' : ''}
-                          w-full
-                        `}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`status-icon ${status} transition-all duration-300`}>
-                            {getStatusIcon(status)}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                              {step.name}
-                            </h3>
-                            {step.description && (
-                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {step.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Path Selection Buttons */}
-                        {status === 'current' && !isComplete && (
-                          <div className="choice-buttons flex gap-2 mt-4 justify-end">
-                            <Button
-                              size="sm"
-                              onClick={() => handleChoice('success')}
-                              className="
-                                bg-green-100 hover:bg-green-200 text-green-700 
-                                border-green-200 px-3 py-1
-                                transform transition-all duration-200 hover:scale-105
-                              "
-                            >
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Success
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleChoice('failure')}
-                              className="
-                                bg-red-100 hover:bg-red-200 text-red-700 
-                                border-red-200 px-3 py-1
-                                transform transition-all duration-200 hover:scale-105
-                              "
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Failure
-                            </Button>
-                          </div>
-                        )}
-                      </Card>
-
-                      {/* Commented out the Animated Arrow to maintain consistency with step-to-substep transitions
-                      {index < simulationPath.length - 1 && 
-                       !isSubStep && 
-                       !simulationPath[index + 1].step.parentId &&
-                       simulationPath[index + 1].step.id !== 'end' && (
-                        renderArrow(simulationPath[index].status, index, stepLevel)
-                      )}
-                      */}
-                    </div>
+          <div className="flex-1 overflow-hidden">
+            {/* Simulation Content */}
+            <div 
+              ref={simulationContainerRef}
+              className={`simulation-content h-[calc(90vh-8rem)] border rounded-lg p-8 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto ${stairView ? 'stair-container' : ''}`}
+            >
+              <div className={`flex flex-col ${stairView ? 'w-full' : 'max-w-2xl mx-auto'}`}>
+                {/* Main simulation path */}
+                {simulationPath.map(({ step, status }, index) => {
+                  // Find any sub-steps that follow this step
+                  const subSteps = simulationPath.slice(index + 1).filter(item => 
+                    item.step.parentId === step.id
                   );
-                }
-                return null;
-              })}
-            </div>
-          </div>
+                  
+                  // Check if this is a sub-step
+                  const isSubStep = step.parentId;
+                  
+                  // Calculate step level for stair view
+                  const stepLevel = stairView ? getStepLevel(step, index) : 0;
+                  
+                  // Only render if this is a main step or if its parent was already rendered
+                  if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
+                    return (
+                      <div 
+                        key={`${step.id}-${index}`} 
+                        className={`step-item ${isSubStep ? "sub-step-container" : ""} ${stairView ? 'stair-step' : ''}`}
+                        style={stairView ? {'--step-level': stepLevel} : {}}
+                      >
+                        <Card 
+                          className={`
+                            step-card
+                            ${getStepCardClasses(status, isSubStep)} 
+                            ${stairView && status === 'current' ? 'stair-current' : ''}
+                            w-full
+                          `}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`status-icon ${status} transition-all duration-300`}>
+                              {getStatusIcon(status)}
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                {step.name}
+                              </h3>
+                              {step.description && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  {step.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
 
-          {/* Simulation Complete */}
-          {isComplete && (
-            <Card className="mt-4 p-4 bg-white border-gray-200 end-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-700">Simulation Complete</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    The flow has reached an end point.
-                  </p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={handleReset}
-                  className="hover:bg-gray-100"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Start Over
-                </Button>
+                {/* Render next possible steps */}
+                {!isComplete && currentStep && (
+                  <div className="mt-6 space-y-4">
+                    {nextSteps.success && (
+                      <div className="next-step-preview">
+                        <div className="flex items-center mb-2">
+                          <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                          <span className="text-sm text-gray-500">Success Path</span>
+                        </div>
+                        <Card 
+                          className="
+                            border-green-200 bg-green-50 dark:bg-green-900/30 
+                            hover:bg-green-100 dark:hover:bg-green-900/50
+                            cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
+                          "
+                          onClick={() => handleChoice('success')}
+                        >
+                          <div className="flex items-center gap-3 p-3">
+                            <div className="status-icon preview">
+                              <CheckCircle2 className="h-5 w-5 text-green-500" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                {nextSteps.success.name}
+                              </h3>
+                              {nextSteps.success.description && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  {nextSteps.success.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    )}
+
+                    {nextSteps.failure && (
+                      <div className="next-step-preview">
+                        <div className="flex items-center mb-2">
+                          <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                          <span className="text-sm text-gray-500">Failure Path</span>
+                        </div>
+                        <Card 
+                          className="
+                            border-red-200 bg-red-50 dark:bg-red-900/30
+                            hover:bg-red-100 dark:hover:bg-red-900/50
+                            cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
+                          "
+                          onClick={() => handleChoice('failure')}
+                        >
+                          <div className="flex items-center gap-3 p-3">
+                            <div className="status-icon preview">
+                              <XCircle className="h-5 w-5 text-red-500" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                {nextSteps.failure.name}
+                              </h3>
+                              {nextSteps.failure.description && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  {nextSteps.failure.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    )}
+
+                    {!nextSteps.success && !nextSteps.failure && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 italic text-center mt-2">
+                        No next steps available from this point
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </Card>
-          )}
-        </div>
-      </DialogContent>
+            </div>
+
+            {/* Simulation Complete */}
+            {isComplete && (
+              <Card className="mt-4 p-4 bg-white border-gray-200 end-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-700">Simulation Complete</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      The flow has reached an end point.
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleReset(false)}
+                    className="hover:bg-gray-100"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Start Over
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
+        </DialogContent>
+      )}
     </Dialog>
   );
 };
