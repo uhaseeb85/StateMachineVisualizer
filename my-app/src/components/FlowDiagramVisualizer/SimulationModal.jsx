@@ -309,6 +309,18 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   };
 
   /**
+   * Ensures the simulation container scrolls to the bottom when new content is added
+   */
+  useEffect(() => {
+    if (simulationContainerRef.current) {
+      // Use a small timeout to ensure the DOM has updated
+      setTimeout(() => {
+        simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
+      }, 50);
+    }
+  }, [simulationPath, nextSteps]);
+
+  /**
    * Handles selection of a next step in the simulation
    * @param {'success' | 'failure'} type - Type of choice made
    */
@@ -718,8 +730,8 @@ const SimulationModal = ({ steps, connections, onClose }) => {
           </DialogFooter>
         </DialogContent>
       ) : (
-        <DialogContent className="max-w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-[1200px] h-[85vh] max-h-[900px] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <div className="flex justify-between items-center">
               <DialogTitle>Flow Simulation</DialogTitle>
             </div>
@@ -783,13 +795,13 @@ const SimulationModal = ({ steps, connections, onClose }) => {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-grow overflow-hidden flex flex-col">
             {/* Simulation Content */}
             <div 
               ref={simulationContainerRef}
-              className={`simulation-content h-[calc(90vh-8rem)] border rounded-lg p-8 bg-gray-50/50 dark:bg-gray-900/50 overflow-auto ${stairView ? 'stair-container' : ''}`}
+              className={`simulation-content flex-grow overflow-auto p-6 border rounded-lg bg-gray-50/50 dark:bg-gray-900/50 ${stairView ? 'stair-container' : ''}`}
             >
-              <div className={`flex flex-col ${stairView ? 'w-full' : 'max-w-2xl mx-auto'}`}>
+              <div className={`flex flex-col gap-4 pb-12 ${stairView ? 'w-full' : 'max-w-2xl mx-auto'}`}>
                 {/* Main simulation path */}
                 {simulationPath.map(({ step, status }, index) => {
                   // Find any sub-steps that follow this step
@@ -843,7 +855,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
                 {/* Render next possible steps */}
                 {!isComplete && currentStep && (
-                  <div className="mt-6 space-y-4">
+                  <div className="mt-4 space-y-4">
                     {nextSteps.success && (
                       <div className="next-step-preview">
                         <div className="flex items-center mb-2">
