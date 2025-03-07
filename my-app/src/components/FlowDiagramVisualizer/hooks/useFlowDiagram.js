@@ -132,6 +132,14 @@ const useFlowDiagram = (storageKey) => {
     );
   };
 
+  // Track last connection to prevent duplicates
+  let lastConnectionRequest = {
+    fromStepId: null,
+    toStepId: null,
+    type: null,
+    timestamp: 0
+  };
+
   /**
    * Adds a connection between two steps
    * @param {string} fromStepId - ID of the source step
@@ -140,7 +148,28 @@ const useFlowDiagram = (storageKey) => {
    * @returns {boolean} True if connection was added, false if it already exists
    */
   const addConnection = (fromStepId, toStepId, type) => {
-    console.log('Adding connection:', { fromStepId, toStepId, type });
+    console.log('useFlowDiagram.addConnection CALLED with:', { fromStepId, toStepId, type });
+    
+    // Safeguard against duplicate requests within 500ms
+    const now = Date.now();
+    if (
+      lastConnectionRequest.fromStepId === fromStepId &&
+      lastConnectionRequest.toStepId === toStepId &&
+      lastConnectionRequest.type === type &&
+      now - lastConnectionRequest.timestamp < 500
+    ) {
+      console.log('Ignoring duplicate connection request (within 500ms)');
+      return false;
+    }
+    
+    // Update the last request
+    lastConnectionRequest = {
+      fromStepId,
+      toStepId,
+      type,
+      timestamp: now
+    };
+    
     // Check if connection already exists
     const exists = connections.some(
       (conn) =>
@@ -150,31 +179,30 @@ const useFlowDiagram = (storageKey) => {
     );
 
     if (exists) {
+      console.log('Connection already exists, rejecting:', { fromStepId, toStepId, type });
       toast.error('Connection already exists');
       return false;
     }
 
-    // Remove any existing connection of the same type
-    const existingConnection = connections.find(
-      (conn) => conn.fromStepId === fromStepId && conn.type === type
-    );
+    // Add a unique ID to each connection
+    const newConnection = { 
+      id: uuidv4(), 
+      fromStepId, 
+      toStepId, 
+      type 
+    };
+    
+    console.log('Adding new connection with ID:', newConnection.id);
 
-    if (existingConnection) {
-      setConnections((prev) =>
-        prev.filter(
-          (conn) =>
-            !(
-              conn.fromStepId === fromStepId &&
-              conn.type === type
-            )
-        )
-      );
-    }
-
-    setConnections((prev) => [
-      ...prev,
-      { fromStepId, toStepId, type }
-    ]);
+    setConnections((prev) => {
+      console.log('Previous connections count:', prev.length);
+      const newConnections = [...prev, newConnection];
+      console.log('New connections count:', newConnections.length);
+      return newConnections;
+    });
+    
+    // Don't show success message here - let the component handle it
+    console.log('Connection added successfully');
     return true;
   };
 

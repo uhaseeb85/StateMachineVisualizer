@@ -30,6 +30,7 @@ const StepPanel = ({
   const [newStepName, setNewStepName] = useState('');
   const [selectedStep, setSelectedStep] = useState(null);
   const [connectionType, setConnectionType] = useState(null);
+  const [connectionSourceId, setConnectionSourceId] = useState(null);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [addingSubStepFor, setAddingSubStepFor] = useState(null);
   const [subStepName, setSubStepName] = useState('');
@@ -72,28 +73,84 @@ const StepPanel = ({
     }
   };
 
+  // Function to start the connection creation process
+  const startConnectionCreation = (step, type) => {
+    console.log("startConnectionCreation called with:", step.name, type);
+    setConnectionType(type);
+    setConnectionSourceId(step.id);
+    
+    // Keep the selected step in the details panel
+    setSelectedStep(step);
+    
+    toast.info(`Select a target step for the ${type} path`, {
+      duration: 3000,
+    });
+  };
+  
+  // Function to cancel connection creation
+  const cancelConnectionCreation = () => {
+    setConnectionType(null);
+    setConnectionSourceId(null);
+  };
+
+  // Handle step selection
   const handleStepClick = (step) => {
-    if (selectedStep && connectionType) {
-      if (selectedStep.id !== step.id) {
-        const success = onAddConnection(selectedStep.id, step.id, connectionType);
-        if (success) {
-          toast.success(`${connectionType} connection added`);
+    console.log("Step clicked:", step.name);
+    
+    if (connectionType && connectionSourceId) {
+      console.log("In connection mode. Creating connection from", 
+        steps.find(s => s.id === connectionSourceId)?.name, "to", step.name, "of type", connectionType);
+      
+      // We're in connection creation mode
+      if (connectionSourceId !== step.id) {
+        // Don't allow connecting to self
+        
+        // Check if connection already exists
+        const connectionExists = connections.some(
+          conn => 
+            conn.fromStepId === connectionSourceId &&
+            conn.toStepId === step.id &&
+            conn.type === connectionType
+        );
+        
+        if (connectionExists) {
+          console.log("Connection already exists!");
+          toast.error('This connection already exists');
+          return;
         }
+        
+        console.log("Calling onAddConnection with params:", connectionSourceId, step.id, connectionType);
+        const success = onAddConnection(connectionSourceId, step.id, connectionType);
+        console.log("onAddConnection result:", success);
+        
+        if (success) {
+          toast.success(`Added ${connectionType} connection to ${step.name}`);
+          
+          // Keep connection creation mode active, but clear the specific connection type
+          // so user needs to select success or failure again
+          setConnectionType(null);
+          
+          // Keep the original step selected in the details panel
+          const sourceStep = steps.find(s => s.id === connectionSourceId);
+          if (sourceStep) {
+            setSelectedStep(sourceStep);
+          }
+        }
+      } else {
+        // Clicked on the source step, just exit connection mode
+        console.log("Clicked on source step, cancelling connection mode");
+        cancelConnectionCreation();
       }
-      setSelectedStep(null);
-      setConnectionType(null);
     } else {
-      console.log('Setting selected step:', step);
+      // Normal step selection
+      console.log("Normal step selection");
       setSelectedStep(step);
     }
   };
 
   const handleConnectionStart = (step, type) => {
-    setSelectedStep(step);
-    setConnectionType(type);
-    toast.info(`Select a target step for ${type} path`, {
-      duration: 2000,
-    });
+    console.log("handleConnectionStart called with:", step.name, type);
+    startConnectionCreation(step, type);
   };
 
   const handleRemoveConnection = (fromStepId, toStepId, type) => {
@@ -177,18 +234,43 @@ const StepPanel = ({
     const childSteps = getChildSteps(step.id);
     const hasChildren = childSteps.length > 0;
     const isExpanded = expandedSteps[step.id];
+    
+    // Check if we're in connection creation mode and this isn't the source step
+    const isConnectionMode = connectionType && connectionSourceId;
+    const isConnectionSource = connectionSourceId === step.id;
+    const isSelectableTarget = isConnectionMode && !isConnectionSource;
+    
+    // Classes for steps in connection mode
+    let connectionModeClasses = '';
+    if (isConnectionMode) {
+      if (isConnectionSource) {
+        // Source step styling
+        connectionModeClasses = connectionType === 'success'
+          ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-900/20'
+          : 'ring-2 ring-red-500 bg-red-50 dark:bg-red-900/20';
+      } else {
+        // Potential target step styling
+        connectionModeClasses = connectionType === 'success'
+          ? 'hover:ring-2 hover:ring-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer'
+          : 'hover:ring-2 hover:ring-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer';
+      }
+    }
 
     return (
       <div key={step.id} className="step-container">
         <div
           className={`
-            group flex items-center gap-2 p-2 rounded-md cursor-pointer
-            ${selectedStep?.id === step.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
-            ${connectionType && selectedStep?.id !== step.id ? 'hover:ring-2 hover:ring-blue-500' : ''}
-            ${connectionType && selectedStep?.id === step.id ? 'opacity-50' : ''}
+            group flex items-center gap-2 p-2 rounded-md transition-all
+            ${selectedStep?.id === step.id && !isConnectionMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+            ${connectionModeClasses}
             border border-gray-200 dark:border-gray-700 mb-1
           `}
           style={{ marginLeft: `${level * 20}px` }}
+          onClick={(e) => {
+            // Prevent event bubbling
+            e.stopPropagation();
+            handleStepClick(step);
+          }}
         >
           <div className="flex items-center gap-1 min-w-[24px]">
             {hasChildren && (
@@ -215,7 +297,6 @@ const StepPanel = ({
 
           <div 
             className="flex-1 flex items-center gap-2"
-            onClick={() => handleStepClick(step)}
           >
             <Grip className="h-4 w-4 text-muted-foreground cursor-move" />
             <span className="font-medium">{step.name}</span>
@@ -291,26 +372,6 @@ const StepPanel = ({
   // Get root-level steps (steps with no parent)
   const rootSteps = steps.filter(step => !step.parentId);
 
-  const addConnection = (fromStepId, toStepId, type) => {
-    console.log('Adding connection:', { fromStepId, toStepId, type });
-    // Check if connection already exists
-    const exists = connections.some(
-      (conn) =>
-        conn.fromStepId === fromStepId &&
-        conn.toStepId === toStepId &&
-        conn.type === type
-    );
-
-    if (exists) {
-      toast.error('Connection already exists');
-      return false;
-    }
-
-    // Remove any existing connection of the same type
-    onRemoveConnection(fromStepId, toStepId, type);
-    return true;
-  };
-
   return (
     <div className="flex h-[calc(100vh-16rem)] gap-8 p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
       {/* Left Panel - Steps List */}
@@ -333,6 +394,45 @@ const StepPanel = ({
               Add Step
             </Button>
           </div>
+
+          {/* Connection Selection Indicator */}
+          {connectionType && connectionSourceId && (
+            <div className={`p-4 rounded-md mb-3 ${
+              connectionType === 'success' 
+                ? 'bg-green-100 border-2 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-600' 
+                : 'bg-red-100 border-2 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-600'
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                {connectionType === 'success' 
+                  ? <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" /> 
+                  : <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                }
+                <span className="font-medium">
+                  Creating {connectionType} path
+                </span>
+              </div>
+              <div className="mb-2">
+                <span className="text-sm">
+                  From: <span className="font-semibold">{steps.find(s => s.id === connectionSourceId)?.name}</span>
+                </span>
+              </div>
+              <div className="text-sm flex justify-between items-center">
+                <span>Click on a target step</span>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  className={`h-7 ${
+                    connectionType === 'success'
+                      ? 'border-green-400 hover:bg-green-200 text-green-800'
+                      : 'border-red-400 hover:bg-red-200 text-red-800'
+                  }`}
+                  onClick={cancelConnectionCreation}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Steps list */}
           <div className="space-y-1 mt-4">
@@ -383,134 +483,124 @@ const StepPanel = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Connections</h3>
-              <div className="flex gap-4">
-                {/* Success Path Dropdown */}
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-1 block text-green-600 dark:text-green-400">
-                    Success Path
-                  </label>
-                  <div className="relative">
-                    <select
-                      className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                               text-sm dark:bg-gray-700 dark:text-white px-3 pr-8
-                               focus:outline-none focus:ring-2 focus:ring-green-500"
-                      value={connections.find(conn => conn.fromStepId === selectedStep.id && conn.type === 'success')?.toStepId || ''}
-                      onChange={(e) => {
-                        const newTargetId = e.target.value;
-                        // First remove any existing success connection
-                        const existingConnections = connections.filter(conn => 
-                          conn.fromStepId === selectedStep.id && conn.type === 'success'
-                        );
-                        
-                        existingConnections.forEach(conn => {
-                          onRemoveConnection(selectedStep.id, conn.toStepId, 'success');
-                        });
-
-                        // Then add the new connection if a target is selected
-                        if (newTargetId) {
-                          onAddConnection(selectedStep.id, newTargetId, 'success');
-                          toast.success('Success path updated');
-                        }
-                      }}
+              <div className="space-y-4">
+                {/* Success Paths Section */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-green-600 dark:text-green-400">
+                      Success Paths
+                    </label>
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 bg-green-100 hover:bg-green-200 text-green-700 border-green-200"
+                      onClick={() => handleConnectionStart(selectedStep, 'success')}
                     >
-                      <option value="">Select target step</option>
-                      {steps
-                        .filter(s => s.id !== selectedStep.id)
-                        .map(step => {
-                          // Find parent step name if this is a sub-step
-                          const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                          const displayName = parentStep ? `${parentStep.name} → ${step.name}` : step.name;
-                          
-                          return (
-                            <option key={step.id} value={step.id}>
-                              {displayName}
-                            </option>
-                          );
-                        })
-                      }
-                    </select>
-                    <CheckCircle2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500 pointer-events-none" />
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Path
+                    </Button>
                   </div>
-                </div>
-
-                {/* Failure Path Dropdown */}
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-1 block text-red-600 dark:text-red-400">
-                    Failure Path
-                  </label>
-                  <div className="relative">
-                    <select
-                      className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                               text-sm dark:bg-gray-700 dark:text-white px-3 pr-8
-                               focus:outline-none focus:ring-2 focus:ring-red-500"
-                      value={connections.find(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure')?.toStepId || ''}
-                      onChange={(e) => {
-                        const newTargetId = e.target.value;
-                        // First remove any existing failure connection
-                        const existingConnections = connections.filter(conn => 
-                          conn.fromStepId === selectedStep.id && conn.type === 'failure'
-                        );
+                  
+                  {/* List of success connections */}
+                  <div className="space-y-2">
+                    {connections
+                      .filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'success')
+                      .map(conn => {
+                        const targetStep = steps.find(s => s.id === conn.toStepId);
+                        if (!targetStep) return null;
                         
-                        existingConnections.forEach(conn => {
-                          onRemoveConnection(selectedStep.id, conn.toStepId, 'failure');
-                        });
-
-                        // Then add the new connection if a target is selected
-                        if (newTargetId) {
-                          onAddConnection(selectedStep.id, newTargetId, 'failure');
-                          toast.success('Failure path updated');
-                        }
-                      }}
-                    >
-                      <option value="">Select target step</option>
-                      {steps
-                        .filter(s => s.id !== selectedStep.id)
-                        .map(step => {
-                          // Find parent step name if this is a sub-step
-                          const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                          const displayName = parentStep ? `${parentStep.name} → ${step.name}` : step.name;
-                          
-                          return (
-                            <option key={step.id} value={step.id}>
-                              {displayName}
-                            </option>
-                          );
-                        })
-                      }
-                    </select>
-                    <XCircle className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {connections
-                  .filter((conn) => conn.fromStepId === selectedStep.id)
-                  .map((conn) => {
-                    const targetStep = steps.find((s) => s.id === conn.toStepId);
-                    return (
-                      <div
-                        key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`}
-                        className="flex items-center gap-2 p-2 bg-muted rounded-md"
-                      >
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        {conn.type === 'success' ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-red-500" />
-                        )}
-                        <span className="text-sm flex-1">{targetStep?.name}</span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 hover:text-destructive"
-                          onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, conn.type)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                        // Find parent step if this is a sub-step
+                        const parentStep = targetStep.parentId 
+                          ? steps.find(s => s.id === targetStep.parentId) 
+                          : null;
+                        const displayName = parentStep 
+                          ? `${parentStep.name} → ${targetStep.name}` 
+                          : targetStep.name;
+                        
+                        return (
+                          <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} 
+                               className="flex items-center justify-between px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-100">
+                            <div className="flex items-center">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                              <span>{displayName}</span>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 hover:bg-green-100"
+                              onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, 'success')}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      
+                    {connections.filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'success').length === 0 && (
+                      <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 dark:bg-gray-900/20 rounded-md border border-gray-100">
+                        No success paths defined
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
+                </div>
+                
+                {/* Failure Paths Section */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-red-600 dark:text-red-400">
+                      Failure Paths
+                    </label>
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 bg-red-100 hover:bg-red-200 text-red-700 border-red-200"
+                      onClick={() => handleConnectionStart(selectedStep, 'failure')}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Path
+                    </Button>
+                  </div>
+                  
+                  {/* List of failure connections */}
+                  <div className="space-y-2">
+                    {connections
+                      .filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure')
+                      .map(conn => {
+                        const targetStep = steps.find(s => s.id === conn.toStepId);
+                        if (!targetStep) return null;
+                        
+                        // Find parent step if this is a sub-step
+                        const parentStep = targetStep.parentId 
+                          ? steps.find(s => s.id === targetStep.parentId) 
+                          : null;
+                        const displayName = parentStep 
+                          ? `${parentStep.name} → ${targetStep.name}` 
+                          : targetStep.name;
+                        
+                        return (
+                          <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} 
+                               className="flex items-center justify-between px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-100">
+                            <div className="flex items-center">
+                              <XCircle className="h-4 w-4 text-red-500 mr-2" />
+                              <span>{displayName}</span>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 hover:bg-red-100"
+                              onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, 'failure')}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      
+                    {connections.filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure').length === 0 && (
+                      <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 dark:bg-gray-900/20 rounded-md border border-gray-100">
+                        No failure paths defined
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

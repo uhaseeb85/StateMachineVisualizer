@@ -75,7 +75,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   const [selectedStartStepId, setSelectedStartStepId] = useState('');
   
   // Preview next steps
-  const [nextSteps, setNextSteps] = useState({ success: null, failure: null });
+  const [nextSteps, setNextSteps] = useState({ success: [], failure: [] });
   
   // View mode state
   const [stairView, setStairView] = useState(false);
@@ -101,33 +101,50 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   
   /**
    * Updates the next possible steps based on the current step
+   * This function supports multiple success and failure paths
    * @param {Object} step - The current step
    */
   const updateNextSteps = (step) => {
     if (!step) {
-      setNextSteps({ success: null, failure: null });
+      setNextSteps({ success: [], failure: [] });
       return;
     }
 
-    const successConnection = connections.find(
+    // Find all connections from the current step
+    const successConnections = connections.filter(
       (conn) => conn.fromStepId === step.id && conn.type === 'success'
     );
     
-    const failureConnection = connections.find(
+    const failureConnections = connections.filter(
       (conn) => conn.fromStepId === step.id && conn.type === 'failure'
     );
 
-    const successStep = successConnection 
-      ? steps.find(s => s.id === successConnection.toStepId)
-      : null;
+    // Get the target steps for each connection
+    const successSteps = successConnections.map(conn => {
+      const targetStep = steps.find(s => s.id === conn.toStepId);
+      if (targetStep) {
+        return {
+          ...targetStep,
+          connectionId: conn.id // Store the connection ID for reference
+        };
+      }
+      return null;
+    }).filter(Boolean);
       
-    const failureStep = failureConnection 
-      ? steps.find(s => s.id === failureConnection.toStepId)
-      : null;
+    const failureSteps = failureConnections.map(conn => {
+      const targetStep = steps.find(s => s.id === conn.toStepId);
+      if (targetStep) {
+        return {
+          ...targetStep,
+          connectionId: conn.id // Store the connection ID for reference
+        };
+      }
+      return null;
+    }).filter(Boolean);
 
     setNextSteps({
-      success: successStep,
-      failure: failureStep
+      success: successSteps,
+      failure: failureSteps
     });
   };
   
@@ -323,11 +340,20 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   /**
    * Handles selection of a next step in the simulation
    * @param {'success' | 'failure'} type - Type of choice made
+   * @param {string} targetStepId - ID of the target step to transition to
    */
-  const handleChoice = (type) => {
-    const nextConnection = connections.find(
-      (conn) => conn.fromStepId === currentStep.id && conn.type === type
+  const handleChoice = (type, targetStepId) => {
+    // Find the specific connection from current step to the target step
+    const selectedConnection = connections.find(
+      (conn) => conn.fromStepId === currentStep.id && 
+                conn.type === type && 
+                conn.toStepId === targetStepId
     );
+
+    if (!selectedConnection) {
+      toast.error('Connection not found');
+      return;
+    }
 
     // Update current step in path to show success/failure
     setSimulationPath((prev) =>
@@ -338,8 +364,8 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       )
     );
 
-    if (nextConnection) {
-      const nextStep = steps.find((s) => s.id === nextConnection.toStepId);
+    const nextStep = steps.find((s) => s.id === targetStepId);
+    if (nextStep) {
       setCurrentStep(nextStep);
       setSimulationPath((prev) => [
         ...prev,
@@ -355,7 +381,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       if (!hasOutgoingConnections) {
         setCurrentStep(null);
         setIsComplete(true);
-        setNextSteps({ success: null, failure: null });
+        setNextSteps({ success: [], failure: [] });
         setSimulationPath(prev => [
           ...prev,
           { 
@@ -374,7 +400,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     } else {
       setCurrentStep(null);
       setIsComplete(true);
-      setNextSteps({ success: null, failure: null });
+      setNextSteps({ success: [], failure: [] });
       setSimulationPath(prev => [
         ...prev,
         { 
@@ -400,7 +426,7 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       setCurrentStep(null);
       setSimulationPath([]);
       setIsComplete(false);
-      setNextSteps({ success: null, failure: null });
+      setNextSteps({ success: [], failure: [] });
       return;
     }
     
@@ -856,73 +882,87 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 {/* Render next possible steps */}
                 {!isComplete && currentStep && (
                   <div className="mt-4 space-y-4">
-                    {nextSteps.success && (
-                      <div className="next-step-preview">
+                    {nextSteps.success.length > 0 && (
+                      <div className="next-steps-section">
                         <div className="flex items-center mb-2">
                           <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                          <span className="text-sm text-gray-500">Success Path</span>
+                          <span className="text-sm text-gray-500">
+                            Success {nextSteps.success.length > 1 ? 'Paths' : 'Path'}
+                          </span>
                         </div>
-                        <Card 
-                          className="
-                            border-green-200 bg-green-50 dark:bg-green-900/30 
-                            hover:bg-green-100 dark:hover:bg-green-900/50
-                            cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
-                          "
-                          onClick={() => handleChoice('success')}
-                        >
-                          <div className="flex items-center gap-3 p-3">
-                            <div className="status-icon preview">
-                              <CheckCircle2 className="h-5 w-5 text-green-500" />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                                {nextSteps.success.name}
-                              </h3>
-                              {nextSteps.success.description && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                  {nextSteps.success.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
+                        <div className="space-y-3">
+                          {nextSteps.success.map((successStep) => (
+                            <Card 
+                              key={successStep.id}
+                              className="
+                                border-green-200 bg-green-50 dark:bg-green-900/30 
+                                hover:bg-green-100 dark:hover:bg-green-900/50
+                                cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
+                              "
+                              onClick={() => handleChoice('success', successStep.id)}
+                            >
+                              <div className="flex items-center gap-3 p-3">
+                                <div className="status-icon preview">
+                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                    {successStep.name}
+                                  </h3>
+                                  {successStep.description && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                      {successStep.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
                       </div>
                     )}
 
-                    {nextSteps.failure && (
-                      <div className="next-step-preview">
+                    {nextSteps.failure.length > 0 && (
+                      <div className="next-steps-section">
                         <div className="flex items-center mb-2">
                           <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                          <span className="text-sm text-gray-500">Failure Path</span>
+                          <span className="text-sm text-gray-500">
+                            Failure {nextSteps.failure.length > 1 ? 'Paths' : 'Path'}
+                          </span>
                         </div>
-                        <Card 
-                          className="
-                            border-red-200 bg-red-50 dark:bg-red-900/30
-                            hover:bg-red-100 dark:hover:bg-red-900/50
-                            cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
-                          "
-                          onClick={() => handleChoice('failure')}
-                        >
-                          <div className="flex items-center gap-3 p-3">
-                            <div className="status-icon preview">
-                              <XCircle className="h-5 w-5 text-red-500" />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                                {nextSteps.failure.name}
-                              </h3>
-                              {nextSteps.failure.description && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                  {nextSteps.failure.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
+                        <div className="space-y-3">
+                          {nextSteps.failure.map((failureStep) => (
+                            <Card 
+                              key={failureStep.id}
+                              className="
+                                border-red-200 bg-red-50 dark:bg-red-900/30
+                                hover:bg-red-100 dark:hover:bg-red-900/50
+                                cursor-pointer transform transition-all duration-200 hover:scale-[1.02]
+                              "
+                              onClick={() => handleChoice('failure', failureStep.id)}
+                            >
+                              <div className="flex items-center gap-3 p-3">
+                                <div className="status-icon preview">
+                                  <XCircle className="h-5 w-5 text-red-500" />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                                    {failureStep.name}
+                                  </h3>
+                                  {failureStep.description && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                      {failureStep.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
                       </div>
                     )}
 
-                    {!nextSteps.success && !nextSteps.failure && (
+                    {!nextSteps.success.length && !nextSteps.failure.length && (
                       <div className="text-sm text-gray-500 dark:text-gray-400 italic text-center mt-2">
                         No next steps available from this point
                       </div>
