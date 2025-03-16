@@ -241,34 +241,18 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
-      {/* Toast notifications */}
-      <Toaster richColors />
-
-      {/* Save success notification */}
-      {showSaveNotification && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
-                        transition-opacity duration-300 flex items-center space-x-2
-                        animate-fade-in-out">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-lg font-medium">Flow saved successfully!</span>
-          </div>
-        </div>
-      )}
-
-      {/* Main content container */}
-      <div className="container mx-auto p-4 max-w-full min-h-screen 
-                    bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
-                    dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      
+      <div className="relative container mx-auto p-4 max-w-full min-h-screen">
         {/* Header */}
-        <div className="flex flex-col items-center mb-8">
-          <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5 tracking-wide">
+        <div className="flex flex-col items-center pt-24 pb-16">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl bg-clip-text text-transparent 
+                       bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mb-5">
             State Machine Visualizer
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-lg text-gray-300">
             Design • Visualize • Validate
           </p>
         </div>
@@ -288,27 +272,31 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
 
         {/* Main Panels */}
         <div className="flex flex-col lg:flex-row gap-8 mb-8">
-          <StatePanel
-            states={states}
-            selectedState={selectedState}
-            onStateSelect={handleStateSelect}
-            onStateAdd={addState}
-            onStateDelete={handleDeleteState}
-            loadedStateDictionary={loadedStateDictionary}
-            setLoadedStateDictionary={setLoadedStateDictionary}
-          />
+          <div className="lg:w-1/3">
+            <StatePanel
+              states={states}
+              selectedState={selectedState}
+              onStateSelect={handleStateSelect}
+              onStateAdd={addState}
+              onStateDelete={handleDeleteState}
+              loadedStateDictionary={loadedStateDictionary}
+              setLoadedStateDictionary={setLoadedStateDictionary}
+            />
+          </div>
 
-          <RulesPanel
-            states={states}
-            selectedState={selectedState}
-            onStateSelect={handleStateSelect}
-            setStates={setStates}
-            onRuleDictionaryImport={handleRuleDictionaryImport}
-            loadedDictionary={loadedDictionary}
-            setLoadedDictionary={setLoadedDictionary}
-            addToChangeLog={addToChangeLog}
-            loadedStateDictionary={loadedStateDictionary}
-          />
+          <div className="lg:w-2/3">
+            <RulesPanel
+              states={states}
+              selectedState={selectedState}
+              onStateSelect={handleStateSelect}
+              setStates={setStates}
+              onRuleDictionaryImport={handleRuleDictionaryImport}
+              loadedDictionary={loadedDictionary}
+              setLoadedDictionary={setLoadedDictionary}
+              addToChangeLog={addToChangeLog}
+              loadedStateDictionary={loadedStateDictionary}
+            />
+          </div>
         </div>
 
         {/* Modals */}
@@ -327,21 +315,21 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
         )}
 
         {showStartModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg w-96 border border-gray-700 shadow-xl">
+              <h2 className="text-xl font-bold text-white mb-4">
                 Start Simulation
               </h2>
               
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Select Starting State
                 </label>
                 <select
                   value={startState || ''}
                   onChange={(e) => setStartState(e.target.value)}
                   className="w-full border rounded-md p-2 text-sm
-                           dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                           bg-gray-700 text-white border-gray-600"
                 >
                   <option value="">Select a state</option>
                   {states.map(state => (
@@ -353,25 +341,26 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
               </div>
 
               <div className="flex justify-end space-x-2">
-                <button
+                <Button
                   onClick={() => {
                     setShowStartModal(false);
                     setStartState(null);
                   }}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+                  variant="outline"
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     setShowStartModal(false);
                     startSimulation();
                   }}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
                   disabled={!startState && states.length > 1}
                 >
                   Start
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -393,11 +382,11 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
       </div>
 
       {/* Utility buttons */}
-      <div className="fixed bottom-4 right-[29px] flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 flex flex-col gap-2">
         <Button
           onClick={() => setShowChangeLog(true)}
           title="View Local History"
-          className={buttonClass}
+          className="bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 backdrop-blur-sm"
         >
           <History className="w-4 h-4 mr-2" />
           Local History
@@ -405,7 +394,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
 
         <Button
           onClick={() => setShowUserGuide(true)}
-          className={buttonClass}
+          className="bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 backdrop-blur-sm"
         >
           <Book className="w-4 h-4 mr-2" />
           User Guide

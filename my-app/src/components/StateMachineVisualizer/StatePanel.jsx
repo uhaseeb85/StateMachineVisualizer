@@ -138,12 +138,16 @@ const StatePanel = ({
   };
 
   return (
-    <div className="w-full lg:w-1/4 border border-gray-200/20 dark:border-gray-700/20 
-                    rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
-      {/* Header Section */}
-      <div className="mb-4">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg p-6 mb-8">
+      {/* Panel Header */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-white mb-2">States</h2>
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
+          <p className="text-sm text-gray-300">
+            {states.length} state{states.length !== 1 ? 's' : ''} defined
+          </p>
+          
+          {/* State Dictionary Import */}
           <div className="flex items-center">
             <div className="relative">
               <input
@@ -155,14 +159,13 @@ const StatePanel = ({
               />
               <label
                 htmlFor="stateDictionaryInput"
-                className="load-state-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
-                         bg-white hover:bg-blue-600 text-gray-900 hover:text-white
-                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+                className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+                         bg-gray-700 hover:bg-blue-600 text-gray-300 hover:text-white
                          rounded-md transform transition-all duration-200 hover:scale-110
-                         border border-gray-200 shadow-sm"
+                         border border-gray-600 shadow-sm"
               >
                 <Upload className="w-4 h-4 mr-2" />
-                Load State Dictionary
+                Load Dictionary
                 {loadedStateDictionary && (
                   <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
                     {Object.keys(loadedStateDictionary).length}
@@ -175,18 +178,19 @@ const StatePanel = ({
       </div>
 
       {/* Add State Section */}
-      <div className="mb-4">
+      <div className="mb-6">
         <div className="flex gap-2">
           <Input
             type="text"
             value={newStateName}
             onChange={(e) => setNewStateName(e.target.value)}
             placeholder="Enter state name"
-            className="flex-1"
+            className="flex-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
           />
           <Button
             onClick={handleAddState}
             disabled={!newStateName.trim()}
+            className="bg-blue-600 hover:bg-blue-500 text-white"
           >
             Add State
           </Button>
@@ -194,61 +198,59 @@ const StatePanel = ({
       </div>
 
       {/* States List Section */}
-      <div className="states-list space-y-1.5">
+      <div className="states-list space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
         {states.map(state => (
           <div key={state.id} className="flex flex-col gap-1">
             {/* State Item */}
             <div 
-              data-state-id={state.id}
+              className={`flex justify-between items-center p-3 rounded-lg cursor-pointer
+                        ${selectedState?.id === state.id 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                        }
+                        transition-colors duration-200`}
               onClick={() => handleStateClick(state.id)}
-              className={`
-                h-7 rounded-lg border transition-all duration-200 text-sm
-                ${selectedState === state.id 
-                  ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white transform scale-105 shadow-lg'
-                  : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hover:scale-105 hover:shadow-md'
-                }
-                cursor-pointer flex justify-between items-center px-2
-                transform transition-all duration-200 group
-              `}
             >
-              <span>{state.name}</span>
-              <div className="flex items-center gap-2">
-                {/* Rule Count Badge */}
-                <span className={`
-                  text-xs px-1.5 rounded-full
-                  ${selectedState === state.id
-                    ? 'bg-white/20 text-white'
-                    : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                  }
-                `}>
-                  {state.rules?.length || 0}
-                </span>
-                {/* Delete Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStateDelete(state.id);
-                  }}
-                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center">
+                  <span className="font-medium truncate">{state.name}</span>
+                  {state.rules && state.rules.length > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-blue-500/30 text-blue-200 rounded-full text-xs">
+                      {state.rules.length}
+                    </span>
+                  )}
+                </div>
+                
+                {/* State Description (if available from dictionary) */}
+                {loadedStateDictionary && loadedStateDictionary[state.name] && (
+                  <p className="text-xs text-gray-300 mt-1 truncate">
+                    {loadedStateDictionary[state.name].description}
+                  </p>
+                )}
               </div>
+              
+              {/* Delete Button */}
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStateDelete(state.id);
+                }}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-gray-700/50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-            
-            {/* State Description (shown when state is selected) */}
-            {selectedStateId === state.id && loadedStateDictionary?.[state.name] && (
-              <div className="ml-2 p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
-                            text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
-                            border border-blue-100 dark:border-blue-800/30
-                            shadow-sm">
-                {loadedStateDictionary[state.name]}
-              </div>
-            )}
           </div>
         ))}
+        
+        {states.length === 0 && (
+          <div className="text-center py-8 text-gray-400">
+            <p>No states defined yet.</p>
+            <p className="text-sm mt-2">Add a state to get started.</p>
+          </div>
+        )}
       </div>
     </div>
   );

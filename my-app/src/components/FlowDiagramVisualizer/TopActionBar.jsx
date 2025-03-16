@@ -64,172 +64,126 @@ const TopActionBar = ({
 
   return (
     <div className="mb-8 p-6 
-                    bg-gray-100 dark:bg-gray-900
-                    border-b border-gray-200 dark:border-gray-700
-                    shadow-lg">
-      <div className="flex flex-wrap items-center justify-between">
-        {/* Left Section: Theme and Core Actions */}
+                  bg-gray-800/50 backdrop-blur-sm
+                  border border-gray-700
+                  rounded-xl shadow-lg">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Left Section: Core Actions */}
         <div className="flex items-center gap-4">
           {/* Theme Toggle Button */}
           <Button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title="Toggle between light and dark mode"
             variant="ghost"
-            className="theme-toggle w-10 h-10 p-0 text-gray-900 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+            className="w-10 h-10 p-0 text-gray-300 
+                     hover:bg-gray-700 hover:text-white
                      transform transition-all duration-200 hover:scale-110"
           >
             {theme === 'dark' ? (
-              <Sun className="h-5 w-5 text-yellow-500" />
+              <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />
             )}
           </Button>
 
-          {/* Getting Started Button */}
+          {/* Tour Button */}
           <Button
             onClick={startTour}
-            title="Get a guided tour of all features and how to use them"
-            className="getting-started-button bg-gray-900 text-white text-sm
-                     dark:bg-gray-800 dark:text-gray-100
-                     hover:bg-blue-600 hover:scale-105
-                     dark:hover:bg-blue-600
-                     transform transition-all duration-200 ease-in-out
-                     border border-gray-800 dark:border-gray-700
-                     hover:border-blue-500 dark:hover:border-blue-500
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+            title="Start guided tour"
+            variant="ghost"
+            className="w-10 h-10 p-0 text-gray-300 
+                     hover:bg-gray-700 hover:text-white
+                     transform transition-all duration-200 hover:scale-110"
           >
-            <HelpCircle className="w-4 h-4" />
-            Getting Started
+            <HelpCircle className="h-5 w-5" />
           </Button>
 
-          {/* Visual Separator */}
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+          {/* Save Button */}
+          <Button
+            onClick={onSave}
+            title="Save flow to browser storage"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Save className="h-5 w-5 mr-2" />
+            Save
+          </Button>
 
-          {/* Core Actions Group */}
-          <div className="flex flex-wrap gap-4">
-            {/* Save Button */}
-            <Button 
-              onClick={onSave}
-              title="Save your current flow diagram"
-              className="save-action-button bg-gray-900 text-white text-sm
-                       dark:bg-gray-800 dark:text-gray-100
-                       hover:bg-blue-600 hover:scale-105
-                       dark:hover:bg-blue-600
-                       transform transition-all duration-200 ease-in-out
-                       border border-gray-800 dark:border-gray-700
-                       hover:border-blue-500 dark:hover:border-blue-500
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+          {/* Import Button */}
+          <div className="relative">
+            <input
+              type="file"
+              id="flow-import"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleImport}
+              accept=".csv"
+            />
+            <Button
+              title="Import from CSV"
+              variant="ghost"
+              className="text-gray-300 hover:bg-gray-700 hover:text-white"
             >
-              <Save className="w-4 h-4" />
-              Save
+              <Upload className="h-5 w-5 mr-2" />
+              Import
             </Button>
-
-            {/* Import/Export Section */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleExport}
-                title="Export to CSV"
-                className="export-csv-button bg-gray-900 text-white text-sm
-                         dark:bg-gray-800 dark:text-gray-100
-                         hover:bg-blue-600 hover:scale-105
-                         dark:hover:bg-blue-600
-                         transform transition-all duration-200 ease-in-out
-                         border border-gray-800 dark:border-gray-700
-                         hover:border-blue-500 dark:hover:border-blue-500
-                         flex items-center gap-2 px-3 py-1.5 rounded-md"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </Button>
-
-              <div className="relative">
-                <Button
-                  onClick={() => document.getElementById('file-import').click()}
-                  title="Import from CSV"
-                  className="excel-import-button bg-gray-900 text-white text-sm
-                           dark:bg-gray-800 dark:text-gray-100
-                           hover:bg-blue-600 hover:scale-105
-                           dark:hover:bg-blue-600
-                           transform transition-all duration-200 ease-in-out
-                           border border-gray-800 dark:border-gray-700
-                           hover:border-blue-500 dark:hover:border-blue-500
-                           flex items-center gap-2 px-3 py-1.5 rounded-md"
-                >
-                  <Upload className="w-4 h-4" />
-                  Import CSV
-                </Button>
-                <input
-                  type="file"
-                  id="file-import"
-                  className="hidden"
-                  accept=".csv"
-                  onChange={handleImport}
-                />
-              </div>
-
-              <Button
-                onClick={handleClear}
-                title="Clear All Steps"
-                className="clear-button bg-gray-900 text-white text-sm
-                         dark:bg-gray-800 dark:text-gray-100
-                         hover:bg-red-600 hover:scale-105
-                         dark:hover:bg-red-600
-                         transform transition-all duration-200 ease-in-out
-                         border border-gray-800 dark:border-gray-700
-                         hover:border-red-500 dark:hover:border-red-500
-                         flex items-center gap-2 px-3 py-1.5 rounded-md"
-              >
-                <Trash2 className="w-4 h-4" />
-                Clear
-              </Button>
-            </div>
           </div>
+
+          {/* Export Button */}
+          <Button
+            onClick={onExport}
+            title="Export to CSV"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Download className="h-5 w-5 mr-2" />
+            Export
+          </Button>
         </div>
 
-        {/* Right Section: Tools */}
+        {/* Right Section: Tools and Mode Switch */}
         <div className="flex items-center gap-4">
-          {/* Tools Group */}
-          <div className="flex gap-4">
-            <Button
-              onClick={onFindPath}
-              title="Find paths between steps"
-              className="find-paths-button bg-blue-600 text-white text-sm
-                       hover:bg-blue-500 hover:scale-105
-                       dark:bg-blue-700 dark:hover:bg-blue-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Route className="w-4 h-4" />
-              Find Paths
-            </Button>
+          {/* Simulate Button */}
+          <Button
+            onClick={onSimulate}
+            title="Simulate flow execution"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Play className="h-5 w-5 mr-2" />
+            Simulate
+          </Button>
 
-            <Button
-              onClick={onSimulate}
-              title="Run a simulation"
-              className="simulation-button bg-green-600 text-white text-sm
-                       hover:bg-green-500 hover:scale-105
-                       dark:bg-green-700 dark:hover:bg-green-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Play className="w-4 h-4" />
-              Simulate
-            </Button>
+          {/* Find Path Button */}
+          <Button
+            onClick={onFindPath}
+            title="Find paths between steps"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Route className="h-5 w-5 mr-2" />
+            Find Path
+          </Button>
 
-            <Button
-              onClick={onChangeMode}
-              title="Switch Visualization Mode"
-              className="mode-switch-button bg-gray-900 text-white text-sm
-                       hover:bg-gray-800 hover:scale-105
-                       dark:bg-gray-800 dark:hover:bg-gray-700
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <SwitchCamera className="w-4 h-4" />
-              Switch Mode
-            </Button>
-          </div>
+          {/* Clear Button */}
+          <Button
+            onClick={handleClear}
+            title="Clear all steps"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Trash2 className="h-5 w-5 mr-2" />
+            Clear
+          </Button>
+
+          {/* Change Mode Button */}
+          <Button
+            onClick={onChangeMode}
+            title="Switch to State Machine mode"
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+          >
+            <SwitchCamera className="h-5 w-5 mr-2" />
+            Change Mode
+          </Button>
         </div>
       </div>
     </div>

@@ -34,9 +34,9 @@ const TopActionBar = ({
 
   return (
     <div className="mb-8 p-6 
-                    bg-gray-100 dark:bg-gray-900
-                    border-b border-gray-200 dark:border-gray-700
-                    shadow-lg">
+                    bg-gray-800/50 backdrop-blur-sm
+                    border border-gray-700
+                    rounded-xl shadow-lg">
       <div className="flex flex-wrap items-center justify-between">
         {/* Left Section: Theme, Tour, and Core Actions */}
         <div className="flex items-center gap-4">
@@ -45,172 +45,115 @@ const TopActionBar = ({
             onClick={toggleTheme}
             title="Toggle between light and dark mode"
             variant="ghost"
-            className="theme-toggle w-10 h-10 p-0 text-gray-900 
-                     dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
+            className="theme-toggle w-10 h-10 p-0 text-gray-300 
+                     hover:bg-gray-700 hover:text-white
                      transform transition-all duration-200 hover:scale-110"
           >
             {isDarkMode ? (
-              <Sun className="h-5 w-5 text-yellow-500" />
+              <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />
             )}
           </Button>
 
-          {/* Getting Started Button - Initiates the guided tour */}
+          {/* Tour Button */}
           <Button
             onClick={startTour}
-            title="Get a guided tour of all features and how to use them"
-            className="getting-started-button bg-gray-900 text-white text-sm
-                     dark:bg-gray-800 dark:text-gray-100
-                     hover:bg-blue-600 hover:scale-105
-                     dark:hover:bg-blue-600
-                     transform transition-all duration-200 ease-in-out
-                     border border-gray-800 dark:border-gray-700
-                     hover:border-blue-500 dark:hover:border-blue-500
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+            title="Start guided tour"
+            variant="ghost"
+            className="w-10 h-10 p-0 text-gray-300 
+                     hover:bg-gray-700 hover:text-white
+                     transform transition-all duration-200 hover:scale-110"
           >
-            <HelpCircle className="w-4 h-4" />
-            Getting Started
+            <HelpCircle className="h-5 w-5" />
           </Button>
 
-          {/* Visual Separator */}
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+          {/* Save Button */}
+          <Button
+            onClick={onSave}
+            title="Save flow to browser storage"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Save className="h-5 w-5 mr-2" />
+            Save
+          </Button>
 
-          {/* Core Actions Group */}
-          <div className="flex flex-wrap gap-4">
-            {/* Save Button */}
-            <Button 
-              onClick={onSave}
-              title="Save your current state machine configuration"
-              className="save-action-button bg-gray-900 text-white text-sm
-                       dark:bg-gray-800 dark:text-gray-100
-                       hover:bg-blue-600 hover:scale-105
-                       dark:hover:bg-blue-600
-                       transform transition-all duration-200 ease-in-out
-                       border border-gray-800 dark:border-gray-700
-                       hover:border-blue-500 dark:hover:border-blue-500
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+          {/* Import Button */}
+          <div className="relative">
+            <input
+              type="file"
+              id="excel-import"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={onExcelImport}
+              accept=".xlsx,.xls,.csv"
+            />
+            <Button
+              title="Import from Excel/CSV"
+              variant="ghost"
+              className="text-gray-300 hover:bg-gray-700 hover:text-white"
             >
-              <Save className="w-4 h-4" />
-              Save
+              <FileSpreadsheet className="h-5 w-5 mr-2" />
+              Import
             </Button>
-
-            {/* Import/Export Section */}
-            <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
-              {/* Export CSV Button */}
-              <Button 
-                onClick={onExportCSV}
-                title="Export your state machine as a CSV file"
-                className="export-csv-button bg-gray-900 text-white text-sm
-                         dark:bg-gray-800 dark:text-gray-100
-                         hover:bg-blue-600 hover:scale-105
-                         dark:hover:bg-blue-600
-                         transform transition-all duration-200 ease-in-out
-                         border border-gray-800 dark:border-gray-700
-                         hover:border-blue-500 dark:hover:border-blue-500
-                         flex items-center gap-2 px-3 py-1.5 rounded-md"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Export CSV
-              </Button>
-
-              {/* Import CSV Button with Hidden File Input */}
-              <div className="relative">
-                <Button 
-                  onClick={() => document.getElementById('excel-import').click()}
-                  title="Import states and rules from a CSV file (Excel format)"
-                  className="excel-import-button bg-gray-900 text-white text-sm
-                           dark:bg-gray-800 dark:text-gray-100
-                           hover:bg-blue-600 hover:scale-105
-                           dark:hover:bg-blue-600
-                           transform transition-all duration-200 ease-in-out
-                           border border-gray-800 dark:border-gray-700
-                           hover:border-blue-500 dark:hover:border-blue-500
-                           flex items-center gap-2 px-3 py-1.5 rounded-md"
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  Import CSV
-                </Button>
-                <input
-                  type="file"
-                  id="excel-import"
-                  className="hidden"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={onExcelImport}
-                  onClick={(e) => e.target.value = null}
-                />
-              </div>
-            </div>
           </div>
+
+          {/* Export Button */}
+          <Button
+            onClick={onExportCSV}
+            title="Export to CSV"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <FileSpreadsheet className="h-5 w-5 mr-2" />
+            Export
+          </Button>
         </div>
 
-        {/* Right Section: Tools and Analysis */}
+        {/* Right Section: Tools and Mode Switch */}
         <div className="flex items-center gap-4">
+          {/* Simulate Button */}
+          <Button
+            onClick={onSimulate}
+            title="Simulate flow execution"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Play className="h-5 w-5 mr-2" />
+            Simulate
+          </Button>
+
+          {/* Find Paths Button */}
+          <Button
+            onClick={onFindPaths}
+            title="Find paths between states"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            <Route className="h-5 w-5 mr-2" />
+            Find Paths
+          </Button>
+
           {/* Log Analysis Button */}
           <Button
             onClick={() => setShowLogAnalyzer(true)}
-            className="log-analyzer-button bg-gray-900 text-white text-sm
-                     dark:bg-gray-800 dark:text-gray-100
-                     hover:bg-blue-600 hover:scale-105
-                     dark:hover:bg-blue-600
-                     transform transition-all duration-200 ease-in-out
-                     border border-gray-800 dark:border-gray-700
-                     hover:border-blue-500 dark:hover:border-blue-500
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
+            title="Analyze logs"
+            variant="ghost"
+            className="text-gray-300 hover:bg-gray-700 hover:text-white"
           >
-            <Search className="w-4 h-4 mr-2" />
+            <Search className="h-5 w-5 mr-2" />
             Analyze Logs
           </Button>
 
-          {/* Visual Separator */}
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
-
-          {/* Tools Group */}
-          <div className="flex gap-4">
-            {/* Pathfinder Button */}
-            <Button
-              onClick={onFindPaths}
-              title="Find all possible paths between any two states in your state machine"
-              className="find-paths-button bg-blue-600 text-white text-sm
-                       hover:bg-blue-500 hover:scale-105
-                       dark:bg-blue-700 dark:hover:bg-blue-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Route className="w-4 h-4" />
-              Pathfinder
-            </Button>
-
-             {/* Simulation Button */}
-             <Button 
-              onClick={onSimulate}
-              title="Run a simulation of your state machine to test its behavior"
-              className="simulation-button bg-green-600 text-white text-sm
-                       hover:bg-green-500 hover:scale-105
-                       dark:bg-green-700 dark:hover:bg-green-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Play className="w-4 h-4" />
-              Simulate
-            </Button>
-
-            {/* Mode Switch Button */}
-            <Button
-              onClick={onChangeMode}
-              title="Switch Visualization Mode"
-              className="mode-switch-button bg-gray-900 text-white text-sm
-                       hover:bg-gray-800 hover:scale-105
-                       dark:bg-gray-800 dark:hover:bg-gray-700
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <SwitchCamera className="w-4 h-4" />
-              Switch Mode
-            </Button>
-
-           
-          </div>
+          {/* Change Mode Button */}
+          <Button
+            onClick={onChangeMode}
+            title="Switch to Flow Diagram mode"
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+          >
+            <SwitchCamera className="h-5 w-5 mr-2" />
+            Change Mode
+          </Button>
         </div>
       </div>
 

@@ -335,69 +335,68 @@ const RulesPanel = ({
   // Render placeholder when no state is selected
   if (!selectedState) {
     return (
-      <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
-                      rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
-        <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-          Select a state to manage its rules
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg p-6">
+        <div className="text-center py-8 text-gray-400">
+          <p>Select a state to manage its rules.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
-                    rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
-                    rules-section">
-      {/* Header Section */}
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg p-6">
+      {/* Panel Header */}
       <div className="mb-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Rules for {currentState?.name}
+          <h2 className="text-lg font-semibold text-white">
+            {currentState ? `Rules for ${currentState.name}` : "Select a state"}
           </h2>
-          <div className="flex items-center">
-            <div className="relative">
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleDictionaryImport}
-                className="hidden"
-                id="ruleDictionaryInput"
-              />
-              <label
-                htmlFor="ruleDictionaryInput"
-                title="Import an Excel file containing predefined rules and their descriptions to enhance rule documentation"
-                className="load-rule-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
-                         bg-white hover:bg-blue-600 text-gray-900 hover:text-white
-                         dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                         rounded-md transform transition-all duration-200 hover:scale-110
-                         border border-gray-200 shadow-sm"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Load Rule Dictionary
-                {loadedDictionary && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
-                    {Object.keys(loadedDictionary).length}
-                  </span>
-                )}
-              </label>
+          
+          {/* Rule Dictionary Import */}
+          {currentState && (
+            <div className="flex items-center">
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleDictionaryImport}
+                  className="hidden"
+                  id="ruleDictionaryInput"
+                />
+                <label
+                  htmlFor="ruleDictionaryInput"
+                  className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+                           bg-gray-700 hover:bg-blue-600 text-gray-300 hover:text-white
+                           rounded-md transform transition-all duration-200 hover:scale-110
+                           border border-gray-600 shadow-sm"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Load Rule Dictionary
+                  {loadedDictionary && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
+                      {Object.keys(loadedDictionary).length}
+                    </span>
+                  )}
+                </label>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-        <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
+        <div className="mt-2 mb-4 border-b border-gray-700" />
+        
+        {/* State Description Section */}
+        {loadedStateDictionary && currentState && loadedStateDictionary[currentState.name] && (
+          <div className="mb-4">
+            <p className="text-sm text-gray-400">
+              {loadedStateDictionary[currentState.name]}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* State Description Section */}
-      {loadedStateDictionary && currentState && loadedStateDictionary[currentState.name] && (
-        <div className="mb-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {loadedStateDictionary[currentState.name]}
-          </p>
-        </div>
-      )}
-
       {/* Add Rule Form */}
-      <div className="mb-6 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+      <div className="mb-6 bg-gray-700/50 p-4 rounded-lg">
+        <h3 className="text-sm font-medium text-gray-300 mb-3">
           {insertingBeforeRuleId ? 'Insert New Rule' : 'Add New Rule'}
           {insertingBeforeRuleId && (
             <span className="ml-2 text-xs text-blue-500">
@@ -408,31 +407,31 @@ const RulesPanel = ({
         <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr,auto,auto,auto] gap-4 items-end">
           {/* Condition Input */}
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-400 mb-1">
               Condition
             </label>
             <Input
               value={newRuleCondition}
               onChange={(e) => setNewRuleCondition(e.target.value)}
               placeholder="Enter rule condition"
-              className="w-full"
+              className="w-full bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
             />
           </div>
-
+          
           {/* Visual Separator */}
           <div className="hidden md:block">
-            <div className="h-2 w-[1px] bg-gray-300 dark:bg-gray-500 mx-auto" />
+            <div className="h-2 w-[1px] bg-gray-500 mx-auto" />
           </div>
-
+          
           {/* Target State Selector */}
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-400 mb-1">
               Target State
             </label>
             <select
               value={newRuleNextState}
               onChange={(e) => setNewRuleNextState(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-sm text-white"
             >
               <option value="">Select target state</option>
               {states.map((state) => (
@@ -442,10 +441,10 @@ const RulesPanel = ({
               ))}
             </select>
           </div>
-
+          
           {/* Priority Input */}
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-400 mb-1">
               Priority (-99 to +99)
             </label>
             <Input
@@ -463,42 +462,42 @@ const RulesPanel = ({
                     Math.max(-99, Math.min(99, parsed))); // Clamp values between -99 and 99
                 }
               }}
-              className="w-full"
+              className="w-full bg-gray-700 border-gray-600 text-white"
             />
           </div>
-
+          
           {/* Operation Input */}
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-400 mb-1">
               Operation
             </label>
             <Input
               value={newRuleOperation}
               onChange={(e) => setNewRuleOperation(e.target.value)}
               placeholder="Enter rule operation"
-              className="w-full"
+              className="w-full bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
             />
           </div>
-
+          
           {/* Add/Insert Button */}
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-400 mb-1">
               &nbsp;
             </label>
             <div className="flex gap-2">
               <Button
                 onClick={insertingBeforeRuleId ? insertRuleBefore : addRule}
                 disabled={!newRuleCondition.trim() || !newRuleNextState}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
+                className="bg-blue-600 hover:bg-blue-500 text-white"
               >
                 {insertingBeforeRuleId ? 'Insert Rule' : 'Add Rule'}
               </Button>
-              
+            
               {insertingBeforeRuleId && (
                 <Button
                   onClick={handleCancelInsert}
                   variant="outline"
-                  className="border-gray-300 hover:bg-gray-100"
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
@@ -509,61 +508,71 @@ const RulesPanel = ({
       </div>
 
       {/* Rules List Section */}
-      <div className="space-y-2">
-        {currentState?.rules.map((rule, index) => {
-          const targetState = states.find(s => s.id === rule.nextState);
-          const ruleDescriptions = getRuleDescriptions(rule.condition);
-          const isSelected = selectedRuleId === rule.id;
+      <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
+        {currentState?.rules.sort(sortRulesByPriority).map((rule) => {
+          const targetState = states.find((s) => s.id === rule.nextState);
           const isEditing = editingRuleId === rule.id;
+          const isSelected = selectedRuleId === rule.id;
           const isInsertingBefore = insertingBeforeRuleId === rule.id;
-
+          const ruleDescriptions = getRuleDescriptions(rule.condition);
+          
           return (
             <div key={rule.id} className="flex flex-col gap-1">
               {/* Rule Item */}
               <div className={`grid grid-cols-[1fr,auto,1fr,auto,auto,auto] gap-4 items-center 
-                           bg-white dark:bg-gray-700 p-1 rounded-lg
-                           hover:bg-gray-50 dark:hover:bg-gray-600
+                           bg-gray-700 p-1 rounded-lg
+                           hover:bg-gray-600
                            transform transition-all duration-200 hover:scale-[1.02]
                            hover:shadow-sm cursor-pointer group
-                           border ${isInsertingBefore ? 'border-blue-300 dark:border-blue-600' : 'border-transparent hover:border-gray-200 dark:hover:border-gray-500'}
+                           border ${isInsertingBefore ? 'border-blue-600' : 'border-transparent hover:border-gray-500'}
                            relative`}>
                 {/* Rule Condition */}
                 <div 
                   onClick={() => !isEditing && handleRuleClick(rule.id)}
-                  className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md
-                           hover:bg-gray-100 dark:hover:bg-gray-500/50 cursor-pointer
+                  className="bg-gray-600/50 px-2 py-0.5 rounded-md
+                           hover:bg-gray-500/50 cursor-pointer
                            flex items-center justify-between"
                 >
                   {isEditing ? (
                     <Input
                       value={editingRuleCondition}
                       onChange={(e) => setEditingRuleCondition(e.target.value)}
-                      className="text-sm"
+                      className="text-sm bg-gray-700 border-gray-600 text-white"
                       autoFocus
                     />
                   ) : (
-                    <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
+                    <span className="text-sm text-gray-200 truncate">
                       {rule.condition}
                     </span>
                   )}
                 </div>
 
                 {/* Visual Separator */}
-                <div className="h-2 w-[1px] bg-gray-300 dark:bg-gray-500" />
+                <div className="h-2 w-[1px] bg-gray-500" />
 
                 {/* Target State */}
-                <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
+                <div className="bg-gray-600/50 px-2 py-0.5 rounded-md">
                   <div className="flex items-center gap-2">
                     <ArrowRight className="w-4 h-4 text-gray-400" />
                     {isEditing ? (
                       <select
-                        value={newRuleNextState}
-                        onChange={(e) => setNewRuleNextState(e.target.value)}
-                        className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
-                                 rounded hover:bg-gray-200 dark:hover:bg-gray-600
-                                 text-gray-700 dark:text-white border-none"
+                        value={rule.nextState}
+                        onChange={(e) => {
+                          const updatedStates = [...states];
+                          const stateIndex = updatedStates.findIndex(
+                            (s) => s.id === selectedState
+                          );
+                          const ruleIndex = updatedStates[stateIndex].rules.findIndex(
+                            (r) => r.id === rule.id
+                          );
+                          updatedStates[stateIndex].rules[ruleIndex].nextState =
+                            e.target.value;
+                          setStates(updatedStates);
+                        }}
+                        className="px-2 py-1 text-sm bg-gray-700 
+                                 rounded hover:bg-gray-600
+                                 text-white border-none"
                       >
-                        <option value="">Select target state</option>
                         {states.map((state) => (
                           <option key={state.id} value={state.id}>
                             {state.name}
@@ -573,18 +582,18 @@ const RulesPanel = ({
                     ) : (
                       <button
                         onClick={(e) => handleTargetStateClick(rule.nextState, e)}
-                        className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 
-                                 rounded hover:bg-gray-200 dark:hover:bg-gray-600
-                                 text-blue-500 dark:text-white"
+                        className="px-2 py-1 text-sm bg-gray-700 
+                                 rounded hover:bg-gray-600
+                                 text-blue-400"
                       >
                         {targetState?.name}
                       </button>
                     )}
                   </div>
                 </div>
-
+                
                 {/* Priority */}
-                <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
+                <div className="bg-gray-600/50 px-2 py-0.5 rounded-md">
                   {isEditing ? (
                     <Input
                       type="number"
@@ -601,32 +610,32 @@ const RulesPanel = ({
                             Math.max(-99, Math.min(99, parsed))); // Clamp values between -99 and 99
                         }
                       }}
-                      className="w-16 text-sm"
+                      className="w-16 text-sm bg-gray-700 border-gray-600 text-white"
                     />
                   ) : (
-                    <span className="text-sm text-gray-700 dark:text-gray-200">
+                    <span className="text-sm text-gray-200">
                       Priority: {rule.priority !== undefined && rule.priority !== null ? rule.priority : 50}
                     </span>
                   )}
                 </div>
-
+                
                 {/* Operation */}
-                <div className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md">
+                <div className="bg-gray-600/50 px-2 py-0.5 rounded-md">
                   {isEditing ? (
                     <Input
                       value={editingRuleOperation}
                       onChange={(e) => setEditingRuleOperation(e.target.value)}
-                      className="w-full"
+                      className="w-full bg-gray-700 border-gray-600 text-white"
                     />
                   ) : (
                     rule.operation ? (
-                      <span className="text-sm text-gray-700 dark:text-gray-200">
+                      <span className="text-sm text-gray-200">
                         Operation: {rule.operation}
                       </span>
                     ) : null
                   )}
                 </div>
-
+                
                 {/* Action Buttons */}
                 <div className="flex items-center gap-1">
                   {isEditing ? (
@@ -635,8 +644,8 @@ const RulesPanel = ({
                         variant="ghost"
                         size="sm"
                         onClick={saveEditedRule}
-                        className="h-6 w-6 p-0 text-green-500 hover:text-green-700
-                                 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        className="h-6 w-6 p-0 text-green-500 hover:text-green-400
+                                 hover:bg-green-900/20"
                       >
                         <Check className="w-3 h-3" />
                       </Button>
@@ -644,8 +653,8 @@ const RulesPanel = ({
                         variant="ghost"
                         size="sm"
                         onClick={handleCancelEdit}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700
-                                 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-400
+                                 hover:bg-red-900/20"
                       >
                         <X className="w-3 h-3" />
                       </Button>
@@ -656,8 +665,8 @@ const RulesPanel = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleInsertBefore(rule.id)}
-                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
-                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-400
+                                 hover:bg-blue-900/20 opacity-0 
                                  group-hover:opacity-100 transition-opacity"
                         title="Insert rule before this one"
                       >
@@ -667,8 +676,8 @@ const RulesPanel = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEditRule(rule.id)}
-                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
-                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-400
+                                 hover:bg-blue-900/20 opacity-0 
                                  group-hover:opacity-100 transition-opacity"
                       >
                         <Edit2 className="w-3 h-3" />
@@ -680,8 +689,8 @@ const RulesPanel = ({
                           e.stopPropagation();
                           deleteRule(rule.id);
                         }}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700
-                                 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-400
+                                 hover:bg-red-900/20 opacity-0 
                                  group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -715,9 +724,9 @@ const RulesPanel = ({
                   {ruleDescriptions.map((desc, index) => (
                     <div 
                       key={index}
-                      className="p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
-                                text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
-                                border border-blue-100 dark:border-blue-800/30
+                      className="p-1 bg-blue-900/20 rounded-md
+                                text-sm text-blue-300 animate-fadeIn
+                                border border-blue-800/30
                                 shadow-sm"
                     >
                       <span className="font-medium">
@@ -732,7 +741,7 @@ const RulesPanel = ({
           );
         })}
         {currentState?.rules.length === 0 && (
-          <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+          <div className="text-center text-gray-400 py-4">
             No rules defined yet
           </div>
         )}

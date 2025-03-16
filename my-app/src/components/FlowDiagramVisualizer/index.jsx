@@ -77,11 +77,14 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      
       {/* Toast notifications */}
       <Toaster richColors />
-
-      {/* Save success notification overlay */}
+      
+      {/* Save success notification */}
       {showSaveNotification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg 
@@ -95,16 +98,14 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
         </div>
       )}
 
-      {/* Main content container with gradient background */}
-      <div className="container mx-auto p-4 max-w-full min-h-screen 
-                    bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
-                    dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
+      <div className="relative container mx-auto p-4 max-w-full min-h-screen">
         {/* Header section */}
-        <div className="flex flex-col items-center mb-8">
-          <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-5 tracking-wide">
+        <div className="flex flex-col items-center pt-24 pb-16">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl bg-clip-text text-transparent 
+                       bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mb-5">
             Flow Diagram Builder
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-lg text-gray-300">
             Design • Visualize • Test
           </p>
         </div>
@@ -122,7 +123,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
         />
         
         {/* Main step panel for diagram editing */}
-        <div className="mt-8 bg-background rounded-xl border shadow-sm">
+        <div className="mt-8 bg-gray-800/50 rounded-xl border border-gray-700 shadow-md">
           <StepPanel
             steps={steps}
             connections={connections}

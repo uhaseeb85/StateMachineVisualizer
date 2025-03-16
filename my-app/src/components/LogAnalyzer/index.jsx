@@ -236,14 +236,14 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const renderSelectScreen = () => (
     <div className="space-y-6">
       {/* Warning Banner */}
-      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+      <div className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-800">
         <div className="flex items-start">
-          <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
+          <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
           <div>
-            <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+            <h3 className="text-sm font-semibold text-yellow-200">
               Experimental Feature
             </h3>
-            <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
+            <div className="mt-2 text-sm text-yellow-300 space-y-2">
               <p>
                 The Log Analysis feature is experimental. All analysis is done in your browser locally.
               </p>
@@ -252,19 +252,19 @@ const LogAnalyzer = ({ onChangeMode }) => {
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
+      <h2 className="text-2xl font-bold text-white text-center">
         Select Analysis Mode
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         <Button
           onClick={() => setScreen(SCREENS.SPLUNK)}
           variant="outline"
-          className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          className="p-6 h-auto flex flex-col items-center gap-4 border-gray-700 bg-gray-800/50 hover:border-blue-500 hover:bg-blue-900/20 text-white"
         >
           <Database className="w-12 h-12 text-blue-500" />
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">Splunk Analysis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-300">
               Analyze logs directly from your Splunk instance using session ID
             </p>
           </div>
@@ -273,23 +273,23 @@ const LogAnalyzer = ({ onChangeMode }) => {
         <Button
           onClick={() => setScreen(SCREENS.FILE)}
           variant="outline"
-          className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          className="p-6 h-auto flex flex-col items-center gap-4 border-gray-700 bg-gray-800/50 hover:border-blue-500 hover:bg-blue-900/20 text-white"
         >
           <FileText className="w-12 h-12 text-blue-500" />
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">File Analysis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-300">
               Upload and analyze a local log file
             </p>
           </div>
         </Button>
       </div>
 
-      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+      <div className="mt-8 p-4 bg-blue-900/20 rounded-lg border border-blue-800">
+        <h3 className="text-sm font-semibold text-blue-200 mb-2">
           About Log Dictionary
         </h3>
-        <p className="text-sm text-blue-800 dark:text-blue-300 mb-4">
+        <p className="text-sm text-blue-300 mb-4">
           A log dictionary contains patterns to match in your logs. You can upload your own or use our sample.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -297,7 +297,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
             onClick={downloadSampleDictionary}
             variant="outline"
             size="sm"
-            className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+            className="text-blue-400 border-blue-700 hover:bg-blue-900/30"
           >
             <Download className="w-4 h-4 mr-2" />
             Download Sample Dictionary
@@ -310,24 +310,28 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const renderSplunkAnalysis = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           Splunk Analysis
         </h2>
-        <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
+        <Button 
+          variant="outline" 
+          onClick={() => setScreen(SCREENS.SELECT)}
+          className="border-gray-600 text-gray-300 hover:bg-gray-700"
+        >
           Back
         </Button>
       </div>
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-300">
             Splunk Configuration
           </label>
           <Button
             onClick={() => setShowSplunkConfig(true)}
             variant="outline"
             size="sm"
-            className="flex items-center gap-2"
+            className="border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
             Configure Splunk
@@ -335,13 +339,14 @@ const LogAnalyzer = ({ onChangeMode }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-300">
             Session ID
           </label>
           <Input
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
             placeholder="Enter session ID"
+            className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
           />
         </div>
 
@@ -355,16 +360,20 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const renderFileAnalysis = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-white">
           File Analysis
         </h2>
-        <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
+        <Button 
+          variant="outline" 
+          onClick={() => setScreen(SCREENS.SELECT)}
+          className="border-gray-600 text-gray-300 hover:bg-gray-700"
+        >
           Back
         </Button>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label className="block text-sm font-medium text-gray-300">
           Log File
         </label>
         <div className="mt-1">
@@ -372,9 +381,10 @@ const LogAnalyzer = ({ onChangeMode }) => {
             type="file"
             onChange={handleLogFileUpload}
             accept=".txt,.log"
+            className="bg-gray-700 border-gray-600 text-white"
           />
         </div>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-gray-400">
           Upload a text file containing your logs (one log entry per line)
         </p>
       </div>
@@ -390,14 +400,14 @@ const LogAnalyzer = ({ onChangeMode }) => {
       {!logDictionary ? (
         <>
           <div className="mt-6 mb-4 flex justify-between items-center">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="text-lg font-medium text-white">
               Log Dictionary
             </h3>
             <Button
               onClick={downloadSampleDictionary}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2"
+              className="border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
               Download Sample
@@ -405,7 +415,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-300">
               Log Dictionary
             </label>
             <Input
@@ -413,19 +423,20 @@ const LogAnalyzer = ({ onChangeMode }) => {
               onChange={handleDictionaryUpload}
               accept=".csv"
               key={Date.now()}
+              className="bg-gray-700 border-gray-600 text-white"
             />
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm text-gray-400">
               Upload a CSV file containing log patterns and analysis rules (see format above)
             </p>
           </div>
         </>
       ) : (
-        <div className="flex justify-between items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+        <div className="flex justify-between items-center p-4 bg-green-900/20 rounded-lg">
           <div>
-            <h3 className="text-sm font-semibold text-green-900 dark:text-green-200">
+            <h3 className="text-sm font-semibold text-green-200">
               Log Dictionary Loaded
             </h3>
-            <p className="text-sm text-green-800 dark:text-green-300">
+            <p className="text-sm text-green-300">
               {logDictionary.length} patterns available for analysis
             </p>
           </div>
@@ -433,7 +444,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
             onClick={clearDictionary}
             variant="outline"
             size="sm"
-            className="text-red-600 hover:text-red-700"
+            className="text-red-400 border-gray-600 hover:bg-gray-700"
           >
             Remove Dictionary
           </Button>
@@ -446,7 +457,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
     <Button 
       onClick={analyzeLogs} 
       disabled={!logDictionary || loading || (screen === SCREENS.SPLUNK && !sessionId) || (screen === SCREENS.FILE && !logFile)}
-      className="w-full"
+      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white mt-4"
     >
       {loading ? 'Analyzing...' : 'Analyze Logs'}
     </Button>
@@ -499,15 +510,15 @@ const LogAnalyzer = ({ onChangeMode }) => {
                 </div>
                 
                 <div>
-                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <h5 className="text-sm font-medium text-gray-300 mb-2">
                     First Occurrence (Line {result.firstMatch.lineNumber}):
                   </h5>
-                  <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 font-mono text-xs overflow-x-auto">
+                  <div className="bg-gray-900 p-3 rounded border border-gray-700 font-mono text-xs overflow-x-auto">
                     {result.firstMatch.context.before.map((line, i) => (
                       <div key={`before-${i}`} className="text-gray-500">{line}</div>
                     ))}
                     {result.firstMatch.matchedLines.map((line, i) => (
-                      <div key={`match-${i}`} className="text-blue-600 dark:text-blue-400 font-semibold">{line}</div>
+                      <div key={`match-${i}`} className="text-blue-400 font-semibold">{line}</div>
                     ))}
                     {result.firstMatch.context.after.map((line, i) => (
                       <div key={`after-${i}`} className="text-gray-500">{line}</div>
@@ -515,7 +526,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
                   </div>
                 </div>
                 
-                <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                <div className="mt-3 text-sm text-gray-400">
                   Total occurrences: {result.totalMatches}
                 </div>
               </div>
@@ -527,33 +538,34 @@ const LogAnalyzer = ({ onChangeMode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      
       {/* Toast notifications */}
       <Toaster richColors />
       
-      {/* Header */}
-      <div className="container mx-auto p-4 max-w-full min-h-screen 
-                    bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50
-                    dark:from-gray-900 dark:via-gray-800 dark:to-slate-900">
+      <div className="relative container mx-auto p-4 max-w-full min-h-screen">
         {/* Header section */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center pt-24 pb-16">
           <div className="flex items-center">
             <Button
               variant="ghost"
               onClick={onChangeMode}
-              className="mr-4 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="mr-4 hover:bg-gray-800/50 text-gray-300"
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Home
             </Button>
-            <h1 className="text-3xl font-light text-gray-900 dark:text-gray-100 tracking-wide">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl bg-clip-text text-transparent 
+                         bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
               Log Analyzer
             </h1>
           </div>
         </div>
         
         {/* Main content */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 max-w-4xl mx-auto">
+        <div className="bg-gray-800/50 rounded-xl shadow-md border border-gray-700 p-8 max-w-4xl mx-auto">
           {screen === SCREENS.SELECT && renderSelectScreen()}
           {screen === SCREENS.SPLUNK && renderSplunkAnalysis()}
           {screen === SCREENS.FILE && renderFileAnalysis()}
