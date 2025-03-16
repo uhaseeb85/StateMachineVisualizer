@@ -12,7 +12,9 @@ import {
   FileJson,
   History,
   Lightbulb,
-  Sparkles
+  Sparkles,
+  Search,
+  FileText
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
@@ -88,7 +90,7 @@ const LandingPage = ({ onGetStarted }) => {
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
                 Design, visualize, and validate complex workflows with our intuitive interface.
-                Build state machines and flow diagrams with ease.
+                Build state machines, flow diagrams, and analyze logs with ease.
               </motion.p>
             </div>
           </div>
@@ -97,7 +99,7 @@ const LandingPage = ({ onGetStarted }) => {
 
       {/* Mode Selection */}
       <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* State Machine Mode */}
           <motion.div 
             className="group relative rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent p-8 hover:from-blue-500/20 
@@ -136,9 +138,9 @@ const LandingPage = ({ onGetStarted }) => {
                      transition-all duration-300 cursor-pointer"
             onClick={() => handleModeSelect('flowDiagram')}
             whileHover={{ scale: 1.02 }}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
           >
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-4">
@@ -158,6 +160,48 @@ const LandingPage = ({ onGetStarted }) => {
                        group-hover:bg-green-500 group-hover:text-white transition-all duration-300"
             >
               Start Building
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </motion.div>
+          
+          {/* Log Analyzer Mode */}
+          <motion.div 
+            className="group relative rounded-3xl bg-gradient-to-b from-purple-500/10 to-transparent p-8 hover:from-purple-500/20 
+                     transition-all duration-300 cursor-pointer"
+            onClick={() => handleModeSelect('logAnalyzer')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-2 rounded-lg bg-purple-500/20">
+                  <Search className="w-6 h-6 text-purple-400" />
+                </div>
+                <h3 className="text-2xl font-semibold">Log Analyzer</h3>
+              </div>
+              <p className="text-gray-400 mb-6">
+                Analyze log files to identify patterns and troubleshoot issues.
+                Supports local files and Splunk integration.
+              </p>
+              <div className="relative h-[250px] bg-gray-800/50 rounded-lg overflow-hidden flex items-center justify-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <FileText className="w-16 h-16 text-purple-400 mb-4" />
+                  <div className="text-center px-6">
+                    <h4 className="text-lg font-medium text-purple-300 mb-2">Pattern-Based Analysis</h4>
+                    <p className="text-sm text-gray-400">
+                      Identify issues in logs using customizable pattern dictionaries
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 
+                       group-hover:bg-purple-500 group-hover:text-white transition-all duration-300"
+            >
+              Start Analyzing
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </motion.div>
@@ -203,7 +247,7 @@ const LandingPage = ({ onGetStarted }) => {
             <div className="space-y-4 text-sm text-gray-300">
               <p>
                 Visual Flow Builder helps you create and understand complex workflows through interactive diagrams. 
-                Whether you're designing state machines or mapping out process flows, this tool makes it simple to 
+                Whether you're designing state machines, mapping out process flows, or analyzing logs, this tool makes it simple to 
                 visualize, validate, and share your work.
               </p>
               <div className="space-y-2">

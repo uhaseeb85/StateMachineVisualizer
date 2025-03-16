@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import StateMachineVisualizer from './StateMachineVisualizer';
 import FlowDiagramVisualizer from './FlowDiagramVisualizer';
+import LogAnalyzer from './LogAnalyzer';
 import LandingPage from './LandingPage';
 import { ThemeProvider } from './ThemeProvider';
 
@@ -25,6 +26,10 @@ const AppContent = () => {
 
     if (mode === 'stateMachine') {
       return <StateMachineVisualizer onChangeMode={handleChangeModeClick} />;
+    }
+
+    if (mode === 'logAnalyzer') {
+      return <LogAnalyzer onChangeMode={handleChangeModeClick} />;
     }
 
     return <FlowDiagramVisualizer onChangeMode={handleChangeModeClick} />;
