@@ -98,99 +98,103 @@ const LandingPage = ({ onGetStarted }) => {
       </div>
 
       {/* Mode Selection */}
-      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* State Machine Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent p-8 hover:from-blue-500/20 
-                     transition-all duration-300 cursor-pointer"
+            className="group relative rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent p-10 hover:from-blue-500/20 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
             onClick={() => handleModeSelect('stateMachine')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-2 rounded-lg bg-blue-500/20">
-                  <Workflow className="w-6 h-6 text-blue-400" />
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-blue-500/20">
+                  <Workflow className="w-8 h-8 text-blue-400" />
                 </div>
                 <h3 className="text-2xl font-semibold">State Machine Visualizer</h3>
               </div>
-              <p className="text-gray-400 mb-6">
+              <p className="text-gray-400 mb-8 text-lg">
                 Design and validate complex state machines with rules and transitions.
                 Perfect for modeling system behaviors and decision flows.
               </p>
-              <AnimatedDemo mode="stateMachine" />
+              <div className="h-[280px] relative">
+                <AnimatedDemo mode="stateMachine" />
+              </div>
             </div>
             <Button 
-              className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 
+              className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 py-6
                        group-hover:bg-blue-500 group-hover:text-white transition-all duration-300"
             >
               Start Building
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
 
           {/* Flow Diagram Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-green-500/10 to-transparent p-8 hover:from-green-500/20 
-                     transition-all duration-300 cursor-pointer"
+            className="group relative rounded-3xl bg-gradient-to-b from-green-500/10 to-transparent p-10 hover:from-green-500/20 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
             onClick={() => handleModeSelect('flowDiagram')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-2 rounded-lg bg-green-500/20">
-                  <GitBranch className="w-6 h-6 text-green-400" />
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-green-500/20">
+                  <GitBranch className="w-8 h-8 text-green-400" />
                 </div>
                 <h3 className="text-2xl font-semibold">Flow Diagram Builder</h3>
               </div>
-              <p className="text-gray-400 mb-6">
+              <p className="text-gray-400 mb-8 text-lg">
                 Create linear or branching flow diagrams with success/failure paths.
                 Ideal for API flows and process documentation.
               </p>
-              <AnimatedDemo mode="flowDiagram" />
+              <div className="h-[280px] relative">
+                <AnimatedDemo mode="flowDiagram" />
+              </div>
             </div>
             <Button 
-              className="w-full bg-green-500/20 hover:bg-green-500/30 text-green-400 
+              className="w-full bg-green-500/20 hover:bg-green-500/30 text-green-400 py-6
                        group-hover:bg-green-500 group-hover:text-white transition-all duration-300"
             >
               Start Building
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
           
           {/* Log Analyzer Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-purple-500/10 to-transparent p-8 hover:from-purple-500/20 
-                     transition-all duration-300 cursor-pointer"
+            className="group relative rounded-3xl bg-gradient-to-b from-purple-500/10 to-transparent p-10 hover:from-purple-500/20 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
             onClick={() => handleModeSelect('logAnalyzer')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-2 rounded-lg bg-purple-500/20">
-                  <Search className="w-6 h-6 text-purple-400" />
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-purple-500/20">
+                  <Search className="w-8 h-8 text-purple-400" />
                 </div>
                 <h3 className="text-2xl font-semibold">Log Analyzer</h3>
               </div>
-              <p className="text-gray-400 mb-6">
+              <p className="text-gray-400 mb-8 text-lg">
                 Analyze log files to identify patterns and troubleshoot issues.
                 Supports local files and Splunk integration.
               </p>
-              <div className="relative h-[250px] bg-gray-800/50 rounded-lg overflow-hidden flex items-center justify-center">
+              <div className="h-[280px] relative bg-gray-800/50 rounded-lg overflow-hidden flex items-center justify-center">
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <FileText className="w-16 h-16 text-purple-400 mb-4" />
-                  <div className="text-center px-6">
-                    <h4 className="text-lg font-medium text-purple-300 mb-2">Pattern-Based Analysis</h4>
-                    <p className="text-sm text-gray-400">
+                  <FileText className="w-20 h-20 text-purple-400 mb-6" />
+                  <div className="text-center px-8">
+                    <h4 className="text-xl font-medium text-purple-300 mb-3">Pattern-Based Analysis</h4>
+                    <p className="text-base text-gray-400">
                       Identify issues in logs using customizable pattern dictionaries
                     </p>
                   </div>
@@ -198,41 +202,41 @@ const LandingPage = ({ onGetStarted }) => {
               </div>
             </div>
             <Button 
-              className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 
+              className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 py-6
                        group-hover:bg-purple-500 group-hover:text-white transition-all duration-300"
             >
               Start Analyzing
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
         </div>
       </div>
 
       {/* Features Grid */}
-      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-24">
         <motion.h2 
-          className="text-3xl font-bold text-center mb-16"
+          className="text-3xl font-bold text-center mb-20"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           Feature Highlights
         </motion.h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
-              className={`rounded-xl bg-${feature.color}-500/10 p-6 hover:bg-${feature.color}-500/20 
-                       transition-all duration-300`}
+              className={`rounded-xl bg-${feature.color}-500/10 p-8 hover:bg-${feature.color}-500/20 
+                       transition-all duration-300 flex flex-col h-full min-h-[200px]`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <div className={`p-2 rounded-lg bg-${feature.color}-500/20 w-fit mb-4`}>
-                <feature.icon className={`w-6 h-6 text-${feature.color}-400`} />
+              <div className={`p-3 rounded-lg bg-${feature.color}-500/20 w-fit mb-6`}>
+                <feature.icon className={`w-8 h-8 text-${feature.color}-400`} />
               </div>
-              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-              <p className="text-gray-400">{feature.description}</p>
+              <h3 className="text-xl font-semibold mb-4">{feature.title}</h3>
+              <p className="text-gray-400 text-lg">{feature.description}</p>
             </motion.div>
           ))}
         </div>
