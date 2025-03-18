@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +20,7 @@ import {
   MoveUp,
   MoveDown,
   ArrowUpToLine,
-  MoreVertical
+  Undo2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -50,6 +49,34 @@ const StepPanel = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(33); // as percentage
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
   const containerRef = useRef(null);
+  // Add state for undo history
+  const [moveHistory, setMoveHistory] = useState([]);
+  // Add state for parent selection mode
+  const [selectingParentFor, setSelectingParentFor] = useState(null);
+  
+  // Add a step move to history
+  const addToMoveHistory = (stepId, oldParentId, newParentId) => {
+    setMoveHistory(prev => [...prev, { stepId, oldParentId, newParentId, timestamp: Date.now() }]);
+  };
+  
+  // Undo the last step move
+  const undoLastMove = () => {
+    if (moveHistory.length === 0) {
+      toast.info('Nothing to undo');
+      return;
+    }
+    
+    const lastMove = moveHistory[moveHistory.length - 1];
+    const { stepId, oldParentId } = lastMove;
+    
+    // Restore the step to its previous parent
+    handleUpdateStep(stepId, { parentId: oldParentId });
+    
+    // Remove the last move from history
+    setMoveHistory(prev => prev.slice(0, prev.length - 1));
+    
+    toast.success('Move undone');
+  };
   
   // Handle mouse down on divider
   const handleDividerMouseDown = (e) => {
@@ -327,10 +354,26 @@ const StepPanel = ({
     setEditingStepId(null);
   };
 
-  // Function to move a step to a new parent
-  const moveStepToParent = (stepId, newParentId) => {
-    // Handle moving to root by passing null as newParentId
-    console.log(`Moving step ${stepId} to parent ${newParentId || 'root'}`);
+  // Start parent selection mode
+  const startSelectingParent = (stepId) => {
+    setSelectingParentFor(stepId);
+    toast.info("Click on a step to set as parent, or click 'Move to Root' to make it a top-level step", {
+      duration: 4000,
+    });
+    // Close the actions menu
+    setOpenActionsMenuId(null);
+  };
+  
+  // Cancel parent selection mode
+  const cancelSelectingParent = () => {
+    setSelectingParentFor(null);
+  };
+  
+  // Handle parent selection
+  const handleParentSelection = (newParentId) => {
+    if (!selectingParentFor) return;
+    
+    const stepId = selectingParentFor;
     
     // Don't allow a step to become its own parent
     if (stepId === newParentId) {
@@ -344,23 +387,35 @@ const StepPanel = ({
       return;
     }
     
-    // Move the step by updating its parentId
-    handleUpdateStep(stepId, { parentId: newParentId });
+    // Get original parent for history
+    const step = steps.find(s => s.id === stepId);
+    if (!step) return;
     
-    // Auto-expand the new parent if one was specified
-    if (newParentId) {
-      setExpandedSteps(prev => ({
-        ...prev,
-        [newParentId]: true
-      }));
+    const originalParentId = step.parentId;
+    
+    // Only update if the parent is actually changing
+    if (originalParentId !== newParentId) {
+      // Move the step by updating its parentId
+      handleUpdateStep(stepId, { parentId: newParentId });
+      
+      // Add to move history for undo
+      addToMoveHistory(stepId, originalParentId, newParentId);
+      
+      // Auto-expand the new parent if one was specified
+      if (newParentId) {
+        setExpandedSteps(prev => ({
+          ...prev,
+          [newParentId]: true
+        }));
+      }
+      
+      toast.success(newParentId 
+        ? `Parent changed to "${steps.find(s => s.id === newParentId)?.name}"` 
+        : 'Moved to root level');
     }
     
-    toast.success(newParentId 
-      ? `Step moved successfully to parent "${steps.find(s => s.id === newParentId)?.name}"` 
-      : 'Step moved to root level');
-    
-    // Close the actions menu after moving the step
-    setOpenActionsMenuId(null);
+    // Exit parent selection mode
+    setSelectingParentFor(null);
   };
 
   // Toggle the actions menu for a step
@@ -373,71 +428,7 @@ const StepPanel = ({
     }
   };
 
-  // Handle drag end event
-  const onDragEnd = (result) => {
-    const { destination, source, draggableId, type } = result;
-
-    // If there's no destination or if item is dropped in the same place, do nothing
-    if (!destination || 
-        (destination.droppableId === source.droppableId && 
-         destination.index === source.index)) {
-      return;
-    }
-
-    // Handle root level steps reordering
-    if (type === 'ROOT_STEPS') {
-      const stepId = draggableId;
-      const step = steps.find(s => s.id === stepId);
-      
-      if (!step) return;
-      
-      // Get the step at the destination index
-      const rootSteps = steps.filter(s => !s.parentId);
-      let destParentId = null;
-
-      // Check if we're moving to a different parent
-      if (destination.droppableId !== source.droppableId) {
-        // Moving to a different parent
-        destParentId = destination.droppableId === 'ROOT' ? null : destination.droppableId;
-      }
-
-      // Update the step's parent
-      onUpdateStep(stepId, { parentId: destParentId });
-      toast.success('Step moved successfully');
-    }
-    
-    // Handle child steps reordering
-    else if (type === 'CHILD_STEPS') {
-      const stepId = draggableId;
-      const step = steps.find(s => s.id === stepId);
-      
-      if (!step) return;
-      
-      // Moving to a different parent
-      const newParentId = destination.droppableId;
-      
-      // Don't move to its own children
-      if (isDescendant(newParentId, stepId)) {
-        toast.error("Cannot move a step under its own descendant");
-        return;
-      }
-      
-      // If moving to a different parent
-      if (step.parentId !== newParentId) {
-        onUpdateStep(stepId, { parentId: newParentId });
-        
-        // Auto-expand the new parent
-        setExpandedSteps(prev => ({
-          ...prev,
-          [newParentId]: true
-        }));
-        
-        toast.success('Step moved to new parent');
-      }
-    }
-  };
-
-  const renderStep = (step, level = 0, dragHandleProps = null) => {
+  const renderStep = (step, level = 0) => {
     const childSteps = getChildSteps(step.id);
     const hasChildren = childSteps.length > 0;
     const isExpanded = expandedSteps[step.id];
@@ -446,6 +437,11 @@ const StepPanel = ({
     const isConnectionMode = connectionType && connectionSourceId;
     const isConnectionSource = connectionSourceId === step.id;
     const isSelectableTarget = isConnectionMode && !isConnectionSource;
+    
+    // Check if we're in parent selection mode
+    const isParentSelectionMode = selectingParentFor !== null;
+    const isParentSelectionSource = selectingParentFor === step.id;
+    const isSelectableParent = isParentSelectionMode && !isParentSelectionSource && !isDescendant(step.id, selectingParentFor);
     
     // Classes for steps in connection mode
     let connectionModeClasses = '';
@@ -460,6 +456,21 @@ const StepPanel = ({
         connectionModeClasses = connectionType === 'success'
           ? 'hover:ring-2 hover:ring-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer'
           : 'hover:ring-2 hover:ring-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer';
+      }
+    }
+    
+    // Classes for steps in parent selection mode
+    let parentSelectionClasses = '';
+    if (isParentSelectionMode) {
+      if (isParentSelectionSource) {
+        // Source step styling
+        parentSelectionClasses = 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20';
+      } else if (isSelectableParent) {
+        // Potential parent styling
+        parentSelectionClasses = 'hover:ring-2 hover:ring-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer';
+      } else {
+        // Unselectable parent (descendant)
+        parentSelectionClasses = 'opacity-50';
       }
     }
 
@@ -506,21 +517,33 @@ const StepPanel = ({
       return path.length > 0 ? path.join(" → ") : "";
     };
 
+    // Handle step click based on current mode
+    const handleStepContainerClick = (e) => {
+      e.stopPropagation();
+      
+      if (isParentSelectionMode) {
+        if (!isParentSelectionSource && isSelectableParent) {
+          handleParentSelection(step.id);
+        }
+      } else if (isConnectionMode) {
+        handleStepClick(step);
+      } else {
+        handleStepClick(step);
+      }
+    };
+
     return (
       <div className="step-container">
         <div
           className={`
             group flex items-center gap-2 p-2 rounded-md transition-all
-            ${selectedStep?.id === step.id && !isConnectionMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+            ${selectedStep?.id === step.id && !isConnectionMode && !isParentSelectionMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
             ${connectionModeClasses}
+            ${parentSelectionClasses}
             border border-gray-200 dark:border-gray-700 mb-1
           `}
           style={{ marginLeft: `${level * 20}px` }}
-          onClick={(e) => {
-            // Prevent event bubbling
-            e.stopPropagation();
-            handleStepClick(step);
-          }}
+          onClick={handleStepContainerClick}
         >
           <div className="flex items-center gap-1 min-w-[24px]">
             {hasChildren && (
@@ -548,9 +571,7 @@ const StepPanel = ({
           <div 
             className="flex-1 flex items-center gap-2"
           >
-            <div {...(dragHandleProps || {})}>
-              <Grip className="h-4 w-4 text-muted-foreground cursor-grab" />
-            </div>
+            <Grip className="h-4 w-4 text-muted-foreground" />
             
             {/* Editable Name Field */}
             {isEditing ? (
@@ -596,9 +617,9 @@ const StepPanel = ({
                 variant="ghost" 
                 className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => toggleActionsMenu(e, step.id)}
-                title="Step actions"
+                title="Edit step"
               >
-                <MoreVertical className="h-4 w-4" />
+                <Edit className="h-4 w-4" />
               </Button>
               
               {/* Actions Menu */}
@@ -634,6 +655,19 @@ const StepPanel = ({
                     Edit Name
                   </button>
                   
+                  {/* Change Parent Option */}
+                  <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
+                  <button
+                    className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startSelectingParent(step.id);
+                    }}
+                  >
+                    <MoveDown className="h-4 w-4 mr-2" />
+                    Change Parent
+                  </button>
+                  
                   {/* Move to Root Option */}
                   {step.parentId && (
                     <>
@@ -642,7 +676,7 @@ const StepPanel = ({
                         className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={(e) => {
                           e.stopPropagation();
-                          moveStepToParent(step.id, null);
+                          handleParentSelection(null);
                         }}
                       >
                         <ArrowUpToLine className="h-4 w-4 mr-2" />
@@ -715,34 +749,14 @@ const StepPanel = ({
         )}
 
         {/* Render child steps */}
-        {isExpanded && hasChildren && (
-          <Droppable droppableId={step.id} type="CHILD_STEPS">
-            {(provided) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                className="space-y-1 mt-1"
-              >
-                {childSteps.map((childStep, index) => (
-                  <Draggable key={childStep.id} draggableId={childStep.id} index={index}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`step-container ${snapshot.isDragging ? 'opacity-75 bg-blue-50 dark:bg-blue-900/20 rounded-md' : ''}`}
-                        style={{
-                          ...provided.draggableProps.style,
-                        }}
-                      >
-                        {renderStep(childStep, level + 1, provided.dragHandleProps)}
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
+        {isExpanded && (
+          <div className="space-y-1 mt-1">
+            {childSteps.map((childStep, index) => (
+              <div key={childStep.id} className="step-container">
+                {renderStep(childStep, level + 1)}
               </div>
-            )}
-          </Droppable>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -760,20 +774,30 @@ const StepPanel = ({
       <div className="border rounded-xl p-6 bg-background overflow-y-auto" style={{ width: `${leftPanelWidth}%` }}>
         <div className="space-y-4">
           {/* Add root step input */}
-          <div className="flex gap-4 sticky top-0 bg-background pb-4 border-b">
+          <div className="flex gap-2 sticky top-0 bg-background pb-4 border-b">
             <Input
               placeholder="Enter step name..."
               value={newStepName}
               onChange={(e) => setNewStepName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
-              className="h-10"
+              className="h-10 flex-1"
             />
             <Button
               onClick={handleAddRootStep}
               disabled={!newStepName.trim()}
+              className="h-10"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Step
+            </Button>
+            <Button
+              onClick={undoLastMove}
+              disabled={moveHistory.length === 0}
+              variant="outline"
+              className="h-10"
+              title="Undo last move"
+            >
+              <Undo2 className="h-4 w-4" />
             </Button>
           </div>
 
@@ -816,6 +840,47 @@ const StepPanel = ({
             </div>
           )}
 
+          {/* Parent Selection Indicator */}
+          {selectingParentFor && (
+            <div className="p-4 rounded-md mb-3 bg-blue-100 border-2 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-600">
+              <div className="flex items-center gap-2 mb-2">
+                <MoveDown className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <span className="font-medium">
+                  Changing parent
+                </span>
+              </div>
+              <div className="mb-2">
+                <span className="text-sm">
+                  Step: <span className="font-semibold">{steps.find(s => s.id === selectingParentFor)?.name}</span>
+                </span>
+              </div>
+              <div className="text-sm flex justify-between items-center">
+                <span>Click on a new parent step</span>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  className="h-7 border-blue-400 hover:bg-blue-200 text-blue-800"
+                  onClick={cancelSelectingParent}
+                >
+                  Cancel
+                </Button>
+              </div>
+              {steps.find(s => s.id === selectingParentFor)?.parentId && (
+                <div className="mt-3 pt-3 border-t border-blue-200 text-sm">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-7 border-blue-400 hover:bg-blue-200 text-blue-800"
+                    onClick={() => handleParentSelection(null)}
+                  >
+                    <ArrowUpToLine className="h-4 w-4 mr-2" />
+                    Move to Root Level
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Steps list */}
           <div className="space-y-1 mt-4">
             {rootSteps.length === 0 ? (
@@ -823,35 +888,13 @@ const StepPanel = ({
                 No steps added yet. Add your first step above.
               </div>
             ) : (
-              <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="ROOT" type="ROOT_STEPS">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="space-y-2"
-                    >
-                      {rootSteps.map((step, index) => (
-                        <Draggable key={step.id} draggableId={step.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={`step-container ${snapshot.isDragging ? 'opacity-75 bg-blue-50 dark:bg-blue-900/20 rounded-md' : ''}`}
-                              style={{
-                                ...provided.draggableProps.style,
-                              }}
-                            >
-                              {renderStep(step, 0, provided.dragHandleProps)}
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+              <div className="space-y-2">
+                {rootSteps.map((step, index) => (
+                  <div key={step.id} className="step-container">
+                    {renderStep(step, 0)}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
