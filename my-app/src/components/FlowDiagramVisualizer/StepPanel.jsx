@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -331,7 +332,71 @@ const StepPanel = ({
     }
   };
 
-  const renderStep = (step, level = 0) => {
+  // Handle drag end event
+  const onDragEnd = (result) => {
+    const { destination, source, draggableId, type } = result;
+
+    // If there's no destination or if item is dropped in the same place, do nothing
+    if (!destination || 
+        (destination.droppableId === source.droppableId && 
+         destination.index === source.index)) {
+      return;
+    }
+
+    // Handle root level steps reordering
+    if (type === 'ROOT_STEPS') {
+      const stepId = draggableId;
+      const step = steps.find(s => s.id === stepId);
+      
+      if (!step) return;
+      
+      // Get the step at the destination index
+      const rootSteps = steps.filter(s => !s.parentId);
+      let destParentId = null;
+
+      // Check if we're moving to a different parent
+      if (destination.droppableId !== source.droppableId) {
+        // Moving to a different parent
+        destParentId = destination.droppableId === 'ROOT' ? null : destination.droppableId;
+      }
+
+      // Update the step's parent
+      onUpdateStep(stepId, { parentId: destParentId });
+      toast.success('Step moved successfully');
+    }
+    
+    // Handle child steps reordering
+    else if (type === 'CHILD_STEPS') {
+      const stepId = draggableId;
+      const step = steps.find(s => s.id === stepId);
+      
+      if (!step) return;
+      
+      // Moving to a different parent
+      const newParentId = destination.droppableId;
+      
+      // Don't move to its own children
+      if (isDescendant(newParentId, stepId)) {
+        toast.error("Cannot move a step under its own descendant");
+        return;
+      }
+      
+      // If moving to a different parent
+      if (step.parentId !== newParentId) {
+        onUpdateStep(stepId, { parentId: newParentId });
+        
+        // Auto-expand the new parent
+        setExpandedSteps(prev => ({
+          ...prev,
+          [newParentId]: true
+        }));
+        
+        toast.success('Step moved to new parent');
+      }
+    }
+  };
+
+  const renderStep = (step, level = 0, dragHandleProps = null) => {
     const childSteps = getChildSteps(step.id);
     const hasChildren = childSteps.length > 0;
     const isExpanded = expandedSteps[step.id];
@@ -401,7 +466,7 @@ const StepPanel = ({
     };
 
     return (
-      <div key={step.id} className="step-container">
+      <div className="step-container">
         <div
           className={`
             group flex items-center gap-2 p-2 rounded-md transition-all
@@ -442,7 +507,9 @@ const StepPanel = ({
           <div 
             className="flex-1 flex items-center gap-2"
           >
-            <Grip className="h-4 w-4 text-muted-foreground cursor-move" />
+            <div {...(dragHandleProps || {})}>
+              <Grip className="h-4 w-4 text-muted-foreground cursor-grab" />
+            </div>
             
             {/* Editable Name Field */}
             {isEditing ? (
@@ -501,7 +568,7 @@ const StepPanel = ({
               {/* Actions Menu */}
               {isActionsMenuOpen && (
                 <div 
-                  className="absolute right-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700 py-1"
+                  className="absolute right-0 mt-1 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700 py-1"
                   onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to parent
                 >
                   {/* Current Step Context */}
@@ -572,9 +639,9 @@ const StepPanel = ({
                         disabled={parent.id === step.parentId}
                       >
                         <MoveDown className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <div className="truncate">
+                        <div className="break-words overflow-hidden">
                           <span>Move under </span>
-                          <span className="font-medium truncate">{parentPath}</span>
+                          <span className="font-medium">{parentPath}</span>
                         </div>
                       </button>
                     );
@@ -644,7 +711,35 @@ const StepPanel = ({
         )}
 
         {/* Render child steps */}
-        {isExpanded && childSteps.map(childStep => renderStep(childStep, level + 1))}
+        {isExpanded && hasChildren && (
+          <Droppable droppableId={step.id} type="CHILD_STEPS">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="space-y-1 mt-1"
+              >
+                {childSteps.map((childStep, index) => (
+                  <Draggable key={childStep.id} draggableId={childStep.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`step-container ${snapshot.isDragging ? 'opacity-75 bg-blue-50 dark:bg-blue-900/20 rounded-md' : ''}`}
+                        style={{
+                          ...provided.draggableProps.style,
+                        }}
+                      >
+                        {renderStep(childStep, level + 1, provided.dragHandleProps)}
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        )}
       </div>
     );
   };
@@ -721,7 +816,35 @@ const StepPanel = ({
                 No steps added yet. Add your first step above.
               </div>
             ) : (
-              rootSteps.map(step => renderStep(step))
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="ROOT" type="ROOT_STEPS">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-2"
+                    >
+                      {rootSteps.map((step, index) => (
+                        <Draggable key={step.id} draggableId={step.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`step-container ${snapshot.isDragging ? 'opacity-75 bg-blue-50 dark:bg-blue-900/20 rounded-md' : ''}`}
+                              style={{
+                                ...provided.draggableProps.style,
+                              }}
+                            >
+                              {renderStep(step, 0, provided.dragHandleProps)}
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
             )}
           </div>
         </div>
