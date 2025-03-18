@@ -598,54 +598,22 @@ const StepPanel = ({
                     Edit Name
                   </button>
                   
-                  <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Move Step
-                  </div>
-                  
                   {/* Move to Root Option */}
                   {step.parentId && (
-                    <button
-                      className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveStepToParent(step.id, null);
-                      }}
-                    >
-                      <ArrowUpToLine className="h-4 w-4 mr-2" />
-                      Move to Root Level
-                    </button>
-                  )}
-                  
-                  {/* Move to Other Parent Options */}
-                  {potentialParents.map(parent => {
-                    // Get parent context path for better clarity
-                    const parentPath = getStepPathContext(parent.id) 
-                      ? `${getStepPathContext(parent.id)} → ${parent.name}`
-                      : parent.name;
-                      
-                    return (
+                    <>
+                      <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
                       <button
-                        key={parent.id}
-                        className={`flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                          parent.id === step.parentId ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (parent.id !== step.parentId) {
-                            moveStepToParent(step.id, parent.id);
-                          }
+                          moveStepToParent(step.id, null);
                         }}
-                        disabled={parent.id === step.parentId}
                       >
-                        <MoveDown className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <div className="break-words overflow-hidden">
-                          <span>Move under </span>
-                          <span className="font-medium">{parentPath}</span>
-                        </div>
+                        <ArrowUpToLine className="h-4 w-4 mr-2" />
+                        Move to Root Level
                       </button>
-                    );
-                  })}
+                    </>
+                  )}
                 </div>
               )}
             </div>
