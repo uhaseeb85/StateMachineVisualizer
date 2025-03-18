@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,13 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
-  FolderPlus
+  FolderPlus,
+  Edit,
+  Save,
+  MoveUp,
+  MoveDown,
+  ArrowUpToLine,
+  MoreVertical
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +40,23 @@ const StepPanel = ({
   const [expandedSteps, setExpandedSteps] = useState({});
   const [addingSubStepFor, setAddingSubStepFor] = useState(null);
   const [subStepName, setSubStepName] = useState('');
+  const [editingStepId, setEditingStepId] = useState(null);
+  const [editedStepName, setEditedStepName] = useState('');
+  const editInputRef = useRef(null);
+  // Add state for the step actions menu
+  const [openActionsMenuId, setOpenActionsMenuId] = useState(null);
+
+  // Helper function to check if a step is a descendant of another
+  const isDescendant = (possibleDescendantId, ancestorId) => {
+    if (!possibleDescendantId) return false;
+    
+    let current = steps.find(s => s.id === possibleDescendantId);
+    while (current && current.parentId) {
+      if (current.parentId === ancestorId) return true;
+      current = steps.find(s => s.id === current.parentId);
+    }
+    return false;
+  };
 
   // Function to get child steps for a parent
   const getChildSteps = (parentId) => {
@@ -145,6 +168,8 @@ const StepPanel = ({
       // Normal step selection
       console.log("Normal step selection");
       setSelectedStep(step);
+      // Close any open actions menu when selecting a step
+      setOpenActionsMenuId(null);
     }
   };
 
@@ -230,6 +255,82 @@ const StepPanel = ({
     setSelectedStep(updatedStep);
   };
 
+  // Function to start editing a step name
+  const startEditingStep = (stepId, initialName) => {
+    setEditingStepId(stepId);
+    setEditedStepName(initialName);
+    // Close the actions menu when starting to edit
+    setOpenActionsMenuId(null);
+    // Focus the input after it renders
+    setTimeout(() => {
+      if (editInputRef.current) {
+        editInputRef.current.focus();
+      }
+    }, 50);
+  };
+
+  // Function to save the edited step name
+  const saveEditedStepName = (stepId) => {
+    if (editedStepName.trim()) {
+      handleUpdateStep(stepId, { name: editedStepName.trim() });
+      setEditingStepId(null);
+      toast.success('Step name updated successfully');
+    } else {
+      toast.error('Step name cannot be empty');
+    }
+  };
+
+  // Function to cancel editing
+  const cancelEditing = () => {
+    setEditingStepId(null);
+  };
+
+  // Function to move a step to a new parent
+  const moveStepToParent = (stepId, newParentId) => {
+    // Handle moving to root by passing null as newParentId
+    console.log(`Moving step ${stepId} to parent ${newParentId || 'root'}`);
+    
+    // Don't allow a step to become its own parent
+    if (stepId === newParentId) {
+      toast.error("A step cannot be its own parent");
+      return;
+    }
+    
+    // Check if new parent is actually a descendant of this step
+    if (isDescendant(newParentId, stepId)) {
+      toast.error("Cannot move a step under its own descendant");
+      return;
+    }
+    
+    // Move the step by updating its parentId
+    handleUpdateStep(stepId, { parentId: newParentId });
+    
+    // Auto-expand the new parent if one was specified
+    if (newParentId) {
+      setExpandedSteps(prev => ({
+        ...prev,
+        [newParentId]: true
+      }));
+    }
+    
+    toast.success(newParentId 
+      ? `Step moved successfully to parent "${steps.find(s => s.id === newParentId)?.name}"` 
+      : 'Step moved to root level');
+    
+    // Close the actions menu after moving the step
+    setOpenActionsMenuId(null);
+  };
+
+  // Toggle the actions menu for a step
+  const toggleActionsMenu = (e, stepId) => {
+    e.stopPropagation();
+    if (openActionsMenuId === stepId) {
+      setOpenActionsMenuId(null);
+    } else {
+      setOpenActionsMenuId(stepId);
+    }
+  };
+
   const renderStep = (step, level = 0) => {
     const childSteps = getChildSteps(step.id);
     const hasChildren = childSteps.length > 0;
@@ -255,6 +356,49 @@ const StepPanel = ({
           : 'hover:ring-2 hover:ring-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer';
       }
     }
+
+    // Check if this step is currently being edited
+    const isEditing = editingStepId === step.id;
+
+    // Check if actions menu is open for this step
+    const isActionsMenuOpen = openActionsMenuId === step.id;
+
+    // Generate potential parent options for the move menu
+    // (all steps except this one and its descendants)
+    const potentialParents = steps.filter(s => 
+      s.id !== step.id && !isDescendant(s.id, step.id)
+    );
+
+    // Find parent step data for context display
+    const parentStep = step.parentId 
+      ? steps.find(s => s.id === step.parentId) 
+      : null;
+      
+    // Get step context for display in hover or menu
+    const getStepPathContext = (stepId) => {
+      const step = steps.find(s => s.id === stepId);
+      if (!step) return "";
+      
+      let path = [];
+      let current = step;
+      
+      // Build ancestry path but limit to prevent infinite loops
+      let iterations = 0; 
+      const MAX_ITERATIONS = 10;
+      
+      while (current && current.parentId && iterations < MAX_ITERATIONS) {
+        const parent = steps.find(s => s.id === current.parentId);
+        if (parent) {
+          path.unshift(parent.name);
+          current = parent;
+        } else {
+          break;
+        }
+        iterations++;
+      }
+      
+      return path.length > 0 ? path.join(" → ") : "";
+    };
 
     return (
       <div key={step.id} className="step-container">
@@ -299,10 +443,146 @@ const StepPanel = ({
             className="flex-1 flex items-center gap-2"
           >
             <Grip className="h-4 w-4 text-muted-foreground cursor-move" />
-            <span className="font-medium">{step.name}</span>
+            
+            {/* Editable Name Field */}
+            {isEditing ? (
+              <div className="flex-1 flex gap-1">
+                <Input
+                  ref={editInputRef}
+                  value={editedStepName}
+                  onChange={(e) => setEditedStepName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveEditedStepName(step.id)}
+                  className="h-7 py-1 min-w-0"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  className="h-7 w-7 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => saveEditedStepName(step.id)}
+                  title="Save name"
+                >
+                  <Save className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => cancelEditing()}
+                  title="Cancel"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="min-w-0 overflow-hidden">
+                <span className="font-medium">{step.name}</span>
+                {parentStep && (
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 truncate">
+                    (in {getStepPathContext(step.id)})
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Actions Menu Button */}
+            <div className="relative">
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => toggleActionsMenu(e, step.id)}
+                title="Step actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+              
+              {/* Actions Menu */}
+              {isActionsMenuOpen && (
+                <div 
+                  className="absolute right-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700 py-1"
+                  onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to parent
+                >
+                  {/* Current Step Context */}
+                  {parentStep && (
+                    <div className="px-3 py-2 text-xs bg-gray-50 dark:bg-gray-700 border-l-4 border-blue-500 mb-1">
+                      <span className="font-medium text-gray-800 dark:text-gray-200">Current path:</span>
+                      <div className="text-gray-700 dark:text-gray-300 mt-1 break-words">
+                        {getStepPathContext(step.id)} → <span className="font-semibold">{step.name}</span>
+                      </div>
+                    </div>
+                  )}
+                
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Step Actions
+                  </div>
+                  <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
+                  
+                  {/* Edit Name Option */}
+                  <button
+                    className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditingStep(step.id, step.name);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Name
+                  </button>
+                  
+                  <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Move Step
+                  </div>
+                  
+                  {/* Move to Root Option */}
+                  {step.parentId && (
+                    <button
+                      className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveStepToParent(step.id, null);
+                      }}
+                    >
+                      <ArrowUpToLine className="h-4 w-4 mr-2" />
+                      Move to Root Level
+                    </button>
+                  )}
+                  
+                  {/* Move to Other Parent Options */}
+                  {potentialParents.map(parent => {
+                    // Get parent context path for better clarity
+                    const parentPath = getStepPathContext(parent.id) 
+                      ? `${getStepPathContext(parent.id)} → ${parent.name}`
+                      : parent.name;
+                      
+                    return (
+                      <button
+                        key={parent.id}
+                        className={`flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                          parent.id === step.parentId ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (parent.id !== step.parentId) {
+                            moveStepToParent(step.id, parent.id);
+                          }
+                        }}
+                        disabled={parent.id === step.parentId}
+                      >
+                        <MoveDown className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <div className="truncate">
+                          <span>Move under </span>
+                          <span className="font-medium truncate">{parentPath}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
             <Button
               size="sm"
               className="h-7 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white"
