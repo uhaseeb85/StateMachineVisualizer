@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,47 @@ const StepPanel = ({
   const editInputRef = useRef(null);
   // Add state for the step actions menu
   const [openActionsMenuId, setOpenActionsMenuId] = useState(null);
+  // Add state for panel resizing
+  const [leftPanelWidth, setLeftPanelWidth] = useState(33); // as percentage
+  const [isDraggingDivider, setIsDraggingDivider] = useState(false);
+  const containerRef = useRef(null);
+  
+  // Handle mouse down on divider
+  const handleDividerMouseDown = (e) => {
+    e.preventDefault();
+    setIsDraggingDivider(true);
+  };
+  
+  // Handle mouse move for resizing
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingDivider || !containerRef.current) return;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const mouseX = e.clientX - containerRect.left;
+      
+      // Calculate new width as percentage (with min/max constraints)
+      let newWidthPercentage = (mouseX / containerWidth) * 100;
+      newWidthPercentage = Math.max(20, Math.min(newWidthPercentage, 80)); // Constrain between 20% and 80%
+      
+      setLeftPanelWidth(newWidthPercentage);
+    };
+    
+    const handleMouseUp = () => {
+      setIsDraggingDivider(false);
+    };
+    
+    if (isDraggingDivider) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingDivider]);
 
   // Helper function to check if a step is a descendant of another
   const isDescendant = (possibleDescendantId, ancestorId) => {
@@ -543,11 +584,6 @@ const StepPanel = ({
             ) : (
               <div className="min-w-0 overflow-hidden">
                 <span className="font-medium">{step.name}</span>
-                {parentStep && (
-                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 truncate">
-                    (in {getStepPathContext(step.id)})
-                  </span>
-                )}
               </div>
             )}
           </div>
@@ -716,9 +752,12 @@ const StepPanel = ({
   const rootSteps = steps.filter(step => !step.parentId);
 
   return (
-    <div className="flex h-[calc(100vh-16rem)] gap-8 p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
+    <div 
+      ref={containerRef}
+      className="flex h-[calc(100vh-16rem)] p-6 bg-gray-50 dark:bg-gray-900 rounded-lg relative"
+    >
       {/* Left Panel - Steps List */}
-      <div className="w-1/3 border rounded-xl p-6 bg-background overflow-y-auto">
+      <div className="border rounded-xl p-6 bg-background overflow-y-auto" style={{ width: `${leftPanelWidth}%` }}>
         <div className="space-y-4">
           {/* Add root step input */}
           <div className="flex gap-4 sticky top-0 bg-background pb-4 border-b">
@@ -817,9 +856,22 @@ const StepPanel = ({
           </div>
         </div>
       </div>
+      
+      {/* Resizable Divider */}
+      <div 
+        className={`w-2 cursor-col-resize mx-2 relative ${isDraggingDivider ? 'z-10' : ''}`}
+        onMouseDown={handleDividerMouseDown}
+      >
+        <div className={`absolute inset-0 flex items-center justify-center ${isDraggingDivider ? 'opacity-100' : 'opacity-60'}`}>
+          <div className={`h-24 w-1 ${isDraggingDivider ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'} rounded-full transition-colors`}></div>
+        </div>
+        {isDraggingDivider && (
+          <div className="fixed inset-0 bg-transparent cursor-col-resize z-50" />
+        )}
+      </div>
 
       {/* Right Panel - Step Details */}
-      <div className="w-2/3 border rounded-xl p-6 bg-background overflow-y-auto">
+      <div className="border rounded-xl p-6 bg-background overflow-y-auto" style={{ width: `${100 - leftPanelWidth - 2}%` }}>
         {selectedStep ? (
           <div className="space-y-6">
             <div className="flex justify-between items-start">
