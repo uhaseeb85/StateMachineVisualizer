@@ -6,7 +6,7 @@
  * - Theme toggling (dark/light mode)
  * - Getting started tour
  * - Save/Export/Import operations
- * - Tool access (Pathfinder, Simulation, Log Analysis)
+ * - Tool access (Pathfinder, Simulation)
  * - Clear data functionality
  * 
  * The component is designed to be responsive and provides visual feedback
@@ -17,7 +17,6 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2 } from 'lucide-react';
-import LogAnalyzer from './LogAnalyzer';
 
 const TopActionBar = ({ 
   isDarkMode, 
@@ -31,8 +30,7 @@ const TopActionBar = ({
   onChangeMode,
   onClearData
 }) => {
-  // State for controlling the LogAnalyzer modal visibility
-  const [showLogAnalyzer, setShowLogAnalyzer] = useState(false);
+
   // State for controlling the confirmation dialog
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
 
@@ -110,22 +108,7 @@ const TopActionBar = ({
               Save
             </Button>
 
-            {/* Clear Data Button */}
-            <Button 
-              onClick={handleClearDataClick}
-              title="Clear all states and rules"
-              className="clear-data-button bg-gray-900 text-white text-sm
-                       dark:bg-gray-800 dark:text-gray-100
-                       hover:bg-red-600 hover:scale-105
-                       dark:hover:bg-red-600
-                       transform transition-all duration-200 ease-in-out
-                       border border-gray-800 dark:border-gray-700
-                       hover:border-red-500 dark:hover:border-red-500
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear Data
-            </Button>
+         
 
             {/* Import/Export Section */}
             <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
@@ -178,21 +161,23 @@ const TopActionBar = ({
 
         {/* Right Section: Tools and Analysis */}
         <div className="flex items-center gap-4">
-          {/* Log Analysis Button */}
-          <Button
-            onClick={() => setShowLogAnalyzer(true)}
-            className="log-analyzer-button bg-gray-900 text-white text-sm
-                     dark:bg-gray-800 dark:text-gray-100
-                     hover:bg-blue-600 hover:scale-105
-                     dark:hover:bg-blue-600
-                     transform transition-all duration-200 ease-in-out
-                     border border-gray-800 dark:border-gray-700
-                     hover:border-blue-500 dark:hover:border-blue-500
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
-          >
-            <Search className="w-4 h-4 mr-2" />
-            Analyze Logs
-          </Button>
+
+             {/* Clear Data Button */}
+             <Button 
+              onClick={handleClearDataClick}
+              title="Clear all states and rules"
+              className="clear-data-button bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-red-600 hover:scale-105
+                       dark:hover:bg-red-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-red-500 dark:hover:border-red-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Data
+            </Button>
 
           {/* Visual Separator */}
           <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
@@ -245,13 +230,6 @@ const TopActionBar = ({
           </div>
         </div>
       </div>
-
-      {/* Log Analyzer Modal */}
-      {showLogAnalyzer && (
-        <LogAnalyzer
-          onClose={() => setShowLogAnalyzer(false)}
-        />
-      )}
 
       {/* Clear Data Confirmation Dialog */}
       {showClearConfirmation && (
