@@ -66,7 +66,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     setChangeLog,
     addToChangeLog,
     handleDeleteState,
-    editState
+    editState,
+    clearData
   } = useStateMachine();
 
   // Simulation functionality from custom hook
@@ -285,6 +286,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           startTour={startTour}
           onExportCSV={handleExportCSV}
           onChangeMode={onChangeMode}
+          onClearData={clearData}
         />
 
         {/* Main Panels */}

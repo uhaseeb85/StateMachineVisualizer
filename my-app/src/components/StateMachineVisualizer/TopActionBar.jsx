@@ -7,6 +7,7 @@
  * - Getting started tour
  * - Save/Export/Import operations
  * - Tool access (Pathfinder, Simulation, Log Analysis)
+ * - Clear data functionality
  * 
  * The component is designed to be responsive and provides visual feedback
  * through hover states and transitions.
@@ -15,7 +16,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera } from 'lucide-react';
+import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2 } from 'lucide-react';
 import LogAnalyzer from './LogAnalyzer';
 
 const TopActionBar = ({ 
@@ -27,10 +28,24 @@ const TopActionBar = ({
   onFindPaths,
   startTour,
   onExportCSV,
-  onChangeMode
+  onChangeMode,
+  onClearData
 }) => {
   // State for controlling the LogAnalyzer modal visibility
   const [showLogAnalyzer, setShowLogAnalyzer] = useState(false);
+  // State for controlling the confirmation dialog
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+
+  // Handle clear data button click
+  const handleClearDataClick = () => {
+    setShowClearConfirmation(true);
+  };
+
+  // Handle confirmation dialog
+  const handleConfirmClear = () => {
+    onClearData();
+    setShowClearConfirmation(false);
+  };
 
   return (
     <div className="mb-8 p-6 
@@ -93,6 +108,23 @@ const TopActionBar = ({
             >
               <Save className="w-4 h-4" />
               Save
+            </Button>
+
+            {/* Clear Data Button */}
+            <Button 
+              onClick={handleClearDataClick}
+              title="Clear all states and rules"
+              className="clear-data-button bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-red-600 hover:scale-105
+                       dark:hover:bg-red-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-red-500 dark:hover:border-red-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Data
             </Button>
 
             {/* Import/Export Section */}
@@ -220,6 +252,36 @@ const TopActionBar = ({
           onClose={() => setShowLogAnalyzer(false)}
         />
       )}
+
+      {/* Clear Data Confirmation Dialog */}
+      {showClearConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96 shadow-xl">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Clear All Data
+            </h2>
+            
+            <p className="mb-6 text-gray-700 dark:text-gray-300">
+              Are you sure you want to clear all states and rules? This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end space-x-3">
+              <Button
+                onClick={() => setShowClearConfirmation(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmClear}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Clear All Data
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
@@ -233,6 +295,7 @@ TopActionBar.propTypes = {
   onSave: PropTypes.func.isRequired,
   onExcelImport: PropTypes.func.isRequired,
   onExportCSV: PropTypes.func.isRequired,
+  onClearData: PropTypes.func.isRequired,
   
   // Tool action props
   onSimulate: PropTypes.func.isRequired,

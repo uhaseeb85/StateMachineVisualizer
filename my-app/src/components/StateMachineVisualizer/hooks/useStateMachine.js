@@ -401,6 +401,23 @@ export default function useStateMachine() {
   };
 
   /**
+   * Clears all states and rules from the state machine
+   * This resets the entire configuration to an empty state
+   */
+  const clearData = () => {
+    // Reset states to empty array
+    setStates([]);
+    // Reset selected state
+    setSelectedState(null);
+    
+    // Clear state machine data from localStorage
+    localStorage.removeItem('ivrFlow');
+    
+    addToChangeLog('Cleared all state machine data');
+    toast.success('State machine data has been cleared');
+  };
+
+  /**
    * Imports rule dictionary from Excel/CSV file
    * Validates required columns and creates rule mappings
    * @param {Event} event - File input change event
@@ -502,6 +519,7 @@ export default function useStateMachine() {
     handleImport,
     handleExcelImport,
     exportConfiguration,
-    handleRuleDictionaryImport
+    handleRuleDictionaryImport,
+    clearData
   };
 }
