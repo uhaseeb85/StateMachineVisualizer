@@ -201,6 +201,49 @@ export default function useStateMachine() {
   };
 
   /**
+   * Edits a state's name
+   * @param {string} stateId - ID of the state to edit
+   * @param {string} newName - New name for the state
+   */
+  const editState = (stateId, newName) => {
+    // Find the state to edit
+    const stateToEdit = states.find(s => s.id === stateId);
+    if (!stateToEdit) return;
+
+    const oldName = stateToEdit.name;
+    
+    // Update the state name
+    setStates(currentStates => 
+      currentStates.map(state => 
+        state.id === stateId 
+          ? { ...state, name: newName } 
+          : state
+      )
+    );
+    
+    addToChangeLog(`Renamed state: ${oldName} → ${newName}`);
+    
+    // Also update any references in the state dictionary if it exists
+    const stateDictionary = localStorage.getItem('stateDictionary');
+    if (stateDictionary) {
+      try {
+        const dictionary = JSON.parse(stateDictionary);
+        if (dictionary[oldName]) {
+          // Create a new dictionary with the updated key
+          const newDictionary = { ...dictionary };
+          newDictionary[newName] = newDictionary[oldName];
+          delete newDictionary[oldName];
+          
+          // Save back to localStorage
+          localStorage.setItem('stateDictionary', JSON.stringify(newDictionary));
+        }
+      } catch (error) {
+        console.error('Error updating state dictionary:', error);
+      }
+    }
+  };
+
+  /**
    * Imports state machine configuration from a JSON file
    * @param {Event} event - File input change event
    */
@@ -455,6 +498,7 @@ export default function useStateMachine() {
     saveFlow,
     addState,
     handleDeleteState,
+    editState,
     handleImport,
     handleExcelImport,
     exportConfiguration,

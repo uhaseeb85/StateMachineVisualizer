@@ -65,7 +65,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     changeLog,
     setChangeLog,
     addToChangeLog,
-    handleDeleteState
+    handleDeleteState,
+    editState
   } = useStateMachine();
 
   // Simulation functionality from custom hook
@@ -294,6 +295,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             onStateSelect={handleStateSelect}
             onStateAdd={addState}
             onStateDelete={handleDeleteState}
+            onStateEdit={editState}
             loadedStateDictionary={loadedStateDictionary}
             setLoadedStateDictionary={setLoadedStateDictionary}
           />

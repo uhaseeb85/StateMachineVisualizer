@@ -6,6 +6,7 @@
  * - Adding new states
  * - Deleting existing states
  * - Selecting states for editing
+ * - Editing state names
  * - Importing state descriptions from Excel
  * - Displaying state metadata (rule count, descriptions)
  * 
@@ -17,7 +18,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style';
 
@@ -27,12 +28,15 @@ const StatePanel = ({
   onStateSelect, 
   onStateAdd, 
   onStateDelete,
+  onStateEdit,
   loadedStateDictionary,
   setLoadedStateDictionary
 }) => {
   // Local state management
   const [newStateName, setNewStateName] = useState('');
   const [selectedStateId, setSelectedStateId] = useState(null);
+  const [editingStateId, setEditingStateId] = useState(null);
+  const [editingStateName, setEditingStateName] = useState('');
 
   /**
    * Handles the addition of a new state
@@ -54,6 +58,61 @@ const StatePanel = ({
       onStateAdd(trimmedName);
       setNewStateName('');
     }
+  };
+
+  /**
+   * Handles starting the state edit mode
+   * @param {Event} e - Click event 
+   * @param {string} stateId - ID of the state to edit
+   * @param {string} stateName - Current name of the state
+   */
+  const handleEditStart = (e, stateId, stateName) => {
+    e.stopPropagation();
+    setEditingStateId(stateId);
+    setEditingStateName(stateName);
+  };
+
+  /**
+   * Handles saving the edited state name
+   * Validates for uniqueness and non-empty values
+   */
+  const handleEditSave = () => {
+    const trimmedName = editingStateName.trim();
+    
+    if (!trimmedName) {
+      toast.error('State name cannot be empty');
+      return;
+    }
+
+    // Check if the new state name already exists (case-insensitive) among other states
+    const stateExists = states.some(
+      state => state.id !== editingStateId && 
+              state.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (stateExists) {
+      toast.error(`State "${trimmedName}" already exists!`);
+      return;
+    }
+
+    // Call the parent component's handler to update the state
+    onStateEdit(editingStateId, trimmedName);
+    
+    // Reset editing state
+    setEditingStateId(null);
+    setEditingStateName('');
+    
+    // Show success message
+    toast.success(`State renamed to "${trimmedName}"`);
+  };
+
+  /**
+   * Cancels the current edit operation
+   */
+  const handleEditCancel = (e) => {
+    if (e) e.stopPropagation();
+    setEditingStateId(null);
+    setEditingStateName('');
   };
 
   /**
@@ -130,11 +189,20 @@ const StatePanel = ({
 
   /**
    * Handles state selection and description toggle
+   * Cancels any ongoing edit operation
    * @param {string} stateId - ID of the selected state
    */
   const handleStateClick = (stateId) => {
-    onStateSelect(stateId);
-    setSelectedStateId(selectedStateId === stateId ? null : stateId);
+    // Only select the state if we're not in edit mode for this state
+    if (editingStateId !== stateId) {
+      onStateSelect(stateId);
+      setSelectedStateId(selectedStateId === stateId ? null : stateId);
+      // Cancel any ongoing edits on other states
+      if (editingStateId) {
+        setEditingStateId(null);
+        setEditingStateName('');
+      }
+    }
   };
 
   return (
@@ -197,49 +265,100 @@ const StatePanel = ({
       <div className="states-list space-y-1.5">
         {states.map(state => (
           <div key={state.id} className="flex flex-col gap-1">
-            {/* State Item */}
-            <div 
-              data-state-id={state.id}
-              onClick={() => handleStateClick(state.id)}
-              className={`
-                h-7 rounded-lg border transition-all duration-200 text-sm
-                ${selectedState === state.id 
-                  ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white transform scale-105 shadow-lg'
-                  : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hover:scale-105 hover:shadow-md'
-                }
-                cursor-pointer flex justify-between items-center px-2
-                transform transition-all duration-200 group
-              `}
-            >
-              <span>{state.name}</span>
-              <div className="flex items-center gap-2">
-                {/* Rule Count Badge */}
-                <span className={`
-                  text-xs px-1.5 rounded-full
-                  ${selectedState === state.id
-                    ? 'bg-white/20 text-white'
-                    : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                  }
-                `}>
-                  {state.rules?.length || 0}
-                </span>
-                {/* Delete Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStateDelete(state.id);
+            {/* State Item - Edit Mode or View Mode */}
+            {editingStateId === state.id ? (
+              // Edit Mode
+              <div 
+                className="h-9 rounded-lg border border-blue-500 bg-blue-50 dark:bg-blue-900/30
+                        text-sm flex items-center px-2 py-1 transform scale-105 shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Input
+                  type="text"
+                  value={editingStateName}
+                  onChange={(e) => setEditingStateName(e.target.value)}
+                  className="flex-1 h-6 min-h-0 py-0 text-sm bg-white/70 dark:bg-gray-700/70"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEditSave();
+                    if (e.key === 'Escape') handleEditCancel();
                   }}
-                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+                />
+                <div className="flex items-center gap-1 ml-2">
+                  <Button
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleEditSave}
+                    className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/30"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEditCancel}
+                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              // View Mode
+              <div 
+                data-state-id={state.id}
+                onClick={() => handleStateClick(state.id)}
+                className={`
+                  h-7 rounded-lg border transition-all duration-200 text-sm
+                  ${selectedState === state.id 
+                    ? 'border-blue-500 bg-blue-600 text-white dark:bg-blue-600 dark:text-white transform scale-105 shadow-lg'
+                    : 'border-gray-200 bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 hover:scale-105 hover:shadow-md'
+                  }
+                  cursor-pointer flex justify-between items-center px-2
+                  transform transition-all duration-200 group
+                `}
+              >
+                <span>{state.name}</span>
+                <div className="flex items-center gap-2">
+                  {/* Rule Count Badge */}
+                  <span className={`
+                    text-xs px-1.5 rounded-full
+                    ${selectedState === state.id
+                      ? 'bg-white/20 text-white'
+                      : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                    }
+                  `}>
+                    {state.rules?.length || 0}
+                  </span>
+                  
+                  {/* Edit and Delete Buttons */}
+                  <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleEditStart(e, state.id, state.name)}
+                      className="h-6 w-6 p-0 mr-1"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStateDelete(state.id);
+                      }}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             
-            {/* State Description (shown when state is selected) */}
-            {selectedStateId === state.id && loadedStateDictionary?.[state.name] && (
+            {/* State Description (shown when state is selected and not editing) */}
+            {selectedStateId === state.id && editingStateId !== state.id && loadedStateDictionary?.[state.name] && (
               <div className="ml-2 p-1 bg-blue-50 dark:bg-blue-900/20 rounded-md
                             text-sm text-blue-700 dark:text-blue-200 animate-fadeIn
                             border border-blue-100 dark:border-blue-800/30
@@ -267,6 +386,7 @@ StatePanel.propTypes = {
   onStateSelect: PropTypes.func.isRequired,
   onStateAdd: PropTypes.func.isRequired,
   onStateDelete: PropTypes.func.isRequired,
+  onStateEdit: PropTypes.func.isRequired,
   // State dictionary for descriptions
   loadedStateDictionary: PropTypes.object,
   setLoadedStateDictionary: PropTypes.func.isRequired
