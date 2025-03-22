@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle } from "lucide-react";
+import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { sortRulesByPriority } from "./utils";
 
@@ -76,7 +76,7 @@ const RulesPanel = ({
   };
 
   /**
-   * Adds a new rule to the current state
+   * Handles the addition of a new rule
    */
   const addRule = () => {
     if (!newRuleCondition.trim() || !newRuleNextState) {
@@ -88,26 +88,13 @@ const RulesPanel = ({
       if (state.id === selectedState) {
         // Check if rule with same condition already exists
         const existingRuleIndex = state.rules.findIndex(
-          rule => rule.condition.trim() === newRuleCondition.trim()
+          rule => rule.condition.trim().toLowerCase() === newRuleCondition.trim().toLowerCase()
         );
         
         if (existingRuleIndex !== -1) {
-          // Update existing rule's target state
-          const updatedRules = [...state.rules];
-          const oldRule = { ...updatedRules[existingRuleIndex] };
-          updatedRules[existingRuleIndex] = {
-            ...updatedRules[existingRuleIndex],
-            nextState: newRuleNextState,
-            priority: newRulePriority,
-            operation: newRuleOperation
-          };
-          
-          addToChangeLog(`Updated rule in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${oldRule.priority !== undefined && oldRule.priority !== null ? oldRule.priority : 50} → ${newRulePriority})`);
-          
-          return {
-            ...state,
-            rules: sortRulesByPriority(updatedRules)
-          };
+          // Rule with this name already exists
+          toast.error(`Rule "${newRuleCondition.trim()}" already exists for this state. Please use a different name.`);
+          return state; // Return unchanged state
         } else {
           // Add new rule
           addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
@@ -129,11 +116,14 @@ const RulesPanel = ({
       return state;
     });
 
-    setStates(updatedStates);
-    setNewRuleCondition("");
-    setNewRuleNextState("");
-    setNewRulePriority(50);
-    setNewRuleOperation("");
+    // If the state was actually updated (no duplicates found)
+    if (updatedStates !== states) {
+      setStates(updatedStates);
+      setNewRuleCondition("");
+      setNewRuleNextState("");
+      setNewRulePriority(50);
+      setNewRuleOperation("");
+    }
   };
 
   /**
@@ -177,7 +167,7 @@ const RulesPanel = ({
   };
 
   /**
-   * Initiates rule editing mode
+   * Handles rule editing mode
    * @param {string} ruleId - ID of the rule to edit
    */
   const handleEditRule = (ruleId) => {
@@ -187,6 +177,55 @@ const RulesPanel = ({
     setNewRuleNextState(rule.nextState);
     setEditingRulePriority(rule.priority || 50);
     setEditingRuleOperation(rule.operation || "");
+  };
+
+  /**
+   * Copies a rule to create a new one
+   * @param {string} ruleId - ID of the rule to copy
+   * @param {Event} e - Click event
+   */
+  const handleCopyRule = (ruleId, e) => {
+    e.stopPropagation();
+    
+    const ruleToCopy = currentState.rules.find(r => r.id === ruleId);
+    if (!ruleToCopy) return;
+    
+    // Prefill the "Add Rule" form with copied values
+    setNewRuleCondition(`Copy of ${ruleToCopy.condition}`);
+    setNewRuleNextState(ruleToCopy.nextState);
+    setNewRulePriority(ruleToCopy.priority || 50);
+    setNewRuleOperation(ruleToCopy.operation || "");
+    
+    // Focus on the condition input after a short delay to allow rendering
+    setTimeout(() => {
+      const conditionInput = document.getElementById('new-rule-condition');
+      if (conditionInput) {
+        conditionInput.focus();
+        // Select the "Copy of " prefix to make it easy to edit
+        conditionInput.setSelectionRange(0, 8);
+      }
+    }, 100);
+    
+    toast.info('Edit the copied rule details and click "Add Rule" to save');
+  };
+
+  /**
+   * Gets descriptions for individual parts of a compound rule
+   * Handles negated conditions (with ! prefix)
+   * @param {string} condition - Rule condition to get descriptions for
+   * @returns {Array} Array of rule parts with their descriptions
+   */
+  const getRuleDescriptions = (condition) => {
+    if (!condition) return [];
+    
+    // Split the condition by '+' and trim each part
+    const individualRules = condition.split('+').map(rule => rule.trim());
+    
+    // Get descriptions for each rule, removing '!' prefix if present
+    return individualRules.map(rule => ({
+      rule: rule,  // Keep original rule with ! for display
+      description: loadedDictionary?.[rule.replace(/^!/, '')] // Remove ! prefix when searching dictionary
+    })).filter(item => item.description);
   };
 
   /**
@@ -200,6 +239,17 @@ const RulesPanel = ({
 
     const updatedStates = states.map(state => {
       if (state.id === selectedState) {
+        // Check if another rule has the same condition name (excluding the rule being edited)
+        const duplicateRule = state.rules.find(rule => 
+          rule.id !== editingRuleId && 
+          rule.condition.trim().toLowerCase() === editingRuleCondition.trim().toLowerCase()
+        );
+        
+        if (duplicateRule) {
+          toast.error(`Rule "${editingRuleCondition.trim()}" already exists for this state. Please use a different name.`);
+          return state; // Return unchanged state
+        }
+        
         const updatedRules = state.rules.map(rule => {
           if (rule.id === editingRuleId) {
             const oldRule = { ...rule };
@@ -228,40 +278,24 @@ const RulesPanel = ({
       return state;
     });
 
-    setStates(updatedStates);
-    setEditingRuleId(null);
-    setEditingRuleCondition("");
-    setNewRuleNextState("");
-    setEditingRulePriority(50);
-    setEditingRuleOperation("");
+    // If the state was actually updated (no duplicates found)
+    if (updatedStates !== states) {
+      setStates(updatedStates);
+      setEditingRuleId(null);
+      setEditingRuleCondition("");
+      setNewRuleNextState("");
+      setEditingRulePriority(50);
+      setEditingRuleOperation("");
+    }
   };
 
   /**
-   * Cancels rule editing mode
+   * Handles canceling rule editing mode
    */
   const handleCancelEdit = () => {
     setEditingRuleId(null);
     setEditingRuleCondition("");
     setEditingRuleOperation("");
-  };
-
-  /**
-   * Gets descriptions for individual parts of a compound rule
-   * Handles negated conditions (with ! prefix)
-   * @param {string} condition - Rule condition to get descriptions for
-   * @returns {Array} Array of rule parts with their descriptions
-   */
-  const getRuleDescriptions = (condition) => {
-    if (!condition) return [];
-    
-    // Split the condition by '+' and trim each part
-    const individualRules = condition.split('+').map(rule => rule.trim());
-    
-    // Get descriptions for each rule, removing '!' prefix if present
-    return individualRules.map(rule => ({
-      rule: rule,  // Keep original rule with ! for display
-      description: loadedDictionary?.[rule.replace(/^!/, '')] // Remove ! prefix when searching dictionary
-    })).filter(item => item.description);
   };
 
   /**
@@ -412,6 +446,7 @@ const RulesPanel = ({
               Condition
             </label>
             <Input
+              id="new-rule-condition"
               value={newRuleCondition}
               onChange={(e) => setNewRuleCondition(e.target.value)}
               placeholder="Enter rule condition"
@@ -636,7 +671,7 @@ const RulesPanel = ({
                         size="sm"
                         onClick={saveEditedRule}
                         className="h-6 w-6 p-0 text-green-500 hover:text-green-700
-                                 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                hover:bg-green-50 dark:hover:bg-green-900/20"
                       >
                         <Check className="w-3 h-3" />
                       </Button>
@@ -645,34 +680,49 @@ const RulesPanel = ({
                         size="sm"
                         onClick={handleCancelEdit}
                         className="h-6 w-6 p-0 text-red-500 hover:text-red-700
-                                 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
                         <X className="w-3 h-3" />
                       </Button>
                     </>
                   ) : (
                     <>
+                      {/* Copy Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleCopyRule(rule.id, e)}
+                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
+                                hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                                group-hover:opacity-100 transition-opacity"
+                        title="Copy this rule"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                      {/* Insert Button */}
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleInsertBefore(rule.id)}
                         className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
-                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
-                                 group-hover:opacity-100 transition-opacity"
+                                hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                                group-hover:opacity-100 transition-opacity"
                         title="Insert rule before this one"
                       >
                         <PlusCircle className="w-3 h-3" />
                       </Button>
+                      {/* Edit Button */}
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEditRule(rule.id)}
                         className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700
-                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
-                                 group-hover:opacity-100 transition-opacity"
+                                hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 
+                                group-hover:opacity-100 transition-opacity"
                       >
                         <Edit2 className="w-3 h-3" />
                       </Button>
+                      {/* Delete Button */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -681,8 +731,8 @@ const RulesPanel = ({
                           deleteRule(rule.id);
                         }}
                         className="h-6 w-6 p-0 text-red-500 hover:text-red-700
-                                 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 
-                                 group-hover:opacity-100 transition-opacity"
+                                hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 
+                                group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>
