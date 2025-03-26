@@ -13,6 +13,7 @@ import ReactFlow, {
   Panel,
 } from 'reactflow';
 import dagre from '@dagrejs/dagre';
+import html2canvas from 'html2canvas';
 import 'reactflow/dist/style.css';
 
 const nodeWidth = 180;
@@ -64,33 +65,34 @@ const FlowDiagramContent = ({
 
   // Handle export
   const onExport = useCallback(() => {
-    const downloadImage = (dataUrl) => {
-      const a = document.createElement('a');
-      a.setAttribute('download', `flow_diagram_${rootElement?.name || 'export'}.png`);
-      a.setAttribute('href', dataUrl);
-      a.click();
-    };
-
     const reactFlowContainer = document.querySelector('.react-flow');
-    if (reactFlowContainer) {
-      // Hide controls and minimap before taking screenshot
-      const controls = reactFlowContainer.querySelector('.react-flow__controls');
-      const minimap = reactFlowContainer.querySelector('.react-flow__minimap');
-      const panel = reactFlowContainer.querySelector('.react-flow__panel');
-      if (controls) controls.style.display = 'none';
-      if (minimap) minimap.style.display = 'none';
-      if (panel) panel.style.display = 'none';
+    if (!reactFlowContainer) return;
 
-      // Take screenshot
-      const dataUrl = reactFlowContainer.toDataURL('image/png', 1.0);
+    // Hide controls and minimap before taking screenshot
+    const controls = reactFlowContainer.querySelector('.react-flow__controls');
+    const minimap = reactFlowContainer.querySelector('.react-flow__minimap');
+    const panel = reactFlowContainer.querySelector('.react-flow__panel');
+    if (controls) controls.style.display = 'none';
+    if (minimap) minimap.style.display = 'none';
+    if (panel) panel.style.display = 'none';
 
+    // Take screenshot using html2canvas
+    html2canvas(reactFlowContainer, {
+      backgroundColor: null,
+      scale: 2, // Higher quality
+    }).then((canvas) => {
       // Restore controls and minimap
       if (controls) controls.style.display = '';
       if (minimap) minimap.style.display = '';
       if (panel) panel.style.display = '';
 
-      downloadImage(dataUrl);
-    }
+      // Create download link
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.setAttribute('download', `flow_diagram_${rootElement?.name || 'export'}.png`);
+      a.setAttribute('href', dataUrl);
+      a.click();
+    });
   }, [rootElement]);
 
   // Custom node styles based on type
