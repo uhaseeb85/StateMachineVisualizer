@@ -22,7 +22,12 @@ dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 // Helper function for the layout
 const getLayoutedElements = (nodes, edges, direction = 'TB') => {
-  dagreGraph.setGraph({ rankdir: direction });
+  dagreGraph.setGraph({ 
+    rankdir: direction,
+    nodesep: 80, // Increase spacing between nodes horizontally
+    ranksep: 100, // Increase spacing between nodes vertically
+    edgesep: 40, // Increase spacing between edges
+  });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -165,12 +170,25 @@ const FlowDiagramContent = ({
               stroke: conn.type === 'success' ? '#22c55e' : '#ef4444',
               strokeWidth: 2,
             },
+            // Add routing options for better path finding
+            sourceHandle: 'bottom',
+            targetHandle: 'top',
+            // Increase the distance for smoother curves
+            pathOptions: { 
+              offset: 25,
+              borderRadius: 8
+            },
+            // Add margin to avoid overlapping with nodes
+            markerEnd: {
+              type: 'arrow',
+            },
           }));
 
-        // Apply layout
+        // Apply layout with more spacing
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
           flowNodes,
-          flowEdges
+          flowEdges,
+          'TB' // Top to Bottom direction
         );
 
         setNodes(layoutedNodes);
@@ -179,7 +197,7 @@ const FlowDiagramContent = ({
 
         // Fit view after a short delay to ensure rendering is complete
         setTimeout(() => {
-          fitView({ padding: 0.2 });
+          fitView({ padding: 0.5 }); // Increased padding for better spacing
         }, 100);
       } catch (err) {
         console.error('Error generating diagram:', err);
