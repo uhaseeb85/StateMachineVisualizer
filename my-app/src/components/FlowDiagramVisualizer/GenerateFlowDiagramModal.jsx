@@ -51,6 +51,25 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
   };
 };
 
+// Helper function to find all nodes connected to root
+const findConnectedNodes = (rootId, allNodes, allConnections) => {
+  const connectedNodes = new Set([rootId]);
+  let hasNewNodes = true;
+
+  // Keep traversing until no new nodes are found
+  while (hasNewNodes) {
+    hasNewNodes = false;
+    allConnections.forEach(conn => {
+      if (connectedNodes.has(conn.fromStepId) && !connectedNodes.has(conn.toStepId)) {
+        connectedNodes.add(conn.toStepId);
+        hasNewNodes = true;
+      }
+    });
+  }
+
+  return allNodes.filter(node => connectedNodes.has(node.id));
+};
+
 const FlowDiagramContent = ({ 
   rootElement, 
   steps, 
@@ -131,10 +150,13 @@ const FlowDiagramContent = ({
       setIsGenerating(true);
       
       try {
-        // Create nodes from steps
-        const flowNodes = steps.map(step => {
+        // Get only connected nodes starting from root
+        const connectedSteps = findConnectedNodes(rootElement.id, steps, connections);
+        
+        // Create nodes from connected steps
+        const flowNodes = connectedSteps.map(step => {
           const isRootNode = step.id === rootElement.id;
-          const hasChildren = steps.some(s => s.parentId === step.id);
+          const hasChildren = connectedSteps.some(s => s.parentId === step.id);
           const isChildNode = step.parentId !== null;
           
           let type = 'default';
@@ -160,18 +182,24 @@ const FlowDiagramContent = ({
           };
         });
 
-        // Create edges from connections
-        const flowEdges = connections.map(conn => ({
-          id: `${conn.fromStepId}-${conn.toStepId}-${conn.type}`,
-          source: conn.fromStepId,
-          target: conn.toStepId,
-          type: 'smoothstep',
-          animated: false,
-          style: {
-            stroke: conn.type === 'success' ? '#22c55e' : '#ef4444',
-            strokeWidth: 2,
-          },
-        }));
+        // Filter connections to only include those between connected nodes
+        const connectedNodeIds = new Set(connectedSteps.map(step => step.id));
+        const flowEdges = connections
+          .filter(conn => 
+            connectedNodeIds.has(conn.fromStepId) && 
+            connectedNodeIds.has(conn.toStepId)
+          )
+          .map(conn => ({
+            id: `${conn.fromStepId}-${conn.toStepId}-${conn.type}`,
+            source: conn.fromStepId,
+            target: conn.toStepId,
+            type: 'smoothstep',
+            animated: false,
+            style: {
+              stroke: conn.type === 'success' ? '#22c55e' : '#ef4444',
+              strokeWidth: 2,
+            },
+          }));
 
         // Apply layout
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
