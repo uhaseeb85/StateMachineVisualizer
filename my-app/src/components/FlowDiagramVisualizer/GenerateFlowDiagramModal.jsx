@@ -45,6 +45,13 @@ const GenerateFlowDiagramModal = ({
     }
   }, [isGenerating, generatedSteps]);
 
+  // Update effect to center diagram after zoom changes
+  useEffect(() => {
+    if (generatedSteps.length > 0 && !isGenerating) {
+      centerDiagram();
+    }
+  }, [zoom, isGenerating, generatedSteps]);
+
   // Function to center the diagram in the container
   const centerDiagram = () => {
     if (!containerRef.current || !diagramRef.current) return;
@@ -55,7 +62,7 @@ const GenerateFlowDiagramModal = ({
     // Calculate the center position
     setPan({
       x: (containerRect.width / 2) - (diagramRect.width / 2 / zoom),
-      y: 100
+      y: (containerRect.height / 2) - (diagramRect.height / 2 / zoom)
     });
   };
 
@@ -75,8 +82,7 @@ const GenerateFlowDiagramModal = ({
     
     setZoom(newZoom);
     
-    // Center with the new zoom
-    setTimeout(() => centerDiagram(), 50);
+    // Center will happen automatically due to our useEffect
   };
 
   const generateFlowDiagram = () => {
@@ -162,6 +168,61 @@ const GenerateFlowDiagramModal = ({
     // Generate an HTML representation of the diagram
     const nodePositions = calculateNodePositions();
     
+    const diagramContent = `
+<div class="diagram-title">Flow Diagram: ${rootElement.name}</div>
+<div class="diagram-container">
+  <div class="diagram-content">
+    ${Object.entries(nodePositions).map(([stepId, pos]) => {
+      const step = getStepById(stepId);
+      if (!step) return '';
+      
+      const isRootNode = step.id === rootElement.id;
+      const hasChildren = steps.some(s => s.parentId === step.id);
+      
+      let nodeClass = 'node node-default';
+      
+      if (isRootNode) {
+        nodeClass = 'node node-root';
+      } else if (hasChildren) {
+        nodeClass = 'node node-parent';
+      } else if (isChild(step)) {
+        nodeClass = 'node node-child';
+      }
+      
+      return `
+        <div class="${nodeClass}" style="left: ${pos.x}px; top: ${pos.y}px;">
+          ${step.name}
+          ${isChild(step) ? '<div class="child-indicator"></div>' : ''}
+        </div>
+      `;
+    }).join('')}
+    
+    ${generatedConnections.map(conn => {
+      const fromPos = nodePositions[conn.fromStepId];
+      const toPos = nodePositions[conn.toStepId];
+      
+      if (!fromPos || !toPos) return '';
+      
+      const isSuccess = conn.type === 'success';
+      const lineClass = isSuccess ? 'connection connection-success' : 'connection connection-failure';
+      
+      // Calculate connection
+      const dx = toPos.x - fromPos.x;
+      const dy = toPos.y - fromPos.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      
+      // Check if we're connecting from the bottom of a node
+      const isVertical = Math.abs(angle) > 45 && Math.abs(angle) < 135;
+      const connectionStartY = fromPos.y + (isVertical ? 28 : 0);
+      
+      return `
+        <div class="${lineClass}" style="width: ${length}px; left: ${fromPos.x}px; top: ${connectionStartY}px; transform: rotate(${angle}deg);"></div>
+      `;
+    }).join('')}
+  </div>
+</div>`;
+
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -175,6 +236,9 @@ const GenerateFlowDiagramModal = ({
       background-color: #f3f4f6;
       margin: 0;
       padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .diagram-container {
       position: relative;
@@ -188,6 +252,9 @@ const GenerateFlowDiagramModal = ({
       background-color: white;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     .diagram-title {
       text-align: center;
@@ -195,6 +262,12 @@ const GenerateFlowDiagramModal = ({
       color: #1f2937;
       font-size: 24px;
       font-weight: 600;
+    }
+    .diagram-content {
+      position: relative;
+      transform-origin: center;
+      min-width: 1000px;
+      min-height: 600px;
     }
     .node {
       position: absolute;
@@ -210,6 +283,7 @@ const GenerateFlowDiagramModal = ({
       text-align: center;
       overflow: hidden;
       z-index: 2;
+      transform: translate(-50%, -50%);
     }
     .node-root {
       background-color: #1d4ed8;
@@ -253,28 +327,13 @@ const GenerateFlowDiagramModal = ({
     .connection-failure {
       background-color: #ef4444;
     }
-    .connection-label {
-      position: absolute;
-      padding: 4px 8px;
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: bold;
-      transform: translate(-50%, -50%);
-      z-index: 2;
-    }
-    .label-success {
-      background-color: #dcfce7;
-      color: #166534;
-    }
-    .label-failure {
-      background-color: #fee2e2;
-      color: #991b1b;
-    }
     .diagram-info {
-      text-align: center;
-      margin-top: 20px;
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 12px;
       color: #6b7280;
-      font-size: 14px;
+      text-align: right;
     }
     @media (prefers-color-scheme: dark) {
       body {
@@ -296,74 +355,7 @@ const GenerateFlowDiagramModal = ({
   </style>
 </head>
 <body>
-  <div class="diagram-container">
-    <h1 class="diagram-title">Flow Diagram: ${rootElement.name}</h1>
-    
-    <!-- Nodes -->
-    ${generatedSteps.map(step => {
-      const pos = nodePositions[step.id];
-      if (!pos) return '';
-      
-      const isRootNode = step.id === rootElement.id;
-      const hasChildren = generatedSteps.some(s => s.parentId === step.id);
-      const isChildNode = isChild(step);
-      
-      let nodeClass = 'node ';
-      if (isRootNode) {
-        nodeClass += 'node-root';
-      } else if (hasChildren) {
-        nodeClass += 'node-parent';
-      } else if (isChildNode) {
-        nodeClass += 'node-child';
-      } else {
-        nodeClass += 'node-default';
-      }
-      
-      return `
-    <div class="${nodeClass}" style="left: ${pos.x + 500 - 90}px; top: ${pos.y + 100 - 28}px;">
-      ${step.name}
-      ${isChildNode ? '<div class="child-indicator"></div>' : ''}
-    </div>`;
-    }).join('')}
-    
-    <!-- Connections -->
-    ${generatedConnections.map(conn => {
-      const fromPos = nodePositions[conn.fromStepId];
-      const toPos = nodePositions[conn.toStepId];
-      
-      if (!fromPos || !toPos) return '';
-      
-      const isSuccess = conn.type === 'success';
-      const connectionClass = `connection ${isSuccess ? 'connection-success' : 'connection-failure'}`;
-      const labelClass = `connection-label ${isSuccess ? 'label-success' : 'label-failure'}`;
-      
-      // Calculate connection properties
-      const lineLength = Math.sqrt(
-        Math.pow(toPos.x - fromPos.x, 2) + 
-        Math.pow(toPos.y - fromPos.y, 2)
-      );
-      
-      const angle = Math.atan2(
-        toPos.y - fromPos.y,
-        toPos.x - fromPos.x
-      ) * 180 / Math.PI;
-      
-      // Calculate midpoint for label
-      const midPointX = (fromPos.x + toPos.x) / 2;
-      const midPointY = (fromPos.y + toPos.y) / 2;
-      
-      return `
-    <div class="${connectionClass}" style="width: ${lineLength}px; left: ${fromPos.x + 500}px; top: ${fromPos.y + 100 + 30}px; transform: rotate(${angle}deg);"></div>
-    <div class="${labelClass}" style="left: ${midPointX + 500}px; top: ${midPointY + 100}px;">
-      ${isSuccess ? 'Success' : 'Failure'}
-    </div>`;
-    }).join('')}
-    
-    <div class="diagram-info">
-      This diagram contains ${generatedSteps.length} steps and ${generatedConnections.length} connections.
-      <br>Generated on ${new Date().toLocaleString()}
-    </div>
-  </div>
+  ${diagramContent}
 </body>
 </html>
     `;
@@ -420,66 +412,106 @@ const GenerateFlowDiagramModal = ({
     setZoom(prev => Math.max(prev - 0.1, 0.5));
   };
 
-  // Calculate node positions - simplified layout algorithm
+  // Calculate node positions - improved layout algorithm with vertical arrangement
   const calculateNodePositions = () => {
     if (!generatedSteps || generatedSteps.length === 0) return {};
     
     const nodeWidth = 180;
     const nodeHeight = 60;
-    const horizontalGap = 100;
-    const verticalGap = 80;
+    const horizontalGap = 150; // Increased for better spacing
+    const verticalGap = 100;   
     
-    // Organize steps into levels
-    const levels = {};
+    // First pass: Identify parent-child relationships and create a hierarchy
+    const hierarchy = {};
+    const rootNodes = [];
+    const childToParent = {};
     
-    // First - organize by parent-child relationship and connections
+    // Track steps by their parent to build branches
     generatedSteps.forEach(step => {
-      let level = 0;
-      
       if (step.id === rootElement.id) {
-        // Root node is always at level 0
-        level = 0;
+        // Root element is always at the top
+        rootNodes.push(step);
       } else if (step.parentId) {
-        // Child steps go one level below their parent
-        const parent = generatedSteps.find(s => s.id === step.parentId);
-        level = parent ? parent._level + 1 : 1;
+        // Child steps get grouped under their parent
+        if (!hierarchy[step.parentId]) {
+          hierarchy[step.parentId] = [];
+        }
+        hierarchy[step.parentId].push(step);
+        childToParent[step.id] = step.parentId;
       } else {
-        // Non-child steps that are connected to something else
-        // Find if any connection points to this step
+        // Handle steps connected by connections rather than parent-child
         const incomingConnection = generatedConnections.find(conn => conn.toStepId === step.id);
         if (incomingConnection) {
-          const sourceStep = generatedSteps.find(s => s.id === incomingConnection.fromStepId);
-          level = sourceStep ? sourceStep._level + 1 : 1;
+          if (!hierarchy[incomingConnection.fromStepId]) {
+            hierarchy[incomingConnection.fromStepId] = [];
+          }
+          hierarchy[incomingConnection.fromStepId].push(step);
+          childToParent[step.id] = incomingConnection.fromStepId;
         } else {
-          level = 1; // Default level if we can't determine the relationship
+          // If no parent and no connection, treat as a root node
+          rootNodes.push(step);
         }
       }
-      
-      // Store level in step for easy access
-      step._level = level;
-      
-      // Add to level organization
-      if (!levels[level]) levels[level] = [];
-      levels[level].push(step);
     });
     
-    // Second - calculate positions based on levels
+    // Second pass: Assign x-coordinates to branches
+    const branchPositions = {};
+    let currentX = 0;
+    
+    // Helper function to calculate width needed for a branch
+    const calculateBranchWidth = (nodeId) => {
+      if (!hierarchy[nodeId] || hierarchy[nodeId].length === 0) {
+        return nodeWidth;
+      }
+      
+      const childWidths = hierarchy[nodeId].map(child => calculateBranchWidth(child.id));
+      return Math.max(nodeWidth, childWidths.reduce((sum, width) => sum + width + horizontalGap, 0) - horizontalGap);
+    };
+    
+    // Assign X positions to branches
+    rootNodes.forEach(rootNode => {
+      const branchWidth = calculateBranchWidth(rootNode.id);
+      branchPositions[rootNode.id] = {
+        x: currentX + branchWidth / 2,
+        width: branchWidth
+      };
+      currentX += branchWidth + horizontalGap;
+    });
+    
+    // Third pass: Position all nodes
     const nodePositions = {};
     
-    // Process each level
-    Object.keys(levels).sort((a, b) => parseInt(a) - parseInt(b)).forEach(level => {
-      const levelSteps = levels[level];
+    // Helper function to calculate positions for a node and its children
+    const positionNodeAndChildren = (node, x, y) => {
+      nodePositions[node.id] = { x, y };
       
-      // Calculate x positions for this level
-      const levelWidth = levelSteps.length * nodeWidth + (levelSteps.length - 1) * horizontalGap;
-      const startX = -levelWidth / 2 + nodeWidth / 2;
+      // Position children of this node
+      const children = hierarchy[node.id] || [];
       
-      levelSteps.forEach((step, index) => {
-        const x = startX + index * (nodeWidth + horizontalGap);
-        const y = parseInt(level) * (nodeHeight + verticalGap) + 50;
+      if (children.length > 0) {
+        const totalChildrenWidth = children.map(child => {
+          return branchPositions[child.id]?.width || nodeWidth;
+        }).reduce((sum, width) => sum + width + horizontalGap, 0) - horizontalGap;
         
-        nodePositions[step.id] = { x, y };
-      });
+        let childX = x - totalChildrenWidth / 2;
+        const childY = y + nodeHeight + verticalGap;
+        
+        children.forEach(child => {
+          const childWidth = branchPositions[child.id]?.width || nodeWidth;
+          positionNodeAndChildren(child, childX + childWidth / 2, childY);
+          childX += childWidth + horizontalGap;
+        });
+      }
+    };
+    
+    // Position all root nodes and their children
+    let startY = 0;
+    rootNodes.forEach(rootNode => {
+      positionNodeAndChildren(
+        rootNode, 
+        branchPositions[rootNode.id]?.x || 0,
+        startY
+      );
     });
     
     return nodePositions;
@@ -571,19 +603,17 @@ const GenerateFlowDiagramModal = ({
                 </div>
               ) : (
                 // Diagram container
-                <div className="w-full h-full overflow-auto">
+                <div className="w-full h-full overflow-auto flex items-center justify-center">
                   <div 
                     ref={diagramRef}
-                    className="relative"
+                    className="relative inline-block"
                     style={{
                       transform: `scale(${zoom})`,
-                      transformOrigin: 'center top',
+                      transformOrigin: 'center center',
                       marginLeft: pan.x,
                       marginTop: pan.y,
                       minHeight: '800px',
-                      minWidth: '1200px',
-                      height: '100%',
-                      width: '100%'
+                      minWidth: '1200px'
                     }}
                   >
                     {/* Draw connections as div elements */}
@@ -596,7 +626,7 @@ const GenerateFlowDiagramModal = ({
                       const isSuccess = conn.type === 'success';
                       const color = isSuccess ? 'bg-green-500' : 'bg-red-500';
                       
-                      // Calculate straight line connection (simplification)
+                      // Calculate straight line connection
                       const lineLength = Math.sqrt(
                         Math.pow(toPos.x - fromPos.x, 2) + 
                         Math.pow(toPos.y - fromPos.y, 2)
@@ -607,9 +637,9 @@ const GenerateFlowDiagramModal = ({
                         toPos.x - fromPos.x
                       ) * 180 / Math.PI;
                       
-                      // Calculate midpoint for label
-                      const midPointX = (fromPos.x + toPos.x) / 2;
-                      const midPointY = (fromPos.y + toPos.y) / 2;
+                      // Check if we're connecting from the bottom of a node
+                      const isVertical = Math.abs(angle) > 45 && Math.abs(angle) < 135;
+                      const connectionStartY = fromPos.y + (isVertical ? 28 : 0);
                       
                       return (
                         <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} className="absolute pointer-events-none">
@@ -619,27 +649,12 @@ const GenerateFlowDiagramModal = ({
                             style={{
                               width: `${lineLength}px`,
                               left: `${fromPos.x}px`,
-                              top: `${fromPos.y + 30}px`,
+                              top: `${connectionStartY}px`,
                               transformOrigin: '0 0',
                               transform: `rotate(${angle}deg)`,
                               zIndex: 1
                             }}
                           />
-                          
-                          {/* Label */}
-                          <div 
-                            className={`absolute px-2 py-1 rounded-full text-xs font-bold ${
-                              isSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}
-                            style={{
-                              left: `${midPointX}px`,
-                              top: `${midPointY}px`,
-                              transform: 'translate(-50%, -50%)',
-                              zIndex: 2
-                            }}
-                          >
-                            {isSuccess ? 'Success' : 'Failure'}
-                          </div>
                         </div>
                       );
                     })}
