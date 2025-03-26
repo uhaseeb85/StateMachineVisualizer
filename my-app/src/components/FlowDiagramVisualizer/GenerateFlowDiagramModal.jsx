@@ -67,15 +67,32 @@ const FlowDiagramContent = ({
 
   // Handle export
   const onExport = useCallback(() => {
-    if (componentRef.current) {
-      exportComponentAsPNG(componentRef, {
-        fileName: `flow_diagram_${rootElement?.name || 'export'}.png`,
-        html2CanvasOptions: {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          removeContainer: true,
-        }
-      });
+    const downloadImage = (dataUrl) => {
+      const a = document.createElement('a');
+      a.setAttribute('download', `flow_diagram_${rootElement?.name || 'export'}.png`);
+      a.setAttribute('href', dataUrl);
+      a.click();
+    };
+
+    const reactFlowContainer = document.querySelector('.react-flow');
+    if (reactFlowContainer) {
+      // Hide controls and minimap before taking screenshot
+      const controls = reactFlowContainer.querySelector('.react-flow__controls');
+      const minimap = reactFlowContainer.querySelector('.react-flow__minimap');
+      const panel = reactFlowContainer.querySelector('.react-flow__panel');
+      if (controls) controls.style.display = 'none';
+      if (minimap) minimap.style.display = 'none';
+      if (panel) panel.style.display = 'none';
+
+      // Take screenshot
+      const dataUrl = reactFlowContainer.toDataURL('image/png', 1.0);
+
+      // Restore controls and minimap
+      if (controls) controls.style.display = '';
+      if (minimap) minimap.style.display = '';
+      if (panel) panel.style.display = '';
+
+      downloadImage(dataUrl);
     }
   }, [rootElement]);
 
