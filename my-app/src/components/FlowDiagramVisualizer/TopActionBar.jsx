@@ -10,10 +10,13 @@ import {
   Moon,
   Sun,
   Save,
-  HelpCircle
+  HelpCircle,
+  GitBranch
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
+import { useState, useRef, useEffect } from 'react';
+import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
 
 const TopActionBar = ({
   onChangeMode,
@@ -23,9 +26,32 @@ const TopActionBar = ({
   onImport,
   onExport,
   onSave,
-  startTour
+  startTour,
+  steps,
+  connections
 }) => {
   const { theme, setTheme } = useTheme();
+  const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
+  const [selectedRootElement, setSelectedRootElement] = useState(null);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowGenerateDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filter root level elements (steps with parentId === null)
+  const rootElements = steps ? steps.filter(step => step.parentId === null) : [];
 
   const handleImport = async (event) => {
     console.log('Import triggered with event:', event);
@@ -60,6 +86,19 @@ const TopActionBar = ({
       onClear();
       toast.success('Flow diagram cleared');
     }
+  };
+
+  const handleGenerateFlowDiagram = () => {
+    if (!selectedRootElement) {
+      toast.error('Please select a root element first');
+      return;
+    }
+    
+    // Close dropdown
+    setShowGenerateDropdown(false);
+    
+    // Show the generate flow diagram modal
+    setShowGenerateModal(true);
   };
 
   return (
@@ -191,6 +230,71 @@ const TopActionBar = ({
         <div className="flex items-center gap-4">
           {/* Tools Group */}
           <div className="flex gap-4">
+            {/* Generate Flow Diagram Button with Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <Button
+                onClick={() => setShowGenerateDropdown(!showGenerateDropdown)}
+                title="Generate Flow Diagram"
+                className="generate-diagram-button bg-purple-600 text-white text-sm
+                       hover:bg-purple-500 hover:scale-105
+                       dark:bg-purple-700 dark:hover:bg-purple-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+              >
+                <GitBranch className="w-4 h-4" />
+                Generate Flow Diagram
+              </Button>
+              
+              {showGenerateDropdown && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700">
+                  <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Select Root Element</h3>
+                  </div>
+                  
+                  <div className="max-h-60 overflow-y-auto">
+                    {rootElements.length > 0 ? (
+                      <div className="p-2">
+                        {rootElements.map(element => (
+                          <div 
+                            key={element.id} 
+                            className={`p-2 cursor-pointer rounded-md transition-colors ${
+                              selectedRootElement?.id === element.id 
+                                ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                            }`}
+                            onClick={() => setSelectedRootElement(element)}
+                          >
+                            {element.name}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                        No root elements found. Add a root step first.
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+                    <Button
+                      onClick={() => setShowGenerateDropdown(false)}
+                      variant="outline"
+                      className="text-sm py-1 h-8"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleGenerateFlowDiagram}
+                      disabled={!selectedRootElement}
+                      className="text-sm py-1 h-8 bg-blue-600 hover:bg-blue-500 text-white"
+                    >
+                      Generate
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Button
               onClick={onFindPath}
               title="Find paths between steps"
@@ -232,6 +336,15 @@ const TopActionBar = ({
           </div>
         </div>
       </div>
+
+      {/* Generate Flow Diagram Modal */}
+      <GenerateFlowDiagramModal
+        isOpen={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        rootElement={selectedRootElement}
+        steps={steps}
+        connections={connections}
+      />
     </div>
   );
 };
@@ -244,7 +357,9 @@ TopActionBar.propTypes = {
   onImport: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
-  startTour: PropTypes.func.isRequired
+  startTour: PropTypes.func.isRequired,
+  steps: PropTypes.array,
+  connections: PropTypes.array
 };
 
 export default TopActionBar; 

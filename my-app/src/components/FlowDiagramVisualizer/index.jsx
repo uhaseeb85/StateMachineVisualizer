@@ -119,6 +119,8 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onExport={exportData}
           onSave={saveFlow}
           startTour={startTour}
+          steps={steps}
+          connections={connections}
         />
         
         {/* Main step panel for diagram editing */}
