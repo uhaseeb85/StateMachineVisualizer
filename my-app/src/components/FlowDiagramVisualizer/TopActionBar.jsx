@@ -58,8 +58,8 @@ const TopActionBar = ({
     const file = event.target.files?.[0];
     if (file) {
       console.log('Selected file:', file);
-      if (!file.name.endsWith('.csv')) {
-        toast.error('Please select a CSV file');
+      if (!file.name.endsWith('.csv') && !file.name.endsWith('.zip')) {
+        toast.error('Please select a CSV or ZIP file');
         return;
       }
       try {
@@ -168,7 +168,7 @@ const TopActionBar = ({
             <div className="flex gap-2">
               <Button
                 onClick={handleExport}
-                title="Export to CSV"
+                title="Export as ZIP file"
                 className="export-csv-button bg-gray-900 text-white text-sm
                          dark:bg-gray-800 dark:text-gray-100
                          hover:bg-blue-600 hover:scale-105
@@ -178,14 +178,14 @@ const TopActionBar = ({
                          hover:border-blue-500 dark:hover:border-blue-500
                          flex items-center gap-2 px-3 py-1.5 rounded-md"
               >
-                <Download className="w-4 h-4" />
-                Export CSV
+                <Upload className="w-4 h-4" />
+                Export as ZIP
               </Button>
 
               <div className="relative">
                 <Button
                   onClick={() => document.getElementById('file-import').click()}
-                  title="Import from CSV"
+                  title="Import flow diagram"
                   className="excel-import-button bg-gray-900 text-white text-sm
                            dark:bg-gray-800 dark:text-gray-100
                            hover:bg-blue-600 hover:scale-105
@@ -195,14 +195,14 @@ const TopActionBar = ({
                            hover:border-blue-500 dark:hover:border-blue-500
                            flex items-center gap-2 px-3 py-1.5 rounded-md"
                 >
-                  <Upload className="w-4 h-4" />
-                  Import CSV
+                  <Download className="w-4 h-4" />
+                  Import Diagram
                 </Button>
                 <input
                   type="file"
                   id="file-import"
                   className="hidden"
-                  accept=".csv"
+                  accept=".csv,.zip"
                   onChange={handleImport}
                 />
               </div>
