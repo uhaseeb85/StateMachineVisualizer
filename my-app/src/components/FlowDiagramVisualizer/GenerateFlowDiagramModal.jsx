@@ -28,7 +28,7 @@ import 'reactflow/dist/style.css';
 
 // Define dimensions for nodes in the flow diagram
 const nodeWidth = 180;
-const nodeHeight = 100; // Increased height to accommodate images
+const nodeHeight = 60; // Set a fixed height, removing the need for image accommodation
 
 // Initialize the dagre graph for layout calculations
 const dagreGraph = new dagre.graphlib.Graph();
@@ -196,9 +196,6 @@ const FlowDiagramContent = ({
           else if (hasChildren) type = 'parent';
           else if (isChildNode) type = 'child';
           
-          // Check if the node has images to adjust height
-          const hasImages = step.imageUrls?.length > 0 || step.imageUrl;
-          
           // Create the node object for ReactFlow
           return {
             id: step.id,
@@ -206,13 +203,10 @@ const FlowDiagramContent = ({
             data: { 
               label: step.name,
               type,
-              imageUrl: step.imageUrl, // For backward compatibility
-              imageUrls: step.imageUrls || (step.imageUrl ? [step.imageUrl] : []), // Pass image URLs to the node
-              imageCaptions: step.imageCaptions || [], // Pass image captions to the node
             },
             style: {
               width: nodeWidth,
-              height: hasImages ? nodeHeight : 60, // Adjust height based on image presence
+              height: nodeHeight, // Use fixed nodeHeight
             },
             position: { x: 0, y: 0 }, // Initial position, will be set by dagre layout
           };
