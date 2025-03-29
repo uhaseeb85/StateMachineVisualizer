@@ -153,6 +153,7 @@ const FlowDiagramContent = ({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isGenerating, setIsGenerating] = useState(true);
+  const [isExporting, setIsExporting] = useState(false); // New state for export loading
   const { getNodes, fitView } = useReactFlow(); // Get getNodes from useReactFlow
   const componentRef = useRef();
 
@@ -295,6 +296,9 @@ const FlowDiagramContent = ({
       return;
     }
 
+    // Set exporting state to true to show loading indicator
+    setIsExporting(true);
+
     // Calculate the bounds of the nodes
     const nodesBounds = getRectOfNodes(nodesToExport);
     
@@ -313,35 +317,46 @@ const FlowDiagramContent = ({
 
     if (!viewportElement) {
       console.error('React Flow viewport element not found.');
+      setIsExporting(false);
       return;
     }
 
-    toPng(viewportElement, {
-      backgroundColor: '#ffffff', // Set background color for the image
-      width: imageWidth,
-      height: imageHeight,
-      style: {
-        width: `${imageWidth}px`,
-        height: `${imageHeight}px`,
-        transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
-      },
-      // Filter out the controls and minimap from the export
-      filter: (node) => {
-        return !(
-          node?.classList?.contains('react-flow__controls') ||
-          node?.classList?.contains('react-flow__minimap') ||
-          node?.classList?.contains('react-flow__attribution') ||
-          node?.classList?.contains('export-button-container') // Exclude the export button itself
-        );
-      },
-    })
-      .then((dataUrl) => {
-        downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+    // Set a short timeout to ensure React has time to update the UI with the loading state
+    setTimeout(() => {
+      toPng(viewportElement, {
+        backgroundColor: '#ffffff', // Set background color for the image
+        width: imageWidth,
+        height: imageHeight,
+        pixelRatio: 2, // Higher quality image (2x resolution)
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
+        },
+        // Filter out the controls and minimap from the export
+        filter: (node) => {
+          return !(
+            node?.classList?.contains('react-flow__controls') ||
+            node?.classList?.contains('react-flow__minimap') ||
+            node?.classList?.contains('react-flow__attribution') ||
+            node?.classList?.contains('export-button-container') // Exclude the export button itself
+          );
+        },
+        cacheBust: true, // Avoid caching issues
       })
-      .catch((err) => {
-        console.error('Failed to export diagram:', err);
-        // Add user feedback here, e.g., using a toast notification
-      });
+        .then((dataUrl) => {
+          downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+          setIsExporting(false); // Reset loading state
+        })
+        .catch((err) => {
+          console.error('Failed to export diagram:', err);
+          // Reset loading state
+          setIsExporting(false);
+          
+          // Show an alert for errors in a user-friendly way
+          window.alert('Failed to export the diagram. Please try again.');
+        });
+    }, 100);
   }, [getNodes, rootElement?.name]);
 
   // Show loading indicator while generating the diagram
@@ -372,15 +387,30 @@ const FlowDiagramContent = ({
         
         {/* Export Button Container */}
         <div 
-          className="export-button-container absolute top-4 right-28 z-10" // Position near controls
+          className="export-button-container absolute top-4 left-4 z-50" // Moved to left side and increased z-index
         >
           <Button 
             onClick={onExport} 
-            variant="outline" 
+            variant="default" // Changed from outline to default for more visibility
             size="sm"
-            className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md flex items-center gap-1" // Enhanced styling
+            disabled={isExporting} // Disable button while exporting
           >
-            Export PNG
+            {isExporting ? (
+              <>
+                <div className="animate-spin w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export PNG
+              </>
+            )}
           </Button>
         </div>
       </ReactFlow>
