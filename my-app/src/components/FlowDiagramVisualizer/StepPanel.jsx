@@ -20,7 +20,13 @@ import {
   MoveUp,
   MoveDown,
   ArrowUpToLine,
-  Undo2
+  Undo2,
+  Image,
+  Upload,
+  ImagePlus,
+  Pencil,
+  Check,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -53,6 +59,14 @@ const StepPanel = ({
   const [moveHistory, setMoveHistory] = useState([]);
   // Add state for parent selection mode
   const [selectingParentFor, setSelectingParentFor] = useState(null);
+  const fileInputRef = useRef(null);
+  // Add state for editing captions
+  const [editingCaptionIndex, setEditingCaptionIndex] = useState(null);
+  const [editedCaption, setEditedCaption] = useState('');
+  const captionInputRef = useRef(null);
+  const [zoomedImage, setZoomedImage] = useState(null);
+  const [zoomedImageCaption, setZoomedImageCaption] = useState('');
+  const [downloadCount, setDownloadCount] = useState(0);
   
   // Add a step move to history
   const addToMoveHistory = (stepId, oldParentId, newParentId) => {
@@ -285,6 +299,32 @@ const StepPanel = ({
       return;
     }
     
+    // Check if the step or any descendant has screenshots
+    const stepToRemove = steps.find(s => s.id === stepId);
+    const hasScreenshots = stepToRemove && stepToRemove.imageUrls && stepToRemove.imageUrls.length > 0;
+    
+    // Check if any descendant has screenshots
+    const descendantSteps = descendantIds.map(id => steps.find(s => s.id === id));
+    const hasDescendantScreenshots = descendantSteps.some(step => 
+      step && step.imageUrls && step.imageUrls.length > 0
+    );
+    
+    // If there are screenshots, show a specific warning
+    if (hasScreenshots || hasDescendantScreenshots) {
+      const warningMessage = hasDescendantScreenshots
+        ? 'This step or its sub-steps contain screenshots that will be permanently deleted. Continue?'
+        : 'This step contains screenshots that will be permanently deleted. Continue?';
+        
+      if (!window.confirm(warningMessage)) {
+        return;
+      }
+    } else {
+      // Generic confirmation for steps without screenshots
+      if (!window.confirm('Are you sure you want to remove this step and all its sub-steps?')) {
+        return;
+      }
+    }
+    
     // Remove all descendant steps first
     descendantIds.forEach(id => {
       onRemoveStep(id);
@@ -426,6 +466,222 @@ const StepPanel = ({
     } else {
       setOpenActionsMenuId(stepId);
     }
+  };
+
+  // Add caption edit functions
+  const startEditingCaption = (index, initialCaption) => {
+    setEditingCaptionIndex(index);
+    setEditedCaption(initialCaption || '');
+    
+    // Focus the input after a short delay to allow rendering
+    setTimeout(() => {
+      if (captionInputRef.current) {
+        captionInputRef.current.focus();
+      }
+    }, 50);
+  };
+
+  const saveCaption = (index) => {
+    if (!selectedStep || !selectedStep.imageUrls) return;
+    
+    // Create or update imageCaptions array
+    const currentCaptions = selectedStep.imageCaptions || Array(selectedStep.imageUrls.length).fill('');
+    const updatedCaptions = [...currentCaptions];
+    
+    // Ensure the captions array is the same length as images array
+    while (updatedCaptions.length < selectedStep.imageUrls.length) {
+      updatedCaptions.push('');
+    }
+    
+    // Update the specific caption
+    updatedCaptions[index] = editedCaption;
+    
+    // Update the step
+    handleUpdateStep(selectedStep.id, { imageCaptions: updatedCaptions });
+    
+    // Exit edit mode
+    setEditingCaptionIndex(null);
+    toast.success('Caption updated');
+  };
+
+  // Modify the handleImageUpload function to initialize captions
+  const handleImageUpload = (e) => {
+    if (!selectedStep) return;
+    
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    // Get current captions
+    const currentCaptions = selectedStep.imageCaptions || [];
+    let newCaptions = [...currentCaptions];
+    
+    // Process each file
+    Array.from(files).forEach(file => {
+      // Validate file is an image
+      if (!file.type.match('image.*')) {
+        toast.error(`File "${file.name}" is not an image (PNG, JPG, JPEG, GIF)`);
+        return;
+      }
+      
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error(`Image "${file.name}" is larger than 2MB`);
+        return;
+      }
+      
+      // Read the file as a data URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target.result;
+        
+        // Add to existing imageUrls array or create new array
+        const currentImageUrls = selectedStep.imageUrls || [];
+        const updatedImageUrls = [...currentImageUrls, imageUrl];
+        
+        // Add empty caption for the new image
+        newCaptions.push('');
+        
+        handleUpdateStep(selectedStep.id, { 
+          imageUrls: updatedImageUrls,
+          // Keep backward compatibility
+          imageUrl: updatedImageUrls[0],
+          // Update captions
+          imageCaptions: newCaptions
+        });
+        
+        toast.success(`Screenshot added successfully (${updatedImageUrls.length} total)`);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  // Modify the handleRemoveImage function to add confirmation
+  const handleRemoveImage = (index) => {
+    if (!selectedStep || !selectedStep.imageUrls) return;
+    
+    // Add confirmation dialog
+    if (!window.confirm(`Are you sure you want to remove this screenshot? This action cannot be undone.`)) {
+      return;
+    }
+    
+    const updatedImages = [...selectedStep.imageUrls];
+    
+    // Revoke the blob URL before removing
+    const imageUrl = updatedImages[index];
+    if (imageUrl && imageUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(imageUrl);
+        console.log('Revoked blob URL:', imageUrl);
+      } catch (error) {
+        console.error('Error revoking blob URL:', error);
+      }
+    }
+    
+    updatedImages.splice(index, 1);
+    
+    // Also remove the caption at the same index
+    const updatedCaptions = selectedStep.imageCaptions 
+      ? [...selectedStep.imageCaptions] 
+      : Array(selectedStep.imageUrls.length).fill('');
+    
+    updatedCaptions.splice(index, 1);
+    
+    handleUpdateStep(selectedStep.id, { 
+      imageUrls: updatedImages.length > 0 ? updatedImages : null,
+      // Keep backward compatibility
+      imageUrl: updatedImages.length > 0 ? updatedImages[0] : null,
+      // Update captions
+      imageCaptions: updatedCaptions.length > 0 ? updatedCaptions : null
+    });
+    
+    toast.success('Screenshot removed');
+  };
+  
+  // Update the handleRemoveAllImages function to also add confirmation
+  const handleRemoveAllImages = () => {
+    if (!selectedStep || !selectedStep.imageUrls) return;
+    
+    // Add confirmation dialog
+    if (!window.confirm(`Are you sure you want to remove all screenshots? This action cannot be undone.`)) {
+      return;
+    }
+    
+    // Revoke all blob URLs before removing
+    selectedStep.imageUrls.forEach(url => {
+      if (url && url.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(url);
+          console.log('Revoked blob URL:', url);
+        } catch (error) {
+          console.error('Error revoking blob URL:', error);
+        }
+      }
+    });
+    
+    handleUpdateStep(selectedStep.id, { 
+      imageUrls: null,
+      imageUrl: null,
+      imageCaptions: null
+    });
+    
+    toast.success('All screenshots removed');
+  };
+
+  // Function to open the zoom modal
+  const openZoomModal = (imageUrl, caption) => {
+    setZoomedImage(imageUrl);
+    setZoomedImageCaption(caption || '');
+  };
+
+  // Function to close the zoom modal
+  const closeZoomModal = () => {
+    setZoomedImage(null);
+    setZoomedImageCaption('');
+  };
+
+  // Function to download the image
+  const downloadImage = (imageUrl, caption, stepName, index) => {
+    if (!imageUrl) return;
+    
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    
+    // Create a filename from caption or default name
+    const fileName = caption ? 
+      `${caption.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png` : 
+      `${stepName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_screenshot_${index + 1}.png`;
+    
+    link.download = fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Increment download count
+    setDownloadCount(prevCount => {
+      const newCount = prevCount + 1;
+      
+      // After 3 downloads, show a helpful suggestion
+      if (newCount === 3) {
+        setTimeout(() => {
+          toast.info("Tip: If you need multiple screenshots, consider exporting the entire diagram instead.", {
+            duration: 5000,
+            action: {
+              label: "OK",
+              onClick: () => {}
+            }
+          });
+        }, 500);
+      }
+      
+      return newCount;
+    });
   };
 
   const renderStep = (step, level = 0) => {
@@ -945,6 +1201,146 @@ const StepPanel = ({
                   spellCheck={false}
                 />
               </div>
+              
+              {/* Screenshot Section */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Screenshots</label>
+                
+                {selectedStep.imageUrls && selectedStep.imageUrls.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-end">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveAllImages}
+                        className="flex items-center gap-1"
+                      >
+                        <X className="h-4 w-4" />
+                        <span>Remove All</span>
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {selectedStep.imageUrls.map((imageUrl, index) => (
+                        <div 
+                          key={index} 
+                          className="relative border rounded-md p-1 bg-gray-50 dark:bg-gray-800 overflow-hidden"
+                        >
+                          <img 
+                            src={imageUrl} 
+                            alt={selectedStep.imageCaptions?.[index] || `${selectedStep.name} - Screenshot ${index + 1}`} 
+                            className="w-full h-32 object-cover cursor-pointer"
+                            onClick={() => openZoomModal(
+                              imageUrl, 
+                              selectedStep.imageCaptions?.[index] || ''
+                            )}
+                          />
+                          
+                          {/* Caption editing */}
+                          <div className="mt-1">
+                            {editingCaptionIndex === index ? (
+                              <div className="flex items-center gap-1 p-1">
+                                <Input
+                                  ref={captionInputRef}
+                                  value={editedCaption}
+                                  onChange={(e) => setEditedCaption(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && saveCaption(index)}
+                                  className="h-6 text-xs p-1"
+                                  placeholder="Enter caption..."
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => saveCaption(index)}
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div 
+                                className="flex items-center justify-between px-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                                onClick={() => startEditingCaption(index, selectedStep.imageCaptions?.[index] || '')}
+                              >
+                                <p className="text-xs truncate py-1">
+                                  {selectedStep.imageCaptions?.[index] || 'Add caption...'}
+                                </p>
+                                <Pencil className="h-3 w-3 opacity-50" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="absolute top-1 right-1 flex gap-1">
+                            <Button
+                              variant="default"
+                              size="icon"
+                              className="h-6 w-6 rounded-full bg-blue-500 hover:bg-blue-600"
+                              onClick={() => downloadImage(
+                                imageUrl,
+                                selectedStep.imageCaptions?.[index] || '',
+                                selectedStep.name,
+                                index
+                              )}
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => handleRemoveImage(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded-full">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="border-2 border-dashed rounded-md flex items-center justify-center h-32">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          className="hidden"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                        />
+                        <Button
+                          variant="ghost"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex flex-col items-center h-full w-full"
+                        >
+                          <ImagePlus className="h-6 w-6 mb-2 text-gray-400" />
+                          <span className="text-sm text-gray-500">Add More</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 border-dashed border-2 h-24"
+                    >
+                      <Image className="h-5 w-5" />
+                      <span>Add Screenshots</span>
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-1">Upload screenshots that illustrate this step (Max: 2MB each)</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -1071,33 +1467,64 @@ const StepPanel = ({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <Settings className="h-12 w-12 mb-4" />
-            <p>Select a step to view and edit its details</p>
+          <div className="text-center text-muted-foreground py-4">
+            No step selected. Select a step from the left panel to view details.
           </div>
         )}
       </div>
+      
+      {/* Image Zoom Modal */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+          onClick={closeZoomModal}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg p-2 max-w-[90%] max-h-[90%] relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              className="absolute top-2 right-2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10"
+              onClick={closeZoomModal}
+            >
+              <X className="h-4 w-4" />
+            </button>
+            
+            <button 
+              className="absolute top-2 left-2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10"
+              onClick={() => downloadImage(
+                zoomedImage,
+                zoomedImageCaption,
+                selectedStep?.name || 'Screenshot',
+                0
+              )}
+            >
+              <Download className="h-4 w-4" />
+            </button>
+            
+            <div className="overflow-auto max-h-[80vh] flex items-center justify-center">
+              <img 
+                src={zoomedImage} 
+                alt={zoomedImageCaption || "Screenshot"} 
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            </div>
+            
+            {zoomedImageCaption && (
+              <div className="py-2 px-3 text-sm text-center">
+                {zoomedImageCaption}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 StepPanel.propTypes = {
-  steps: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      description: PropTypes.string,
-      expectedResponse: PropTypes.string,
-      parentId: PropTypes.string,
-    })
-  ).isRequired,
-  connections: PropTypes.arrayOf(
-    PropTypes.shape({
-      fromStepId: PropTypes.string.isRequired,
-      toStepId: PropTypes.string.isRequired,
-      type: PropTypes.oneOf(['success', 'failure']).isRequired,
-    })
-  ).isRequired,
+  steps: PropTypes.array.isRequired,
+  connections: PropTypes.array.isRequired,
   onAddStep: PropTypes.func.isRequired,
   onUpdateStep: PropTypes.func.isRequired,
   onRemoveStep: PropTypes.func.isRequired,
@@ -1105,4 +1532,4 @@ StepPanel.propTypes = {
   onRemoveConnection: PropTypes.func.isRequired,
 };
 
-export default StepPanel; 
+export default StepPanel;

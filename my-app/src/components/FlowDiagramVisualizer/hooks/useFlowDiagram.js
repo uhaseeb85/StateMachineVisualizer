@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 /**
  * @param {string} storageKey - Key used for localStorage persistence
@@ -231,59 +233,227 @@ const useFlowDiagram = (storageKey) => {
    */
   const clearAll = () => {
     console.log('Clearing all data');
+    
+    // Revoke all blob URLs to prevent memory leaks
+    steps.forEach(step => {
+      if (step.imageUrls && step.imageUrls.length > 0) {
+        step.imageUrls.forEach(url => {
+          // Only revoke blob URLs (not external URLs)
+          if (url && url.startsWith('blob:')) {
+            try {
+              URL.revokeObjectURL(url);
+              console.log('Revoked blob URL:', url);
+            } catch (error) {
+              console.error('Error revoking blob URL:', error);
+            }
+          }
+        });
+      }
+      
+      // Also check the legacy imageUrl property
+      if (step.imageUrl && step.imageUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(step.imageUrl);
+          console.log('Revoked legacy blob URL:', step.imageUrl);
+        } catch (error) {
+          console.error('Error revoking legacy blob URL:', error);
+        }
+      }
+    });
+    
     setSteps([]);
     setConnections([]);
   };
 
   /**
-   * Exports the flow diagram data to a CSV format
-   * Includes step information, parent-child relationships, and connections
+   * Exports the flow diagram data to a ZIP file that contains:
+   * - data.json: All step and connection information
+   * - images/: Directory containing all uploaded images
    */
-  const exportData = () => {
-    // Convert data to CSV format with parent-child relationships
-    const csvData = steps.map(step => {
-      // Find parent step if this is a sub-step
-      const parentStep = steps.find(s => s.id === step.parentId);
+  const exportData = async () => {
+    try {
+      // Create a new zip file
+      const zip = new JSZip();
       
-      // Find parent's parent if it exists (for nested sub-steps)
-      const grandParentStep = parentStep ? steps.find(s => s.id === parentStep.parentId) : null;
-
-      // Find connections for this step
-      const successConnection = connections.find(c => c.fromStepId === step.id && c.type === 'success');
-      const failureConnection = connections.find(c => c.fromStepId === step.id && c.type === 'failure');
-
-      return {
-        'Step ID': step.id,
-        'Step Name': step.name,
-        'Description': step.description || '',
-        'Expected Response': step.expectedResponse || '',
-        'Parent Step ID': step.parentId || '',
-        'Parent Step Name': parentStep ? parentStep.name : '',
-        'Grand Parent Step ID': parentStep?.parentId || '',
-        'Grand Parent Step Name': grandParentStep ? grandParentStep.name : '',
-        'Success Step ID': successConnection?.toStepId || '',
-        'Failure Step ID': failureConnection?.toStepId || ''
+      // Create an images folder in the zip
+      const imagesFolder = zip.folder("images");
+      
+      // Track which images we've already added to avoid duplicates
+      const processedImageUrls = new Map();
+      
+      // Process each step to find uploaded images that need to be included
+      const processImagePromises = [];
+      
+      // Prepare a deep copy of steps with modified image paths for the export
+      const exportSteps = await Promise.all(steps.map(async (step) => {
+        const stepCopy = { ...step };
+        
+        // Skip if no images
+        if (!step.imageUrls || step.imageUrls.length === 0) {
+          return stepCopy;
+        }
+        
+        // Process each image
+        stepCopy.imageUrls = await Promise.all(step.imageUrls.map(async (imageUrl, index) => {
+          // Skip external URLs (keep as is)
+          if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            return imageUrl;
+          }
+          
+          // For data URLs and blob URLs (uploaded images)
+          try {
+            // Check if we've already processed this image
+            if (processedImageUrls.has(imageUrl)) {
+              return processedImageUrls.get(imageUrl);
+            }
+            
+            // For data URLs or blob URLs, we need to fetch and store the image
+            const uniqueImageName = `image_${uuidv4()}.png`;
+            const imagePath = `images/${uniqueImageName}`;
+            
+            // Fetch the image data
+            const fetchPromise = fetch(imageUrl)
+              .then(response => response.blob())
+              .then(blob => {
+                // Add to zip
+                imagesFolder.file(uniqueImageName, blob);
+                
+                // Remember this mapping
+                processedImageUrls.set(imageUrl, imagePath);
+                
+                return imagePath;
+              });
+              
+            processImagePromises.push(fetchPromise);
+            
+            return await fetchPromise;
+          } catch (error) {
+            console.error('Error processing image:', error);
+            return imageUrl; // Keep original URL if there's an error
+          }
+        }));
+        
+        return stepCopy;
+      }));
+      
+      // Wait for all image processing to complete
+      await Promise.all(processImagePromises);
+      
+      // Prepare the data.json with all flow information
+      const flowData = {
+        steps: exportSteps,
+        connections: connections
       };
-    });
-
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'flow_diagram.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+      
+      // Add the JSON data to the zip
+      zip.file("data.json", JSON.stringify(flowData, null, 2));
+      
+      // Generate and download the zip
+      const zipBlob = await zip.generateAsync({type: "blob"});
+      saveAs(zipBlob, "flow_diagram_export.zip");
+      
+      toast.success("Flow diagram exported successfully");
+    } catch (error) {
+      console.error('Error exporting flow diagram:', error);
+      toast.error('Error exporting flow diagram: ' + error.message);
+    }
   };
 
   /**
-   * Imports flow diagram data from a CSV file
-   * Handles parent-child relationships and connections
+   * Imports flow diagram data from a ZIP file
+   * Handles extraction of image files and restoring the flow structure
+   * @param {File} file - ZIP file to import
+   * @returns {Promise} Resolves when import is complete
+   */
+  const importData = async (file) => {
+    console.log('Starting import of file:', file.name);
+    try {
+      // Validate file type
+      if (!file.name.endsWith('.zip') && !file.name.endsWith('.csv')) {
+        throw new Error('Please upload a ZIP or CSV file.');
+      }
+      
+      // Handle legacy CSV import
+      if (file.name.endsWith('.csv')) {
+        return importLegacyCsvData(file);
+      }
+      
+      // Extract the zip file
+      const zip = new JSZip();
+      const zipContents = await zip.loadAsync(file);
+      
+      // Check for data.json
+      const dataFile = zipContents.file("data.json");
+      if (!dataFile) {
+        throw new Error('Invalid export file: Missing data.json');
+      }
+      
+      // Extract the JSON data
+      const jsonContent = await dataFile.async("string");
+      const flowData = JSON.parse(jsonContent);
+      
+      if (!flowData.steps || !Array.isArray(flowData.steps)) {
+        throw new Error('Invalid data format: Missing steps array');
+      }
+      
+      // Process steps to handle image paths
+      const processedSteps = await Promise.all(flowData.steps.map(async (step) => {
+        // Skip if no images
+        if (!step.imageUrls || step.imageUrls.length === 0) {
+          return step;
+        }
+        
+        // Process each image URL
+        step.imageUrls = await Promise.all(step.imageUrls.map(async (imagePath) => {
+          // External URLs remain unchanged
+          if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+          }
+          
+          // For images stored in the zip
+          if (imagePath.startsWith('images/')) {
+            const imageFileName = imagePath.replace('images/', '');
+            const imageFile = zipContents.file(`images/${imageFileName}`);
+            
+            if (!imageFile) {
+              console.error(`Image file not found in zip: ${imagePath}`);
+              return ''; // Return empty if image not found
+            }
+            
+            // Extract the image and create a blob URL
+            const imageBlob = await imageFile.async("blob");
+            return URL.createObjectURL(imageBlob);
+          }
+          
+          return imagePath; // Return unchanged if not recognized
+        }));
+        
+        // For backward compatibility
+        if (step.imageUrls.length > 0) {
+          step.imageUrl = step.imageUrls[0];
+        }
+        
+        return step;
+      }));
+      
+      // Update the flow diagram
+      setSteps(processedSteps);
+      setConnections(flowData.connections || []);
+      
+      toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections`);
+    } catch (error) {
+      console.error('Error importing flow diagram:', error);
+      toast.error('Error importing file: ' + error.message);
+      throw error;
+    }
+  };
+
+  /**
+   * Legacy method to import from CSV format
    * @param {File} file - CSV file to import
    * @returns {Promise} Resolves when import is complete
    */
-  const importData = (file) => {
-    console.log('Starting import of file:', file.name);
+  const importLegacyCsvData = (file) => {
     return new Promise((resolve, reject) => {
       Papa.parse(file, {
         header: true,
@@ -313,11 +483,49 @@ const useFlowDiagram = (storageKey) => {
             // First pass: Create all steps
             results.data.forEach((row, index) => {
               if (row['Step ID'] && row['Step Name']) {
+                // Process image URLs
+                let imageUrls = null;
+                if (row['Image URLs']) {
+                  // Check if it contains multiple images
+                  if (row['Image URLs'].includes('||IMAGE_DELIMITER||')) {
+                    imageUrls = row['Image URLs'].split('||IMAGE_DELIMITER||');
+                  } else {
+                    // Single image
+                    imageUrls = [row['Image URLs']];
+                  }
+                }
+                
+                // Process image captions
+                let imageCaptions = null;
+                if (row['Image Captions']) {
+                  // Check if it contains multiple captions
+                  if (row['Image Captions'].includes('||IMAGE_DELIMITER||')) {
+                    imageCaptions = row['Image Captions'].split('||IMAGE_DELIMITER||');
+                  } else {
+                    // Single caption
+                    imageCaptions = [row['Image Captions']];
+                  }
+                  
+                  // Ensure captions array matches images array in length
+                  if (imageUrls && imageCaptions) {
+                    while (imageCaptions.length < imageUrls.length) {
+                      imageCaptions.push('');
+                    }
+                    // Trim extra captions (should not happen but just in case)
+                    if (imageCaptions.length > imageUrls.length) {
+                      imageCaptions = imageCaptions.slice(0, imageUrls.length);
+                    }
+                  }
+                }
+                
                 const newStep = {
                   id: row['Step ID'],
                   name: row['Step Name'],
                   description: row['Description'] || '',
                   expectedResponse: row['Expected Response'] || '',
+                  imageUrls: imageUrls,
+                  imageUrl: imageUrls ? imageUrls[0] : null, // For backward compatibility
+                  imageCaptions: imageCaptions,
                   parentId: row['Parent Step ID'] || null,
                   position: { x: 0, y: 0 } // Default position
                 };
