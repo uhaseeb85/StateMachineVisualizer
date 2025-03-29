@@ -21,10 +21,13 @@ import ReactFlow, {
   useEdgesState,
   useReactFlow,
   ReactFlowProvider,
+  getRectOfNodes,
+  getTransformForBounds,
 } from 'reactflow';
 import dagre from '@dagrejs/dagre';
 import StepNode from './CustomNodes/StepNode';
 import 'reactflow/dist/style.css';
+import { toPng } from 'html-to-image';
 
 // Define dimensions for nodes in the flow diagram
 const nodeWidth = 180;
@@ -114,6 +117,23 @@ const findConnectedNodes = (rootId, allNodes, allConnections) => {
 };
 
 /**
+ * Helper function to download the image data URI
+ * @param {string} dataUrl - The base64 encoded image data
+ * @param {string} name - The desired filename for the download
+ */
+function downloadImage(dataUrl, name) {
+  const a = document.createElement('a');
+  a.setAttribute('download', name);
+  a.setAttribute('href', dataUrl);
+  a.click();
+}
+
+// Define image dimensions and padding for export
+const imageWidth = 1920;
+const imageHeight = 1080;
+const imagePadding = 20; // Padding around the diagram in the exported image
+
+/**
  * Inner content component for the flow diagram
  * Handles the actual ReactFlow diagram rendering and node/edge creation
  * 
@@ -133,7 +153,7 @@ const FlowDiagramContent = ({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isGenerating, setIsGenerating] = useState(true);
-  const { fitView } = useReactFlow();
+  const { getNodes, fitView } = useReactFlow(); // Get getNodes from useReactFlow
   const componentRef = useRef();
 
   /**
@@ -265,6 +285,65 @@ const FlowDiagramContent = ({
     }
   }, [rootElement, steps, connections, fitView]);
 
+  /**
+   * Handles exporting the current flow diagram as a PNG image
+   */
+  const onExport = useCallback(() => {
+    const nodesToExport = getNodes();
+    if (nodesToExport.length === 0) {
+      console.warn('No nodes to export.');
+      return;
+    }
+
+    // Calculate the bounds of the nodes
+    const nodesBounds = getRectOfNodes(nodesToExport);
+    
+    // Calculate the transform needed to fit the bounds into the image dimensions
+    const transform = getTransformForBounds(
+      nodesBounds,
+      imageWidth,
+      imageHeight,
+      0.5, // minZoom
+      2,   // maxZoom
+      imagePadding // Add padding
+    );
+
+    // Get the DOM element of the viewport
+    const viewportElement = document.querySelector('.react-flow__viewport');
+
+    if (!viewportElement) {
+      console.error('React Flow viewport element not found.');
+      return;
+    }
+
+    toPng(viewportElement, {
+      backgroundColor: '#ffffff', // Set background color for the image
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: `${imageWidth}px`,
+        height: `${imageHeight}px`,
+        transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
+      },
+      // Filter out the controls and minimap from the export
+      filter: (node) => {
+        return !(
+          node?.classList?.contains('react-flow__controls') ||
+          node?.classList?.contains('react-flow__minimap') ||
+          node?.classList?.contains('react-flow__attribution') ||
+          node?.classList?.contains('export-button-container') // Exclude the export button itself
+        );
+      },
+    })
+      .then((dataUrl) => {
+        downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+      })
+      .catch((err) => {
+        console.error('Failed to export diagram:', err);
+        // Add user feedback here, e.g., using a toast notification
+      });
+  }, [getNodes, rootElement?.name]);
+
   // Show loading indicator while generating the diagram
   if (isGenerating) {
     return (
@@ -290,6 +369,20 @@ const FlowDiagramContent = ({
         <Controls /> {/* Zoom and pan controls */}
         <MiniMap /> {/* Mini overview map */}
         <Background variant="dots" gap={12} size={1} /> {/* Dotted background grid */}
+        
+        {/* Export Button Container */}
+        <div 
+          className="export-button-container absolute top-4 right-4 z-10" // Adjusted right position from right-28 to right-4
+        >
+          <Button 
+            onClick={onExport} 
+            variant="outline" 
+            size="sm"
+            className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
+          >
+            Export PNG
+          </Button>
+        </div>
       </ReactFlow>
     </div>
   );
