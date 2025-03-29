@@ -372,7 +372,7 @@ const FlowDiagramContent = ({
         
         {/* Export Button Container */}
         <div 
-          className="export-button-container absolute top-4 right-4 z-10" // Adjusted right position from right-28 to right-4
+          className="export-button-container absolute top-4 right-28 z-10" // Position near controls
         >
           <Button 
             onClick={onExport} 
