@@ -274,17 +274,12 @@ const FlowDiagramContent = ({
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
         setIsGenerating(false);
-
-        // Fit the diagram view after a short delay to ensure rendering is complete
-        setTimeout(() => {
-          fitView({ padding: 0.5 }); // Add padding for better spacing
-        }, 100);
       } catch (err) {
         console.error('Error generating diagram:', err);
         setIsGenerating(false);
       }
     }
-  }, [rootElement, steps, connections, fitView]);
+  }, [rootElement, steps, connections, setNodes, setEdges]);
 
   /**
    * Handles exporting the current flow diagram as a PNG image
