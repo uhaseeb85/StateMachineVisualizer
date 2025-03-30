@@ -15,7 +15,7 @@
  * - Guided tour
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 // Core components
 import StatePanel from './StatePanel';
@@ -27,6 +27,8 @@ import UserGuideModal from './UserGuideModal';
 import ChangeLog from './ChangeLog';
 import VersionInfo from './VersionInfo';
 import SplunkConfig from './SplunkConfig';
+import GraphSplitterModal from './GraphSplitterModal';
+import ImportConfirmModal from './ImportConfirmModal';
 
 // Custom hooks
 import useStateMachine from './hooks/useStateMachine';
@@ -93,6 +95,35 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
+  const [showGraphSplitter, setShowGraphSplitter] = useState(false);
+  
+  // Import confirmation modal state
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [pendingImportEvent, setPendingImportEvent] = useState(null);
+  const [importFileName, setImportFileName] = useState('');
+  const [isDuplicateName, setIsDuplicateName] = useState(false);
+  
+  // Track imported file names
+  const [importedFileNames, setImportedFileNames] = useState(() => {
+    try {
+      const savedNames = localStorage.getItem('importedFileNames');
+      return savedNames ? JSON.parse(savedNames) : [];
+    } catch (error) {
+      return [];
+    }
+  });
+  
+  // Save imported file names to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('importedFileNames', JSON.stringify(importedFileNames));
+  }, [importedFileNames]);
+  
+  // Add a new imported file name to the list
+  const addImportedFileName = (fileName) => {
+    if (fileName && !importedFileNames.includes(fileName)) {
+      setImportedFileNames(prev => [...prev, fileName]);
+    }
+  };
 
   // Dictionary states with localStorage persistence
   const [loadedDictionary, setLoadedDictionary] = useState(() => {
@@ -242,6 +273,90 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     XLSX.writeFile(wb, 'state_machine_export.csv', { bookType: 'csv', rawNumbers: true });
   };
 
+  /**
+   * Handles the initial CSV/Excel import
+   * Shows confirmation modal if there are existing states or if filename already exists
+   */
+  const handleInitialImport = (event) => {
+    // We need to clone the event since the original will be cleared
+    const clonedEvent = {
+      target: {
+        files: event.target.files
+      }
+    };
+    
+    const fileName = event.target.files[0]?.name || "file";
+    const isDuplicate = importedFileNames.includes(fileName);
+    
+    // Set confirmation type
+    setIsDuplicateName(isDuplicate);
+    
+    // Only show confirmation if there are actual states or it's a duplicate filename
+    const hasExistingStates = Array.isArray(states) && states.length > 0;
+    
+    if (hasExistingStates || isDuplicate) {
+      setPendingImportEvent(clonedEvent);
+      setImportFileName(fileName);
+      setShowImportConfirm(true);
+    } else {
+      // No existing states and not a duplicate, just import directly
+      handleImportAndTrack(clonedEvent);
+    }
+  };
+  
+  /**
+   * Handles import with replacing existing states
+   */
+  const handleReplaceImport = () => {
+    if (pendingImportEvent) {
+      handleImportAndTrack(pendingImportEvent, { replaceExisting: true });
+      setShowImportConfirm(false);
+      setPendingImportEvent(null);
+    }
+  };
+  
+  /**
+   * Handles import to display alongside existing states
+   */
+  const handleDisplayAlongsideImport = () => {
+    if (pendingImportEvent) {
+      handleImportAndTrack(pendingImportEvent, { replaceExisting: false });
+      setShowImportConfirm(false);
+      setPendingImportEvent(null);
+    }
+  };
+  
+  /**
+   * Wrapper for handleExcelImport that also tracks the imported file name
+   */
+  const handleImportAndTrack = async (event, options) => {
+    const fileName = event.target.files[0]?.name;
+    const result = await handleExcelImport(event, options);
+    
+    // If import was successful, add filename to tracked list
+    if (result && !result.error && fileName) {
+      addImportedFileName(fileName);
+    }
+    
+    return result;
+  };
+
+  /**
+   * Handles clearing all data, including imported file tracking
+   */
+  const handleClearAll = () => {
+    // Call the original clear function
+    clearData();
+    
+    // Also clear the imported filenames tracking
+    setImportedFileNames([]);
+    localStorage.removeItem('importedFileNames');
+    
+    // Reset any pending import
+    setPendingImportEvent(null);
+    setShowImportConfirm(false);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -280,13 +395,14 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
           onSave={saveFlow}
-          onExcelImport={handleExcelImport}
+          onExcelImport={handleInitialImport}
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
           onExportCSV={handleExportCSV}
           onChangeMode={onChangeMode}
-          onClearData={clearData}
+          onClearData={handleClearAll}
+          onSplitGraph={() => setShowGraphSplitter(true)}
         />
 
         {/* Main Panels */}
@@ -385,10 +501,11 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           <PathFinderModal
             states={states}
             onClose={() => setShowPathFinder(false)}
+            onSelectState={handleStateSelect}
           />
         )}
 
-        <ChangeLog 
+        <ChangeLog
           changeLog={changeLog}
           isOpen={showChangeLog}
           onClose={() => setShowChangeLog(false)}
@@ -429,6 +546,26 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           }}
         />
       )}
+
+      {showGraphSplitter && (
+        <GraphSplitterModal
+          onClose={() => setShowGraphSplitter(false)}
+          states={states}
+        />
+      )}
+
+      {/* Import confirmation modal */}
+      <ImportConfirmModal
+        isOpen={showImportConfirm}
+        onClose={() => {
+          setShowImportConfirm(false);
+          setPendingImportEvent(null);
+        }}
+        onReplace={handleReplaceImport}
+        onDisplayAlongside={handleDisplayAlongsideImport}
+        importFileName={importFileName}
+        isDuplicateName={isDuplicateName}
+      />
 
       {/* Version information */}
       <VersionInfo />

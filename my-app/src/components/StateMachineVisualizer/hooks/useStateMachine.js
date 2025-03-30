@@ -264,8 +264,10 @@ export default function useStateMachine() {
    * Imports state machine configuration from an Excel file
    * Processes Source Node, Destination Node, and Rule List columns
    * @param {Event} event - File input change event
+   * @param {Object} options - Import options
+   * @param {boolean} options.replaceExisting - Whether to replace existing states or add alongside
    */
-  const handleExcelImport = async (event) => {
+  const handleExcelImport = async (event, options = { replaceExisting: true }) => {
     try {
       const file = event.target.files[0];
       if (!file) return;
@@ -333,19 +335,21 @@ export default function useStateMachine() {
 
         if (!sourceNode || !destNode || !ruleList) continue;
 
-        // Create states if they don't exist
+        // Create states if they don't exist - without any suffix
         if (!stateMap.has(sourceNode)) {
           stateMap.set(sourceNode, {
             id: generateId(),
             name: sourceNode,
-            rules: []
+            rules: [],
+            graphSource: file.name // Keep source info for internal tracking only
           });
         }
         if (!stateMap.has(destNode)) {
           stateMap.set(destNode, {
             id: generateId(),
             name: destNode,
-            rules: []
+            rules: [],
+            graphSource: file.name // Keep source info for internal tracking only
           });
         }
 
@@ -371,13 +375,29 @@ export default function useStateMachine() {
         state.rules = sortRulesByPriority(state.rules);
       });
 
-      setStates(newStates);
-      toast.success(`Import successful! Created ${newStates.length} states with sorted rules.`);
-      addToChangeLog(`Imported Excel configuration: ${newStates.length} states created with rules sorted by priority`);
+      // If displaying alongside existing states
+      if (!options.replaceExisting) {
+        setStates(currentStates => {
+          const combinedStates = [...currentStates, ...newStates];
+          return combinedStates;
+        });
+        toast.success(`Import successful! Added ${newStates.length} states alongside existing graph.`);
+        addToChangeLog(`Added second graph: ${newStates.length} states from ${file.name}`);
+      } else {
+        // Replace existing states
+        setStates(newStates);
+        toast.success(`Import successful! Created ${newStates.length} states with sorted rules.`);
+        addToChangeLog(`Imported Excel configuration: ${newStates.length} states created with rules sorted by priority`);
+      }
 
+      return {
+        states: newStates,
+        fileName: file.name
+      };
     } catch (error) {
       console.error('Import error:', error);
       toast.error('Error importing file: ' + error.message);
+      return { error };
     }
   };
 

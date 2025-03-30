@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2 } from 'lucide-react';
+import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2, Scissors } from 'lucide-react';
 
 const TopActionBar = ({ 
   isDarkMode, 
@@ -28,7 +28,8 @@ const TopActionBar = ({
   startTour,
   onExportCSV,
   onChangeMode,
-  onClearData
+  onClearData,
+  onSplitGraph
 }) => {
 
   // State for controlling the confirmation dialog
@@ -198,18 +199,32 @@ const TopActionBar = ({
               Pathfinder
             </Button>
 
-             {/* Simulation Button */}
-             <Button 
-              onClick={onSimulate}
-              title="Run a simulation of your state machine to test its behavior"
-              className="simulation-button bg-green-600 text-white text-sm
-                       hover:bg-green-500 hover:scale-105
-                       dark:bg-green-700 dark:hover:bg-green-600
+            {/* Graph Splitter Button */}
+            <Button
+              onClick={onSplitGraph}
+              title="Split large graphs into manageable subgraphs while preserving connectivity"
+              className="split-graph-button bg-purple-600 text-white text-sm
+                       hover:bg-purple-500 hover:scale-105
+                       dark:bg-purple-700 dark:hover:bg-purple-600
                        transform transition-all duration-200
                        flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
+              <Scissors className="w-4 h-4" />
+              Graph Splitter
+            </Button>
+
+            {/* Simulation Button */}
+            <Button
+              onClick={onSimulate}
+              title="Interactively simulate state transitions with rules"
+              className="simulate-button bg-blue-600 text-white text-sm
+                       hover:bg-blue-500 hover:scale-105
+                       dark:bg-blue-700 dark:hover:bg-blue-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md ml-2"
+            >
               <Play className="w-4 h-4" />
-              Simulate
+              Simulation
             </Button>
 
             {/* Mode Switch Button */}
@@ -283,7 +298,10 @@ TopActionBar.propTypes = {
   startTour: PropTypes.func.isRequired,
 
   // Mode switch prop
-  onChangeMode: PropTypes.func.isRequired
+  onChangeMode: PropTypes.func,
+
+  // Graph splitter prop
+  onSplitGraph: PropTypes.func.isRequired
 };
 
 export default TopActionBar;
