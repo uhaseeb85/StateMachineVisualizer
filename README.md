@@ -1,6 +1,6 @@
 # State Machine Visualizer
 
-A modern, interactive web application for designing, visualizing, and simulating state machines. Built with React and Tailwind CSS, this tool provides an intuitive interface for creating and managing state machines with a focus on user experience.
+A modern, interactive web application for designing, visualizing, and simulating state machines and flow diagrams. Built with React and Tailwind CSS, this tool provides an intuitive interface for creating and managing visual workflows with a focus on user experience.
 
 ## Table of Contents
 - [Installation](#installation)
@@ -118,6 +118,14 @@ Follow these steps to deploy the application to your local Tomcat server:
 
 ## Usage Guide
 
+### Mode Selection
+
+1. **Choose Your Visualization Mode**
+   - State Machine Visualizer for state transitions management
+   - Flow Diagram Visualizer for API process flow visualization
+   - IVR Designer for interactive voice response design
+   - Log Analyzer for log file analysis
+
 ### State Management
 
 1. **Creating States**
@@ -165,6 +173,54 @@ Follow these steps to deploy the application to your local Tomcat server:
    - View descriptions by clicking on rules
    - Maintains standardization across state machines
 
+### Graph Tools
+
+1. **Accessing Graph Tools**
+   - Click "Graph Tools" in the top toolbar
+   - Choose from available tools:
+     - Pathfinder
+     - Simulation
+     - Graph Splitter
+
+2. **Pathfinder**
+   - Find paths between states
+   - Analyze possible transitions
+   - Detect loops in the state machine
+   - Export findings to HTML
+
+3. **Simulation**
+   - Select a starting state
+   - Step through transitions
+   - Evaluate rules for each state
+   - Track the path history
+   - Switch between horizontal and vertical layouts
+
+4. **Graph Splitter**
+   - Break large graphs into manageable subgraphs
+   - Preserve connectivity information
+   - Identify natural partitions in the graph
+   - Color-code states based on subgraph membership
+
+### Flow Diagram Visualization
+
+1. **Creating Flow Diagrams**
+   - Add nodes representing process steps
+   - Connect nodes with directional arrows
+   - Customize node and connection properties
+   - Apply automatic layout for clean visualization
+
+2. **Exporting Diagrams**
+   - Export diagrams as PNG images
+   - Preserve layout and styling
+   - High-resolution output for documentation
+   - Download with custom filename
+
+3. **Interactive Analysis**
+   - Visual analysis of node relationships
+   - Identify root nodes and child nodes
+   - Highlight connection paths
+   - Filter diagram to show relevant nodes
+
 ### Data Import/Export
 
 1. **CSV Import**
@@ -188,44 +244,19 @@ Follow these steps to deploy the application to your local Tomcat server:
    - "Import" to restore from configuration file
    - Auto-save feature prevents data loss
 
-### Simulation Mode
+### Log Analysis
 
-1. **Starting Simulation**
-   - Click "Simulate" in the top toolbar
-   - Select starting state in the modal
-   - View current state highlighted in blue
+1. **Local File Analysis**
+   - Upload log files directly to the application
+   - Pattern matching against known log formats
+   - Automatic identification of errors and warnings
+   - Context-aware analysis
 
-2. **Running Simulation**
-   - Click on the current state to view available transitions
-   - Rules for current state are displayed
-   - Click a rule to evaluate it
-   - Choose success/failure to determine next state
-
-3. **Simulation Controls**
-   - Undo button to step back
-   - Reset to start over
-   - Close simulation to return to editor
-   - View transition history in the path
-
-### Pathfinder Feature
-
-1. **Finding Paths**
-   - Click "Pathfinder" in top toolbar
-   - Select source state
-   - Select target state
-   - Click "Find Paths" to analyze
-
-2. **Understanding Results**
-   - Green checkmarks (✓) show successful transitions
-   - Red crosses (❌) show failed transitions
-   - Arrows (→) indicate direction
-   - Multiple paths may be displayed
-
-3. **Loop Detection**
-   - Automatically identifies circular paths
-   - Shows all states involved in the loop
-   - Helps identify infinite transitions
-   - Useful for validation
+2. **Splunk Integration**
+   - Connect to Splunk instance
+   - Run queries against indexed logs
+   - Configure server URL, port, and token
+   - Import search results for analysis
 
 ### Additional Features
 
@@ -256,6 +287,10 @@ src/
   │   │   ├── hooks/          # Custom React hooks
   │   │   ├── components/     # UI components
   │   │   └── utils/          # Utility functions
+  │   ├── FlowDiagramVisualizer/
+  │   │   ├── hooks/          # Custom React hooks
+  │   │   ├── CustomNodes/    # Node components for ReactFlow
+  │   │   └── utils/          # Utility functions
   │   └── ui/                 # Shared UI components
   ├── lib/                    # Third-party integrations
   └── utils/                  # Global utility functions
@@ -276,109 +311,15 @@ npm run test         # Run tests
 
 
 ## Dependencies: 
-- The project uses React, ReactDOM, and Vite. 
-- It also includes several UI-related libraries like @radix-ui/react-alert-dialog, @radix-ui/react-dialog, @shadcn/ui, lucide-react, tailwind-merge, and tailwindcss-animate. 
-- There's also react-joyride for creating guided tours, 
-- sonner for toast notifications, html2canvas for taking screenshots, 
-- xlsx-js-style for working with Excel files.
+- The project uses React, ReactDOM, and Vite for the core framework
+- UI-related libraries like @radix-ui/react-alert-dialog, @radix-ui/react-dialog, @shadcn/ui, lucide-react, tailwind-merge, and tailwindcss-animate
+- ReactFlow for interactive flow diagram visualization
+- Dagre for automatic graph layout in flow diagrams
+- React-joyride for creating guided tours
+- Sonner for toast notifications
+- html-to-image for taking diagram screenshots
+- xlsx-js-style for working with Excel files
 
-
-## File level Functional Details
-
-### index.jsx
-- Core Component: This is the main container component for the state machine visualization application. It orchestrates all sub-components and manages the global state.
-- Key Features: The component description highlights key features such as state and rule management, theme support, import/export functionality, interactive simulation, path finding, local storage persistence, change history tracking, and a guided tour.
-- Sub-components: It imports and renders several sub-components, including StatePanel, RulesPanel, TopActionBar, SimulationModal, PathFinderModal, UserGuideModal, ChangeLog, VersionInfo, and SplunkConfig.
-- Custom Hooks: It uses custom hooks useStateMachine and useSimulation to manage state machine logic and simulation functionality, respectively.
-- UI Components: It utilizes UI components from @/components/ui/ (likely a custom UI library) and sonner for toast notifications.
-- State Management: The component uses useState for managing modal visibility, loaded dictionaries, and other UI-related states. It also leverages localStorage for persisting dictionaries.
-- CSV Export: The handleExportCSV function handles CSV export with preservation of additional columns, merging current state data with previously imported data.
-
-### useStateMachine.js
-
-- Core Logic: This hook manages the core state machine logic, including states, selected state, dark mode, save notifications, and the change log.
-- State Management: It uses useState for managing states and useEffect for persisting data to localStorage.
-- Change Log: The hook maintains a change log to track user actions. The change log is stored in localStorage and has a maximum size of 2000 entries.
-- Import/Export: The hook includes functions for importing and exporting state machine configurations as JSON files.
-- Excel Import: The hook includes functions for importing state machine configurations from Excel files. It uses the xlsx-js-style library for parsing Excel files.
-- Rule Dictionary Import: The hook includes functions for importing rule dictionaries from Excel files.
-- Helper Functions: The hook includes helper functions for adding timestamped entries to the change log and generating unique IDs.
-- Delete State: The handleDeleteState function checks if any other state has a rule pointing to the state to be deleted, and prevents deletion if it is used as a target state in other rules.
-
-### ChangeLog.jsx
-
-- Purpose: This component displays a modal containing a chronological history of changes made to the state machine.
-- Features: It displays timestamped change entries, allows exporting the history to a text file, and provides an option to clear the history.
-- Storage: The component relies on the changeLog state, which is managed by the useStateMachine hook and persisted in localStorage.
-- UI: The component uses UI components from @/components/ui/ for buttons and modal structure. It also uses icons from lucide-react.
-- Export Functionality: The exportToFile function formats the change log entries and creates a downloadable text file.
-- Reset Functionality: The resetHistory function clears the change log from both the state and localStorage after user confirmation.
-
-### LogAnalyzer.jsx
-
-- Purpose: This component provides a log analysis tool that supports both local file analysis and Splunk integration.
-- Features: It allows users to upload and analyze local log files, connect to Splunk for remote log analysis, import/manage log pattern dictionaries, and view analysis results with context.
-- Analysis Method: The component uses a pattern-matching approach with regular expressions to identify known patterns in logs and provide relevant suggestions.
-- Splunk Integration: The component integrates with Splunk, allowing users to analyze logs directly from their Splunk instance. It uses the searchSplunk function from @/api/splunk.js to search for logs in Splunk.
-- Log Dictionary: The component uses a log dictionary to store log patterns and analysis rules. The log dictionary is stored in sessionStorage.
-- UI: The component uses UI components from @/components/ui/ for buttons, inputs, and alerts. It also uses icons from lucide-react.
-- Screens: The component uses a state variable screen to manage different screens, including a select screen, a Splunk analysis screen, and a file analysis screen.
-- Sample Patterns: The component includes a set of sample log patterns that can be used as a starting point for creating a log dictionary.
-
-### PathFinderModal.jsx
-
-- Purpose: This component provides advanced path finding capabilities within the state machine.
-- Features: It supports finding paths to end states, between specific states, and through intermediate states. It also detects loops in the state machine and exports results to HTML.
-- Algorithm: The component uses a depth-first search (DFS) algorithm with cycle detection for path finding.
-- Search Modes: The component supports different search modes, including finding paths to end states, finding paths between states, and finding paths through an intermediate state.
-- Loop Detection: The component includes a function to detect loops in the state machine.
-- UI: The component uses UI components from @/components/ui/ for buttons and selects. It also uses icons from lucide-react.
-- Export Functionality: The component includes a function to export the search results to an HTML file.
-- Pagination: The component implements pagination for large result sets.
-
-### RulesPanel.jsx
-
-- Purpose: This component manages transition rules between states in the state machine.
-- Features: It allows adding new rules, editing existing rules, deleting rules, importing rule descriptions from Excel, displaying rule metadata, and managing rule conditions and target states.
-- Rule Management: The component uses state variables to manage the rule editing process, including newRuleCondition, newRuleNextState, editingRuleId, and editingRuleCondition.
-- Rule Dictionary: The component supports importing rule descriptions from an Excel file. The imported rule descriptions are stored in the loadedDictionary state variable.
-- UI: The component uses UI components from @/components/ui/ for buttons and inputs. It also uses icons from lucide-react.
-- Rule Descriptions: The component displays descriptions for individual parts of a compound rule, handling negated conditions (with ! prefix).
-
-### SimulationModal.jsx
-
-- Purpose: This component provides interactive simulation of state machine flows.
-- Features: It offers visual representation of state transitions, interactive rule evaluation, success/failure outcome selection, undo/reset capabilities, layout switching (vertical/horizontal), and image export functionality.
-- Simulation Process: The simulation follows a step-by-step process where users can click on states to initiate transitions, evaluate rules for state changes, determine success/failure outcomes, and track the simulation path visually.
-- UI: The component uses UI components from @/components/ui/ for buttons. It also uses icons from lucide-react.
-- Layout: The component allows switching between vertical and horizontal layouts.
-- Image Export: The component includes a function to export the simulation view as an image.
-- State Management: The component receives the simulationState as a prop, which is managed by the useSimulation hook.
-
-### SplunkConfig.jsx
-
-- Purpose: This component provides a configuration modal for setting up Splunk integration parameters.
-- Features: It handles server URL, port, token, and index configuration, and persists the configuration in localStorage.
-- Validation: The component includes input validation to ensure that the configuration parameters are valid.
-- UI: The component uses UI components from @/components/ui/ for buttons and inputs.
-- State Management: The component uses the useState hook to manage the form state and validation errors.
-
-### StatePanel.jsx
-
-- Purpose: This component manages the states of the state machine.
-- Features: It allows adding new states, deleting existing states, selecting states for editing, importing state descriptions from Excel, and displaying state metadata (rule count, descriptions).
-- State Management: The component uses local state to manage the new state name and selected state ID.
-- State Dictionary: The component supports importing state descriptions from an Excel file. The imported state descriptions are stored in the loadedStateDictionary state variable.
-- UI: The component uses UI components from @/components/ui/ for buttons and inputs. It also uses icons from lucide-react.
-- State Selection: The component highlights the selected state and displays its description (if available).
-
-### TopActionBar.jsx
-
-- Purpose: This component provides a navigation and action bar for the State Machine Visualizer.
-- Features: It includes controls for theme toggling, getting started tour, save/export/import operations, and tool access (Pathfinder, Simulation, Log Analysis).
-- UI: The component uses UI components from @/components/ui/ for buttons. It also uses icons from lucide-react.
-- Log Analysis Modal: The component manages the visibility of the LogAnalyzer modal.
-- Responsive Design: The component is designed to be responsive.
 
 ## Troubleshooting
 
@@ -411,6 +352,7 @@ npm run test         # Run tests
 - Large state machines may experience performance impacts
 - CSV imports must follow specified column structure
 - Some features require modern browser support
+- Flow diagram layout may need manual adjustment for complex diagrams
 
 ## Contributing
 
