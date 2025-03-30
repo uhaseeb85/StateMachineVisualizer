@@ -378,7 +378,36 @@ export default function useStateMachine() {
       // If displaying alongside existing states
       if (!options.replaceExisting) {
         setStates(currentStates => {
-          const combinedStates = [...currentStates, ...newStates];
+          // Create a mapping of state names to state IDs from the new graph
+          const newStateNameToIdMap = new Map();
+          newStates.forEach(state => {
+            newStateNameToIdMap.set(state.name, state.id);
+          });
+          
+          // Update existing states that had no rules but now have a matching state in the new graph
+          const updatedExistingStates = currentStates.map(existingState => {
+            // If this state has no rules but there's a matching state in the new graph
+            // it was likely an external reference before
+            if (existingState.rules.length === 0 && newStateNameToIdMap.has(existingState.name)) {
+              const targetStateId = newStateNameToIdMap.get(existingState.name);
+              
+              // Add a default "TRUE" rule to link to the matching state
+              return {
+                ...existingState,
+                rules: [
+                  {
+                    id: generateId(),
+                    condition: "TRUE",
+                    nextState: targetStateId,
+                    priority: 50
+                  }
+                ]
+              };
+            }
+            return existingState;
+          });
+          
+          const combinedStates = [...updatedExistingStates, ...newStates];
           return combinedStates;
         });
         toast.success(`Import successful! Added ${newStates.length} states alongside existing graph.`);

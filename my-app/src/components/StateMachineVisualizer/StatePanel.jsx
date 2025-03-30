@@ -276,7 +276,9 @@ const StatePanel = ({
             {graphSources.map((source, index) => (
               <div key={index} className="flex items-center text-xs">
                 <span className={`inline-block w-3 h-3 rounded-full mr-1.5 ${getGraphColor(source)}`}></span>
-                <span className="text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{source}</span>
+                {source !== "External" && (
+                  <span className="text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{source}</span>
+                )}
               </div>
             ))}
           </div>
@@ -364,8 +366,7 @@ const StatePanel = ({
                 <div className="flex items-center">
                   {state.graphSource && (
                     <span 
-                      className={`mr-1.5 inline-block w-2 h-2 rounded-full ${getGraphColor(state.graphSource)}`} 
-                      title={`Source: ${state.graphSource}`}
+                      className={`mr-1.5 inline-block w-2 h-2 rounded-full ${getGraphColor(state.graphSource)}`}
                     ></span>
                   )}
                   <span>{state.name}</span>

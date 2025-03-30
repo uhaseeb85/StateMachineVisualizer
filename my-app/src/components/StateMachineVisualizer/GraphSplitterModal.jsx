@@ -247,7 +247,30 @@ const createSubgraph = (originalStates, stateIds) => {
 const exportSubgraphToCSV = (states, graphName, allStates) => {
   if (!states || states.length === 0) return;
   
-  const csvData = states.flatMap(sourceState => 
+  // Get all external references (outgoing boundaries)
+  const outgoingBoundaries = [];
+  const stateIdsInSubgraph = new Set(states.map(s => s.id));
+  
+  // Find all rules that point to states outside this subgraph
+  states.forEach(state => {
+    state.rules.forEach(rule => {
+      if (rule.nextState && !stateIdsInSubgraph.has(rule.nextState)) {
+        const externalState = allStates.find(s => s.id === rule.nextState);
+        if (externalState) {
+          outgoingBoundaries.push({
+            sourceName: state.name,
+            destName: externalState.name
+          });
+        }
+      }
+    });
+  });
+  
+  // Create a Set to avoid duplicate external state entries
+  const externalStates = new Set(outgoingBoundaries.map(b => b.destName));
+  
+  // Basic rules from states
+  const basicCsvData = states.flatMap(sourceState => 
     sourceState.rules.map(rule => {
       // Check if the destination ID starts with "id_" pattern
       const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
@@ -278,6 +301,20 @@ const exportSubgraphToCSV = (states, graphName, allStates) => {
       };
     })
   );
+  
+  // Add TRUE rules for external states
+  const externalStateRules = Array.from(externalStates).map(externalStateName => {
+    return {
+      'Source Node': externalStateName,
+      'Destination Node': externalStateName,
+      'Rule List': 'TRUE',
+      'Priority': 50,
+      'Operation / Edge Effect': ''
+    };
+  });
+  
+  // Combine the normal rules with the external state rules
+  const csvData = [...basicCsvData, ...externalStateRules];
   
   // Create a new workbook
   const wb = XLSX.utils.book_new();
@@ -392,8 +429,30 @@ const GraphSplitterModal = ({ onClose, states }) => {
     
     // Add each subgraph as a separate file in the zip
     subgraphs.forEach((subgraph, index) => {
-      // Create a CSV for this subgraph
-      const csvData = subgraph.states.flatMap(sourceState => 
+      // Get all external references for this subgraph
+      const outgoingBoundaries = [];
+      const stateIdsInSubgraph = new Set(subgraph.states.map(s => s.id));
+      
+      // Find all rules that point to states outside this subgraph
+      subgraph.states.forEach(state => {
+        state.rules.forEach(rule => {
+          if (rule.nextState && !stateIdsInSubgraph.has(rule.nextState)) {
+            const externalState = states.find(s => s.id === rule.nextState);
+            if (externalState) {
+              outgoingBoundaries.push({
+                sourceName: state.name,
+                destName: externalState.name
+              });
+            }
+          }
+        });
+      });
+      
+      // Create a Set to avoid duplicate external state entries
+      const externalStates = new Set(outgoingBoundaries.map(b => b.destName));
+      
+      // Create a CSV for this subgraph - normal rules
+      const basicCsvData = subgraph.states.flatMap(sourceState => 
         sourceState.rules.map(rule => {
           // Check if the destination ID starts with "id_" pattern
           const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
@@ -424,6 +483,20 @@ const GraphSplitterModal = ({ onClose, states }) => {
           };
         })
       );
+      
+      // Add TRUE rules for external states
+      const externalStateRules = Array.from(externalStates).map(externalStateName => {
+        return {
+          'Source Node': externalStateName,
+          'Destination Node': externalStateName,
+          'Rule List': 'TRUE',
+          'Priority': 50,
+          'Operation / Edge Effect': ''
+        };
+      });
+      
+      // Combine the normal rules with the external state rules
+      const csvData = [...basicCsvData, ...externalStateRules];
       
       // Convert to XLSX format
       const wb = XLSX.utils.book_new();
