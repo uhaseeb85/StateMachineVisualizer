@@ -274,7 +274,7 @@ export default function useStateMachine() {
 
       const rows = await parseExcelFile(file);
       
-      // Store complete original data
+      // Store complete original data with file name as key
       const headers = rows[0];
       const jsonData = rows.slice(1).map(row => {
         const obj = {};
@@ -283,7 +283,13 @@ export default function useStateMachine() {
         });
         return obj;
       });
+      
+      // Store data both in the legacy key and a new file-specific key
       localStorage.setItem('lastImportedCSV', JSON.stringify(jsonData));
+      
+      // Also store data with filename as key for multiple file exports
+      const fileKey = `importedCSV_${file.name}`;
+      localStorage.setItem(fileKey, JSON.stringify(jsonData));
 
       // Process data and create states
       const stateMap = new Map();
@@ -341,7 +347,7 @@ export default function useStateMachine() {
             id: generateId(),
             name: sourceNode,
             rules: [],
-            graphSource: file.name // Keep source info for internal tracking only
+            graphSource: file.name // Store source filename for each state
           });
         }
         if (!stateMap.has(destNode)) {
@@ -349,7 +355,7 @@ export default function useStateMachine() {
             id: generateId(),
             name: destNode,
             rules: [],
-            graphSource: file.name // Keep source info for internal tracking only
+            graphSource: file.name // Store source filename for each state 
           });
         }
 
@@ -461,6 +467,17 @@ export default function useStateMachine() {
     
     // Clear state machine data from localStorage
     localStorage.removeItem('ivrFlow');
+    
+    // Clear imported CSV data
+    localStorage.removeItem('lastImportedCSV');
+    
+    // Clear any file-specific CSV data by finding and removing keys that start with 'importedCSV_'
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('importedCSV_')) {
+        localStorage.removeItem(key);
+      }
+    }
     
     addToChangeLog('Cleared all state machine data');
     toast.success('State machine data has been cleared');

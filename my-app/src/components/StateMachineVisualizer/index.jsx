@@ -180,9 +180,167 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
 
   /**
    * Handles CSV export with preservation of additional columns
-   * Merges current state data with previously imported data
+   * When multiple files were imported, exports each as a separate CSV
    */
   const handleExportCSV = () => {
+    // If no files were imported or no states exist, create a single generic export
+    if (importedFileNames.length === 0 || states.length === 0) {
+      exportSingleCSV();
+      return;
+    }
+    
+    // Group states by their source file
+    const statesBySource = {};
+    
+    // First, categorize states by their source file
+    states.forEach(state => {
+      const source = state.graphSource || 'unknown';
+      if (!statesBySource[source]) {
+        statesBySource[source] = [];
+      }
+      statesBySource[source].push(state);
+    });
+    
+    // If only one source or no source information, export as a single file
+    if (Object.keys(statesBySource).length <= 1) {
+      exportSingleCSV();
+      return;
+    }
+    
+    // Export each source as its own CSV
+    Object.entries(statesBySource).forEach(([source, sourceStates]) => {
+      if (source === 'unknown') {
+        exportStatesAsCSV(sourceStates, 'state_machine_new_data.csv');
+      } else {
+        // Create a clean filename derived from the original
+        const baseFilename = source.replace(/\.[^/.]+$/, ""); // Remove extension
+        const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const exportFilename = `${baseFilename}_export_${timestamp}.csv`;
+        exportStatesAsCSV(sourceStates, exportFilename);
+      }
+    });
+    
+    // Show success message for multiple exports
+    toast.success(`Exported ${Object.keys(statesBySource).length} CSV files successfully.`);
+  };
+
+  /**
+   * Exports a specific group of states as a CSV file
+   * @param {Array} statesToExport - States to include in the export
+   * @param {string} filename - Name for the exported file
+   */
+  const exportStatesAsCSV = (statesToExport, filename) => {
+    // Get the source filename from the first state in the group
+    const sourceFile = statesToExport[0]?.graphSource;
+    
+    // Try to get the original imported data specific to this file, if available
+    let baseData = [];
+    if (sourceFile) {
+      const fileSpecificData = localStorage.getItem(`importedCSV_${sourceFile}`);
+      if (fileSpecificData) {
+        baseData = JSON.parse(fileSpecificData);
+      } else {
+        // Fall back to the legacy storage if file-specific data not found
+        const lastImportedData = localStorage.getItem('lastImportedCSV');
+        baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+      }
+    } else {
+      // Fall back to the legacy storage if no source file is found
+      const lastImportedData = localStorage.getItem('lastImportedCSV');
+      baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+    }
+    
+    // Create current state data with updated values
+    const currentData = statesToExport.flatMap(sourceState => 
+      sourceState.rules.map(rule => {
+        const destState = states.find(s => s.id === rule.nextState);
+        return {
+          'Source Node': sourceState.name,
+          'Destination Node': destState ? destState.name : rule.nextState,
+          'Rule List': rule.condition,
+          'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50,
+          'Operation / Edge Effect': rule.operation || ''
+        };
+      })
+    );
+
+    // Merge with existing data or use current data only
+    let csvData;
+    if (baseData.length > 0) {
+      // Get all columns from the base data to preserve original order
+      const allColumns = Object.keys(baseData[0]);
+      
+      csvData = currentData.map(currentRow => {
+        const newRow = {};
+        const matchingRow = baseData.find(
+          baseRow => 
+            baseRow['Source Node'] === currentRow['Source Node'] &&
+            baseRow['Destination Node'] === currentRow['Destination Node']
+        );
+
+        // Use the original column order from the imported CSV
+        allColumns.forEach(column => {
+          if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
+            newRow[column] = currentRow[column];
+          } else if (column === 'Priority') {
+            newRow[column] = currentRow['Priority'];
+          } else if (column === 'Operation / Edge Effect') {
+            newRow[column] = currentRow['Operation / Edge Effect'];
+          } else {
+            newRow[column] = matchingRow ? matchingRow[column] : '';
+          }
+        });
+        
+        return newRow;
+      });
+    } else {
+      // If no previous data, create a structure with columns in standard order
+      csvData = currentData;
+    }
+
+    // Generate and download the CSV file with special handling for zeros
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(csvData);
+    
+    // Find the column index for Priority
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    let priorityCol = -1;
+    
+    // Look for the Priority column
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
+      if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
+        priorityCol = C;
+        break;
+      }
+    }
+    
+    // If we found the Priority column, explicitly set cell types for all values
+    if (priorityCol !== -1) {
+      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
+        if (ws[cellAddress]) {
+          const value = ws[cellAddress].v;
+          
+          // Force numeric type for priority values
+          ws[cellAddress] = {
+            t: 'n',  // numeric type
+            v: value === 0 || value === '0' ? 0 : (value || 50),
+            w: value === 0 || value === '0' ? '0' : (value || '50').toString()
+          };
+        }
+      }
+    }
+    
+    // Use the modified worksheet and only export CSV
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, filename, { bookType: 'csv', rawNumbers: true });
+  };
+
+  /**
+   * Exports all states as a single CSV file (legacy behavior)
+   */
+  const exportSingleCSV = () => {
     const lastImportedData = localStorage.getItem('lastImportedCSV');
     let baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
     
@@ -351,6 +509,14 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     // Also clear the imported filenames tracking
     setImportedFileNames([]);
     localStorage.removeItem('importedFileNames');
+    
+    // Clear any file-specific CSV data by finding and removing keys that start with 'importedCSV_'
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('importedCSV_')) {
+        localStorage.removeItem(key);
+      }
+    }
     
     // Reset any pending import
     setPendingImportEvent(null);

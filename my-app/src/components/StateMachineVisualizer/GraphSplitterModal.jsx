@@ -269,8 +269,31 @@ const exportSubgraphToCSV = (states, graphName, allStates) => {
   // Create a Set to avoid duplicate external state entries
   const externalStates = new Set(outgoingBoundaries.map(b => b.destName));
   
+  // Try to identify the source file of this subgraph based on the first state
+  let sourceFile = null;
+  if (states.length > 0 && states[0].graphSource) {
+    sourceFile = states[0].graphSource;
+  }
+  
+  // Try to get the original imported data specific to this file
+  let baseData = [];
+  if (sourceFile) {
+    const fileSpecificData = localStorage.getItem(`importedCSV_${sourceFile}`);
+    if (fileSpecificData) {
+      baseData = JSON.parse(fileSpecificData);
+    } else {
+      // Fall back to the legacy storage if file-specific data not found
+      const lastImportedData = localStorage.getItem('lastImportedCSV');
+      baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+    }
+  } else {
+    // Fall back to the legacy storage if no source file is found
+    const lastImportedData = localStorage.getItem('lastImportedCSV');
+    baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+  }
+  
   // Basic rules from states
-  const basicCsvData = states.flatMap(sourceState => 
+  const currentData = states.flatMap(sourceState => 
     sourceState.rules.map(rule => {
       // Check if the destination ID starts with "id_" pattern
       const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
@@ -313,18 +336,85 @@ const exportSubgraphToCSV = (states, graphName, allStates) => {
     };
   });
   
-  // Combine the normal rules with the external state rules
-  const csvData = [...basicCsvData, ...externalStateRules];
+  // Merge with existing data or use current data only
+  let csvData;
+  if (baseData.length > 0) {
+    // Get all columns from the base data to preserve original order
+    const allColumns = Object.keys(baseData[0]);
+    
+    // Combine the normal rules with the external state rules
+    const combinedRules = [...currentData, ...externalStateRules];
+    
+    csvData = combinedRules.map(currentRow => {
+      const newRow = {};
+      const matchingRow = baseData.find(
+        baseRow => 
+          baseRow['Source Node'] === currentRow['Source Node'] &&
+          baseRow['Destination Node'] === currentRow['Destination Node']
+      );
+
+      // Use the original column order from the imported CSV
+      allColumns.forEach(column => {
+        if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
+          newRow[column] = currentRow[column];
+        } else if (column === 'Priority') {
+          newRow[column] = currentRow['Priority'];
+        } else if (column === 'Operation / Edge Effect') {
+          newRow[column] = currentRow['Operation / Edge Effect'];
+        } else {
+          newRow[column] = matchingRow ? matchingRow[column] : '';
+        }
+      });
+      
+      return newRow;
+    });
+  } else {
+    // If no previous data, create a structure with columns in standard order
+    csvData = [...currentData, ...externalStateRules];
+  }
   
   // Create a new workbook
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(csvData);
   
-  // Add the worksheet to the workbook
-  XLSX.utils.book_append_sheet(wb, ws, "State Machine");
+  // Find the column index for Priority and ensure it has the right type
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  let priorityCol = -1;
   
-  // Generate the Excel file and trigger download
-  XLSX.writeFile(wb, `${graphName}.xlsx`);
+  // Look for the Priority column
+  for (let C = range.s.c; C <= range.e.c; ++C) {
+    const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
+    if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
+      priorityCol = C;
+      break;
+    }
+  }
+  
+  // If we found the Priority column, explicitly set cell types for all values
+  if (priorityCol !== -1) {
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
+      if (ws[cellAddress]) {
+        const value = ws[cellAddress].v;
+        
+        // Force numeric type for priority values
+        ws[cellAddress] = {
+          t: 'n',  // numeric type
+          v: value === 0 || value === '0' ? 0 : (value || 50),
+          w: value === 0 || value === '0' ? '0' : (value || '50').toString()
+        };
+      }
+    }
+  }
+  
+  // Generate a clean filename
+  const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const cleanName = graphName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const filename = `${cleanName}_${timestamp}.csv`;
+  
+  // Add the worksheet to the workbook and generate the file
+  XLSX.utils.book_append_sheet(wb, ws, "State Machine");
+  XLSX.writeFile(wb, filename, { bookType: 'csv', rawNumbers: true });
 };
 
 /**
@@ -428,7 +518,9 @@ const GraphSplitterModal = ({ onClose, states }) => {
     const zip = new JSZip();
     
     // Add each subgraph as a separate file in the zip
-    subgraphs.forEach((subgraph, index) => {
+    for (let i = 0; i < subgraphs.length; i++) {
+      const subgraph = subgraphs[i];
+      
       // Get all external references for this subgraph
       const outgoingBoundaries = [];
       const stateIdsInSubgraph = new Set(subgraph.states.map(s => s.id));
@@ -451,8 +543,31 @@ const GraphSplitterModal = ({ onClose, states }) => {
       // Create a Set to avoid duplicate external state entries
       const externalStates = new Set(outgoingBoundaries.map(b => b.destName));
       
+      // Try to identify the source file of this subgraph based on the first state
+      let sourceFile = null;
+      if (subgraph.states.length > 0 && subgraph.states[0].graphSource) {
+        sourceFile = subgraph.states[0].graphSource;
+      }
+      
+      // Try to get the original imported data specific to this file
+      let baseData = [];
+      if (sourceFile) {
+        const fileSpecificData = localStorage.getItem(`importedCSV_${sourceFile}`);
+        if (fileSpecificData) {
+          baseData = JSON.parse(fileSpecificData);
+        } else {
+          // Fall back to the legacy storage if file-specific data not found
+          const lastImportedData = localStorage.getItem('lastImportedCSV');
+          baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+        }
+      } else {
+        // Fall back to the legacy storage if no source file is found
+        const lastImportedData = localStorage.getItem('lastImportedCSV');
+        baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+      }
+      
       // Create a CSV for this subgraph - normal rules
-      const basicCsvData = subgraph.states.flatMap(sourceState => 
+      const currentData = subgraph.states.flatMap(sourceState => 
         sourceState.rules.map(rule => {
           // Check if the destination ID starts with "id_" pattern
           const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
@@ -495,20 +610,90 @@ const GraphSplitterModal = ({ onClose, states }) => {
         };
       });
       
-      // Combine the normal rules with the external state rules
-      const csvData = [...basicCsvData, ...externalStateRules];
+      // Merge with existing data or use current data only
+      let csvData;
+      if (baseData.length > 0) {
+        // Get all columns from the base data to preserve original order
+        const allColumns = Object.keys(baseData[0]);
+        
+        // Combine the normal rules with the external state rules
+        const combinedRules = [...currentData, ...externalStateRules];
+        
+        csvData = combinedRules.map(currentRow => {
+          const newRow = {};
+          const matchingRow = baseData.find(
+            baseRow => 
+              baseRow['Source Node'] === currentRow['Source Node'] &&
+              baseRow['Destination Node'] === currentRow['Destination Node']
+          );
+
+          // Use the original column order from the imported CSV
+          allColumns.forEach(column => {
+            if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
+              newRow[column] = currentRow[column];
+            } else if (column === 'Priority') {
+              newRow[column] = currentRow['Priority'];
+            } else if (column === 'Operation / Edge Effect') {
+              newRow[column] = currentRow['Operation / Edge Effect'];
+            } else {
+              newRow[column] = matchingRow ? matchingRow[column] : '';
+            }
+          });
+          
+          return newRow;
+        });
+      } else {
+        // If no previous data, create a structure with columns in standard order
+        csvData = [...currentData, ...externalStateRules];
+      }
       
       // Convert to XLSX format
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(csvData);
+      
+      // Find the column index for Priority and ensure it has the right type
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      let priorityCol = -1;
+      
+      // Look for the Priority column
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
+        if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
+          priorityCol = C;
+          break;
+        }
+      }
+      
+      // If we found the Priority column, explicitly set cell types for all values
+      if (priorityCol !== -1) {
+        for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+          const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
+          if (ws[cellAddress]) {
+            const value = ws[cellAddress].v;
+            
+            // Force numeric type for priority values
+            ws[cellAddress] = {
+              t: 'n',  // numeric type
+              v: value === 0 || value === '0' ? 0 : (value || 50),
+              w: value === 0 || value === '0' ? '0' : (value || '50').toString()
+            };
+          }
+        }
+      }
+      
       XLSX.utils.book_append_sheet(wb, ws, "State Machine");
       
-      // Get the binary data for the Excel file
-      const excelData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      // Generate a clean filename
+      const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const cleanName = subgraph.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${cleanName}_${timestamp}.csv`;
+      
+      // Get the binary data for the Excel file - use csv format for consistency
+      const excelData = XLSX.write(wb, { bookType: 'csv', type: 'array' });
       
       // Add the file to the zip
-      zip.file(`${subgraph.name}.xlsx`, excelData);
-    });
+      zip.file(filename, excelData);
+    }
     
     // Add a JSON file with the partitioning metadata
     const metadata = {
