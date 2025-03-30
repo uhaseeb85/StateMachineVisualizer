@@ -264,15 +264,17 @@ export default function useStateMachine() {
    * Imports state machine configuration from an Excel file
    * Processes Source Node, Destination Node, and Rule List columns
    * @param {Event} event - File input change event
+   * @param {Object} options - Import options
+   * @param {boolean} options.replaceExisting - Whether to replace existing states or add alongside
    */
-  const handleExcelImport = async (event) => {
+  const handleExcelImport = async (event, options = { replaceExisting: true }) => {
     try {
       const file = event.target.files[0];
       if (!file) return;
 
       const rows = await parseExcelFile(file);
       
-      // Store complete original data
+      // Store complete original data with file name as key
       const headers = rows[0];
       const jsonData = rows.slice(1).map(row => {
         const obj = {};
@@ -281,7 +283,13 @@ export default function useStateMachine() {
         });
         return obj;
       });
+      
+      // Store data both in the legacy key and a new file-specific key
       localStorage.setItem('lastImportedCSV', JSON.stringify(jsonData));
+      
+      // Also store data with filename as key for multiple file exports
+      const fileKey = `importedCSV_${file.name}`;
+      localStorage.setItem(fileKey, JSON.stringify(jsonData));
 
       // Process data and create states
       const stateMap = new Map();
@@ -333,19 +341,21 @@ export default function useStateMachine() {
 
         if (!sourceNode || !destNode || !ruleList) continue;
 
-        // Create states if they don't exist
+        // Create states if they don't exist - without any suffix
         if (!stateMap.has(sourceNode)) {
           stateMap.set(sourceNode, {
             id: generateId(),
             name: sourceNode,
-            rules: []
+            rules: [],
+            graphSource: file.name // Store source filename for each state
           });
         }
         if (!stateMap.has(destNode)) {
           stateMap.set(destNode, {
             id: generateId(),
             name: destNode,
-            rules: []
+            rules: [],
+            graphSource: file.name // Store source filename for each state 
           });
         }
 
@@ -371,13 +381,58 @@ export default function useStateMachine() {
         state.rules = sortRulesByPriority(state.rules);
       });
 
-      setStates(newStates);
-      toast.success(`Import successful! Created ${newStates.length} states with sorted rules.`);
-      addToChangeLog(`Imported Excel configuration: ${newStates.length} states created with rules sorted by priority`);
+      // If displaying alongside existing states
+      if (!options.replaceExisting) {
+        setStates(currentStates => {
+          // Create a mapping of state names to state IDs from the new graph
+          const newStateNameToIdMap = new Map();
+          newStates.forEach(state => {
+            newStateNameToIdMap.set(state.name, state.id);
+          });
+          
+          // Update existing states that had no rules but now have a matching state in the new graph
+          const updatedExistingStates = currentStates.map(existingState => {
+            // If this state has no rules but there's a matching state in the new graph
+            // it was likely an external reference before
+            if (existingState.rules.length === 0 && newStateNameToIdMap.has(existingState.name)) {
+              const targetStateId = newStateNameToIdMap.get(existingState.name);
+              
+              // Add a default "TRUE" rule to link to the matching state
+              return {
+                ...existingState,
+                rules: [
+                  {
+                    id: generateId(),
+                    condition: "TRUE",
+                    nextState: targetStateId,
+                    priority: 50
+                  }
+                ]
+              };
+            }
+            return existingState;
+          });
+          
+          const combinedStates = [...updatedExistingStates, ...newStates];
+          return combinedStates;
+        });
+        toast.success(`Import successful! Added ${newStates.length} states alongside existing graph.`);
+        addToChangeLog(`Added second graph: ${newStates.length} states from ${file.name}`);
+      } else {
+        // Replace existing states
+        setStates(newStates);
+        toast.success(`Import successful! Created ${newStates.length} states with sorted rules.`);
+        addToChangeLog(`Imported Excel configuration: ${newStates.length} states created with rules sorted by priority`);
+      }
 
+      return {
+        states: newStates,
+        fileName: file.name
+      };
     } catch (error) {
       console.error('Import error:', error);
       toast.error('Error importing file: ' + error.message);
+      return { error };
     }
   };
 
@@ -412,6 +467,17 @@ export default function useStateMachine() {
     
     // Clear state machine data from localStorage
     localStorage.removeItem('ivrFlow');
+    
+    // Clear imported CSV data
+    localStorage.removeItem('lastImportedCSV');
+    
+    // Clear any file-specific CSV data by finding and removing keys that start with 'importedCSV_'
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('importedCSV_')) {
+        localStorage.removeItem(key);
+      }
+    }
     
     addToChangeLog('Cleared all state machine data');
     toast.success('State machine data has been cleared');

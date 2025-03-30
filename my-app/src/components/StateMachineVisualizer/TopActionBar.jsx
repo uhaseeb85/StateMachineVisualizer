@@ -16,7 +16,8 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2 } from 'lucide-react';
+import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2, Scissors, Settings } from 'lucide-react';
+import GraphToolsModal from './GraphToolsModal';
 
 const TopActionBar = ({ 
   isDarkMode, 
@@ -28,11 +29,14 @@ const TopActionBar = ({
   startTour,
   onExportCSV,
   onChangeMode,
-  onClearData
+  onClearData,
+  onSplitGraph
 }) => {
 
   // State for controlling the confirmation dialog
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+  // State for controlling the Graph Tools modal
+  const [showGraphToolsModal, setShowGraphToolsModal] = useState(false);
 
   // Handle clear data button click
   const handleClearDataClick = () => {
@@ -43,6 +47,16 @@ const TopActionBar = ({
   const handleConfirmClear = () => {
     onClearData();
     setShowClearConfirmation(false);
+  };
+
+  // Handle opening the Graph Tools modal
+  const handleOpenGraphTools = () => {
+    setShowGraphToolsModal(true);
+  };
+
+  // Handle closing the Graph Tools modal
+  const handleCloseGraphTools = () => {
+    setShowGraphToolsModal(false);
   };
 
   return (
@@ -107,8 +121,6 @@ const TopActionBar = ({
               <Save className="w-4 h-4" />
               Save
             </Button>
-
-         
 
             {/* Import/Export Section */}
             <div className="flex gap-2 border-l pl-4 border-gray-200 dark:border-gray-700">
@@ -184,32 +196,18 @@ const TopActionBar = ({
 
           {/* Tools Group */}
           <div className="flex gap-4">
-            {/* Pathfinder Button */}
+            {/* NEW Graph Tools Button */}
             <Button
-              onClick={onFindPaths}
-              title="Find all possible paths between any two states in your state machine"
-              className="find-paths-button bg-blue-600 text-white text-sm
-                       hover:bg-blue-500 hover:scale-105
-                       dark:bg-blue-700 dark:hover:bg-blue-600
+              onClick={handleOpenGraphTools}
+              title="Access graph analysis and interaction tools"
+              className="graph-tools-button bg-indigo-600 text-white text-sm
+                       hover:bg-indigo-500 hover:scale-105
+                       dark:bg-indigo-700 dark:hover:bg-indigo-600
                        transform transition-all duration-200
                        flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
-              <Route className="w-4 h-4" />
-              Pathfinder
-            </Button>
-
-             {/* Simulation Button */}
-             <Button 
-              onClick={onSimulate}
-              title="Run a simulation of your state machine to test its behavior"
-              className="simulation-button bg-green-600 text-white text-sm
-                       hover:bg-green-500 hover:scale-105
-                       dark:bg-green-700 dark:hover:bg-green-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Play className="w-4 h-4" />
-              Simulate
+              <Settings className="w-4 h-4" />
+              Graph Tools
             </Button>
 
             {/* Mode Switch Button */}
@@ -230,6 +228,15 @@ const TopActionBar = ({
           </div>
         </div>
       </div>
+
+      {/* Graph Tools Modal */}
+      <GraphToolsModal
+        isOpen={showGraphToolsModal}
+        onClose={handleCloseGraphTools}
+        onFindPaths={onFindPaths}
+        onSimulate={onSimulate}
+        onSplitGraph={onSplitGraph}
+      />
 
       {/* Clear Data Confirmation Dialog */}
       {showClearConfirmation && (
@@ -283,7 +290,10 @@ TopActionBar.propTypes = {
   startTour: PropTypes.func.isRequired,
 
   // Mode switch prop
-  onChangeMode: PropTypes.func.isRequired
+  onChangeMode: PropTypes.func.isRequired,
+
+  // Graph splitter prop
+  onSplitGraph: PropTypes.func.isRequired
 };
 
 export default TopActionBar;

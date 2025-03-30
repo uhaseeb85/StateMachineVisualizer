@@ -15,7 +15,7 @@
  * - Guided tour
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 // Core components
 import StatePanel from './StatePanel';
@@ -27,6 +27,8 @@ import UserGuideModal from './UserGuideModal';
 import ChangeLog from './ChangeLog';
 import VersionInfo from './VersionInfo';
 import SplunkConfig from './SplunkConfig';
+import GraphSplitterModal from './GraphSplitterModal';
+import ImportConfirmModal from './ImportConfirmModal';
 
 // Custom hooks
 import useStateMachine from './hooks/useStateMachine';
@@ -93,6 +95,35 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
+  const [showGraphSplitter, setShowGraphSplitter] = useState(false);
+  
+  // Import confirmation modal state
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [pendingImportEvent, setPendingImportEvent] = useState(null);
+  const [importFileName, setImportFileName] = useState('');
+  const [isDuplicateName, setIsDuplicateName] = useState(false);
+  
+  // Track imported file names
+  const [importedFileNames, setImportedFileNames] = useState(() => {
+    try {
+      const savedNames = localStorage.getItem('importedFileNames');
+      return savedNames ? JSON.parse(savedNames) : [];
+    } catch (error) {
+      return [];
+    }
+  });
+  
+  // Save imported file names to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('importedFileNames', JSON.stringify(importedFileNames));
+  }, [importedFileNames]);
+  
+  // Add a new imported file name to the list
+  const addImportedFileName = (fileName) => {
+    if (fileName && !importedFileNames.includes(fileName)) {
+      setImportedFileNames(prev => [...prev, fileName]);
+    }
+  };
 
   // Dictionary states with localStorage persistence
   const [loadedDictionary, setLoadedDictionary] = useState(() => {
@@ -149,9 +180,167 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
 
   /**
    * Handles CSV export with preservation of additional columns
-   * Merges current state data with previously imported data
+   * When multiple files were imported, exports each as a separate CSV
    */
   const handleExportCSV = () => {
+    // If no files were imported or no states exist, create a single generic export
+    if (importedFileNames.length === 0 || states.length === 0) {
+      exportSingleCSV();
+      return;
+    }
+    
+    // Group states by their source file
+    const statesBySource = {};
+    
+    // First, categorize states by their source file
+    states.forEach(state => {
+      const source = state.graphSource || 'unknown';
+      if (!statesBySource[source]) {
+        statesBySource[source] = [];
+      }
+      statesBySource[source].push(state);
+    });
+    
+    // If only one source or no source information, export as a single file
+    if (Object.keys(statesBySource).length <= 1) {
+      exportSingleCSV();
+      return;
+    }
+    
+    // Export each source as its own CSV
+    Object.entries(statesBySource).forEach(([source, sourceStates]) => {
+      if (source === 'unknown') {
+        exportStatesAsCSV(sourceStates, 'state_machine_new_data.csv');
+      } else {
+        // Create a clean filename derived from the original
+        const baseFilename = source.replace(/\.[^/.]+$/, ""); // Remove extension
+        const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const exportFilename = `${baseFilename}_export_${timestamp}.csv`;
+        exportStatesAsCSV(sourceStates, exportFilename);
+      }
+    });
+    
+    // Show success message for multiple exports
+    toast.success(`Exported ${Object.keys(statesBySource).length} CSV files successfully.`);
+  };
+
+  /**
+   * Exports a specific group of states as a CSV file
+   * @param {Array} statesToExport - States to include in the export
+   * @param {string} filename - Name for the exported file
+   */
+  const exportStatesAsCSV = (statesToExport, filename) => {
+    // Get the source filename from the first state in the group
+    const sourceFile = statesToExport[0]?.graphSource;
+    
+    // Try to get the original imported data specific to this file, if available
+    let baseData = [];
+    if (sourceFile) {
+      const fileSpecificData = localStorage.getItem(`importedCSV_${sourceFile}`);
+      if (fileSpecificData) {
+        baseData = JSON.parse(fileSpecificData);
+      } else {
+        // Fall back to the legacy storage if file-specific data not found
+        const lastImportedData = localStorage.getItem('lastImportedCSV');
+        baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+      }
+    } else {
+      // Fall back to the legacy storage if no source file is found
+      const lastImportedData = localStorage.getItem('lastImportedCSV');
+      baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+    }
+    
+    // Create current state data with updated values
+    const currentData = statesToExport.flatMap(sourceState => 
+      sourceState.rules.map(rule => {
+        const destState = states.find(s => s.id === rule.nextState);
+        return {
+          'Source Node': sourceState.name,
+          'Destination Node': destState ? destState.name : rule.nextState,
+          'Rule List': rule.condition,
+          'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50,
+          'Operation / Edge Effect': rule.operation || ''
+        };
+      })
+    );
+
+    // Merge with existing data or use current data only
+    let csvData;
+    if (baseData.length > 0) {
+      // Get all columns from the base data to preserve original order
+      const allColumns = Object.keys(baseData[0]);
+      
+      csvData = currentData.map(currentRow => {
+        const newRow = {};
+        const matchingRow = baseData.find(
+          baseRow => 
+            baseRow['Source Node'] === currentRow['Source Node'] &&
+            baseRow['Destination Node'] === currentRow['Destination Node']
+        );
+
+        // Use the original column order from the imported CSV
+        allColumns.forEach(column => {
+          if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
+            newRow[column] = currentRow[column];
+          } else if (column === 'Priority') {
+            newRow[column] = currentRow['Priority'];
+          } else if (column === 'Operation / Edge Effect') {
+            newRow[column] = currentRow['Operation / Edge Effect'];
+          } else {
+            newRow[column] = matchingRow ? matchingRow[column] : '';
+          }
+        });
+        
+        return newRow;
+      });
+    } else {
+      // If no previous data, create a structure with columns in standard order
+      csvData = currentData;
+    }
+
+    // Generate and download the CSV file with special handling for zeros
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(csvData);
+    
+    // Find the column index for Priority
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    let priorityCol = -1;
+    
+    // Look for the Priority column
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
+      if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
+        priorityCol = C;
+        break;
+      }
+    }
+    
+    // If we found the Priority column, explicitly set cell types for all values
+    if (priorityCol !== -1) {
+      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
+        if (ws[cellAddress]) {
+          const value = ws[cellAddress].v;
+          
+          // Force numeric type for priority values
+          ws[cellAddress] = {
+            t: 'n',  // numeric type
+            v: value === 0 || value === '0' ? 0 : (value || 50),
+            w: value === 0 || value === '0' ? '0' : (value || '50').toString()
+          };
+        }
+      }
+    }
+    
+    // Use the modified worksheet and only export CSV
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, filename, { bookType: 'csv', rawNumbers: true });
+  };
+
+  /**
+   * Exports all states as a single CSV file (legacy behavior)
+   */
+  const exportSingleCSV = () => {
     const lastImportedData = localStorage.getItem('lastImportedCSV');
     let baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
     
@@ -242,6 +431,98 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     XLSX.writeFile(wb, 'state_machine_export.csv', { bookType: 'csv', rawNumbers: true });
   };
 
+  /**
+   * Handles the initial CSV/Excel import
+   * Shows confirmation modal if there are existing states or if filename already exists
+   */
+  const handleInitialImport = (event) => {
+    // We need to clone the event since the original will be cleared
+    const clonedEvent = {
+      target: {
+        files: event.target.files
+      }
+    };
+    
+    const fileName = event.target.files[0]?.name || "file";
+    const isDuplicate = importedFileNames.includes(fileName);
+    
+    // Set confirmation type
+    setIsDuplicateName(isDuplicate);
+    
+    // Only show confirmation if there are actual states or it's a duplicate filename
+    const hasExistingStates = Array.isArray(states) && states.length > 0;
+    
+    if (hasExistingStates || isDuplicate) {
+      setPendingImportEvent(clonedEvent);
+      setImportFileName(fileName);
+      setShowImportConfirm(true);
+    } else {
+      // No existing states and not a duplicate, just import directly
+      handleImportAndTrack(clonedEvent);
+    }
+  };
+  
+  /**
+   * Handles import with replacing existing states
+   */
+  const handleReplaceImport = () => {
+    if (pendingImportEvent) {
+      handleImportAndTrack(pendingImportEvent, { replaceExisting: true });
+      setShowImportConfirm(false);
+      setPendingImportEvent(null);
+    }
+  };
+  
+  /**
+   * Handles import to display alongside existing states
+   */
+  const handleDisplayAlongsideImport = () => {
+    if (pendingImportEvent) {
+      handleImportAndTrack(pendingImportEvent, { replaceExisting: false });
+      setShowImportConfirm(false);
+      setPendingImportEvent(null);
+    }
+  };
+  
+  /**
+   * Wrapper for handleExcelImport that also tracks the imported file name
+   */
+  const handleImportAndTrack = async (event, options) => {
+    const fileName = event.target.files[0]?.name;
+    const result = await handleExcelImport(event, options);
+    
+    // If import was successful, add filename to tracked list
+    if (result && !result.error && fileName) {
+      addImportedFileName(fileName);
+    }
+    
+    return result;
+  };
+
+  /**
+   * Handles clearing all data, including imported file tracking
+   */
+  const handleClearAll = () => {
+    // Call the original clear function
+    clearData();
+    
+    // Also clear the imported filenames tracking
+    setImportedFileNames([]);
+    localStorage.removeItem('importedFileNames');
+    
+    // Clear any file-specific CSV data by finding and removing keys that start with 'importedCSV_'
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('importedCSV_')) {
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Reset any pending import
+    setPendingImportEvent(null);
+    setShowImportConfirm(false);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -280,13 +561,14 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
           onSave={saveFlow}
-          onExcelImport={handleExcelImport}
+          onExcelImport={handleInitialImport}
           onSimulate={() => setShowStartModal(true)}
           onFindPaths={() => setShowPathFinder(true)}
           startTour={startTour}
           onExportCSV={handleExportCSV}
           onChangeMode={onChangeMode}
-          onClearData={clearData}
+          onClearData={handleClearAll}
+          onSplitGraph={() => setShowGraphSplitter(true)}
         />
 
         {/* Main Panels */}
@@ -385,10 +667,11 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           <PathFinderModal
             states={states}
             onClose={() => setShowPathFinder(false)}
+            onSelectState={handleStateSelect}
           />
         )}
 
-        <ChangeLog 
+        <ChangeLog
           changeLog={changeLog}
           isOpen={showChangeLog}
           onClose={() => setShowChangeLog(false)}
@@ -429,6 +712,26 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           }}
         />
       )}
+
+      {showGraphSplitter && (
+        <GraphSplitterModal
+          onClose={() => setShowGraphSplitter(false)}
+          states={states}
+        />
+      )}
+
+      {/* Import confirmation modal */}
+      <ImportConfirmModal
+        isOpen={showImportConfirm}
+        onClose={() => {
+          setShowImportConfirm(false);
+          setPendingImportEvent(null);
+        }}
+        onReplace={handleReplaceImport}
+        onDisplayAlongside={handleDisplayAlongsideImport}
+        importFileName={importFileName}
+        isDuplicateName={isDuplicateName}
+      />
 
       {/* Version information */}
       <VersionInfo />

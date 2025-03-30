@@ -38,6 +38,35 @@ const StatePanel = ({
   const [editingStateId, setEditingStateId] = useState(null);
   const [editingStateName, setEditingStateName] = useState('');
 
+  // Get unique graph sources for coloring
+  const graphSources = [...new Set(states.filter(s => s.graphSource).map(s => s.graphSource))];
+  
+  // Generate a color for each graph source (without displaying the name)
+  const getGraphColor = (graphSource) => {
+    if (!graphSource) return null;
+    
+    const colorOptions = [
+      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 
+      'bg-orange-500', 'bg-pink-500', 'bg-cyan-500'
+    ];
+    
+    const sourceIndex = graphSources.indexOf(graphSource);
+    return colorOptions[sourceIndex % colorOptions.length];
+  };
+  
+  // Get the border class for a specific graph source
+  const getBorderClass = (graphSource) => {
+    if (!graphSource) return '';
+    
+    const borderOptions = [
+      'border-l-blue-500', 'border-l-green-500', 'border-l-purple-500', 
+      'border-l-orange-500', 'border-l-pink-500', 'border-l-cyan-500'
+    ];
+    
+    const sourceIndex = graphSources.indexOf(graphSource);
+    return borderOptions[sourceIndex % borderOptions.length];
+  };
+
   /**
    * Handles the addition of a new state
    * Validates state name uniqueness and formats
@@ -240,6 +269,20 @@ const StatePanel = ({
             </div>
           </div>
         </div>
+        
+        {/* Graph source legend - Restored */}
+        {graphSources.length > 1 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {graphSources.map((source, index) => (
+              <div key={index} className="flex items-center text-xs">
+                <span className={`inline-block w-3 h-3 rounded-full mr-1.5 ${getGraphColor(source)}`}></span>
+                {source !== "External" && (
+                  <span className="text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{source}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Add State Section */}
@@ -316,9 +359,19 @@ const StatePanel = ({
                   }
                   cursor-pointer flex justify-between items-center px-2
                   transform transition-all duration-200 group
+                  ${state.graphSource ? 'border-l-4' : ''}
+                  ${state.graphSource ? getBorderClass(state.graphSource) : ''}
                 `}
               >
-                <span>{state.name}</span>
+                <div className="flex items-center">
+                  {state.graphSource && (
+                    <span 
+                      className={`mr-1.5 inline-block w-2 h-2 rounded-full ${getGraphColor(state.graphSource)}`}
+                    ></span>
+                  )}
+                  <span>{state.name}</span>
+                </div>
+                
                 <div className="flex items-center gap-2">
                   {/* Rule Count Badge */}
                   <span className={`

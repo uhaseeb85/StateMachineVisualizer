@@ -155,7 +155,46 @@ const RulesPanel = ({
   const handleTargetStateClick = (stateId, e) => {
     e.preventDefault();
     e.stopPropagation();
-    onStateSelect(stateId, false); // Pass false to indicate no scrolling needed
+    
+    // First, get the target state that this rule is pointing to
+    const targetState = states.find(s => s.id === stateId);
+    
+    if (targetState && targetState.name) {
+      // Find all states with the same name
+      const sameNameStates = states.filter(s => 
+        s.id !== targetState.id && 
+        s.name.toLowerCase() === targetState.name.toLowerCase()
+      );
+      
+      if (sameNameStates.length > 0) {
+        // PRIORITY 1: Find states with the same name that have rules
+        const statesWithRules = sameNameStates.filter(s => s.rules && s.rules.length > 0);
+        
+        if (statesWithRules.length > 0) {
+          // If the current state has a graphSource (from a specific graph), 
+          // try to find a state from a different source
+          if (currentState && currentState.graphSource) {
+            // Look for states from a different graph source first - these would be the newly imported ones
+            const differentSourceStates = statesWithRules.filter(s => 
+              s.graphSource && s.graphSource !== currentState.graphSource
+            );
+            
+            if (differentSourceStates.length > 0) {
+              // Select the first state from a different graph source
+              onStateSelect(differentSourceStates[0].id, false);
+              return;
+            }
+          }
+          
+          // If we can't find a state from a different graph source, just use any state with rules
+          onStateSelect(statesWithRules[0].id, false);
+          return;
+        }
+      }
+    }
+    
+    // Fall back to original behavior
+    onStateSelect(stateId, false);
   };
 
   /**
