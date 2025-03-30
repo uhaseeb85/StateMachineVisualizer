@@ -11,12 +11,14 @@ import {
   Sun,
   Save,
   HelpCircle,
-  GitBranch
+  GitBranch,
+  Settings
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
+import FlowDiagramToolsModal from './FlowDiagramToolsModal';
 
 const TopActionBar = ({
   onChangeMode,
@@ -35,6 +37,7 @@ const TopActionBar = ({
   const [selectedRootElement, setSelectedRootElement] = useState(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const dropdownRef = useRef(null);
+  const [showAnalysisToolsModal, setShowAnalysisToolsModal] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -99,6 +102,15 @@ const TopActionBar = ({
     
     // Show the generate flow diagram modal
     setShowGenerateModal(true);
+  };
+
+  // Handlers for the Analysis Tools modal
+  const handleOpenAnalysisTools = () => {
+    setShowAnalysisToolsModal(true);
+  };
+
+  const handleCloseAnalysisTools = () => {
+    setShowAnalysisToolsModal(false);
   };
 
   return (
@@ -295,32 +307,21 @@ const TopActionBar = ({
               )}
             </div>
 
+            {/* NEW Analysis Tools Button */}
             <Button
-              onClick={onFindPath}
-              title="Find paths between steps"
-              className="find-paths-button bg-blue-600 text-white text-sm
-                       hover:bg-blue-500 hover:scale-105
-                       dark:bg-blue-700 dark:hover:bg-blue-600
+              onClick={handleOpenAnalysisTools}
+              title="Access analysis tools like Simulation and Pathfinder"
+              className="analysis-tools-button bg-indigo-600 text-white text-sm
+                       hover:bg-indigo-500 hover:scale-105
+                       dark:bg-indigo-700 dark:hover:bg-indigo-600
                        transform transition-all duration-200
                        flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
-              <Route className="w-4 h-4" />
-              Find Paths
+              <Settings className="w-4 h-4" />
+              Analysis Tools
             </Button>
 
-            <Button
-              onClick={onSimulate}
-              title="Run a simulation"
-              className="simulation-button bg-green-600 text-white text-sm
-                       hover:bg-green-500 hover:scale-105
-                       dark:bg-green-700 dark:hover:bg-green-600
-                       transform transition-all duration-200
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <Play className="w-4 h-4" />
-              Simulate
-            </Button>
-
+            {/* Mode Switch Button */}
             <Button
               onClick={onChangeMode}
               title="Switch Visualization Mode"
@@ -344,6 +345,14 @@ const TopActionBar = ({
         rootElement={selectedRootElement}
         steps={steps}
         connections={connections}
+      />
+
+      {/* Analysis Tools Modal */}
+      <FlowDiagramToolsModal 
+        isOpen={showAnalysisToolsModal}
+        onClose={handleCloseAnalysisTools}
+        onSimulate={onSimulate}
+        onFindPath={onFindPath}
       />
     </div>
   );
