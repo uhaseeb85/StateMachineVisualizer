@@ -760,44 +760,57 @@ const GraphSplitterModal = ({ onClose, states }) => {
         </div>
         
         {/* Modal Content */}
-        <div className="flex-1 overflow-hidden flex">
-          {/* Left Side - Partition List */}
-          <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-4">
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Partition Options</h3>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-700 dark:text-gray-300">
-                  Target Partitions:
-                </label>
-                <input 
-                  type="number" 
-                  min={2} 
-                  max={10} 
-                  value={numPartitions} 
-                  onChange={(e) => setNumPartitions(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
-                  className="w-16 px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 
-                            dark:bg-gray-800 dark:text-gray-200"
-                />
-                <Button 
-                  size="sm" 
-                  onClick={() => setPartitions(findPartitions(states, numPartitions))}
-                  disabled={isProcessing}
-                  className="ml-2 text-xs py-1"
-                >
-                  Recalculate
-                </Button>
-              </div>
+        <div className="flex-1 p-6 overflow-y-auto space-y-6">
+          
+          {/* Explanation of Splitting Logic */}
+          <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-100 dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">How Splitting Works:</h4>
+            <p className="text-gray-700 dark:text-gray-300">
+              The splitter first looks for any parts of your graph that are already completely separate (disconnected components). 
+              If the whole graph is connected, it uses an algorithm to find the most logical way to divide it. 
+              This algorithm groups states that are closely linked together and tries to minimize the connections *between* different groups. 
+              It aims for a default of 3 subgraphs, but the final number depends on the natural structure and connections within your state machine, resulting in the most sensible divisions.
+            </p>
+          </div>
+          
+          {/* Loading or Content */}
+          {isProcessing ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Calculating partitions...</p>
             </div>
-            
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Generated Subgraphs</h3>
-            
-            {isProcessing ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Calculating partitions...</p>
-              </div>
-            ) : (
-              <>
+          ) : (
+            <div className="flex-1 overflow-hidden flex">
+              {/* Left Side - Partition List */}
+              <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-4">
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Partition Options</h3>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-700 dark:text-gray-300">
+                      Target Partitions:
+                    </label>
+                    <input 
+                      type="number" 
+                      min={2} 
+                      max={10} 
+                      value={numPartitions} 
+                      onChange={(e) => setNumPartitions(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
+                      className="w-16 px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 
+                                dark:bg-gray-800 dark:text-gray-200"
+                    />
+                    <Button 
+                      size="sm" 
+                      onClick={() => setPartitions(findPartitions(states, numPartitions))}
+                      disabled={isProcessing}
+                      className="ml-2 text-xs py-1"
+                    >
+                      Recalculate
+                    </Button>
+                  </div>
+                </div>
+                
+                <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Generated Subgraphs</h3>
+                
                 {subgraphs.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400 text-sm">
                     No partitions could be generated. Try adjusting the target number of partitions.
@@ -857,147 +870,147 @@ const GraphSplitterModal = ({ onClose, states }) => {
                     Download All Subgraphs (ZIP)
                   </Button>
                 )}
-              </>
-            )}
-          </div>
-          
-          {/* Right Side - Selected Partition Details */}
-          <div className="w-2/3 overflow-y-auto p-4">
-            {selectedSubgraph ? (
-              <>
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                    {selectedSubgraph.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Contains {selectedSubgraph.states.length} states and {
-                      selectedSubgraph.states.reduce((sum, state) => sum + state.rules.length, 0)
-                    } rules
-                  </p>
-                </div>
-                
-                {/* States list */}
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
-                    <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
-                    States in this subgraph
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {selectedSubgraph.states.map(state => (
-                      <div 
-                        key={state.id}
-                        className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-sm"
-                      >
-                        {state.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Boundary connections */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  {/* Outgoing boundaries */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
-                      <ArrowLeftRight className="h-4 w-4 mr-1 text-blue-500" />
-                      Outgoing Connections ({selectedSubgraph.outgoingBoundaries.length})
-                    </h4>
-                    {selectedSubgraph.outgoingBoundaries.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No outgoing connections to other subgraphs
-                      </p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {selectedSubgraph.outgoingBoundaries.map(boundary => (
-                          <li 
-                            key={boundary.id}
-                            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800 text-sm"
-                          >
-                            {boundary.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  
-                  {/* Incoming boundaries */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
-                      <ArrowLeftRight className="h-4 w-4 mr-1 text-purple-500" />
-                      Incoming Connections ({selectedSubgraph.incomingBoundaries.length})
-                    </h4>
-                    {selectedSubgraph.incomingBoundaries.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No incoming connections from other subgraphs
-                      </p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {selectedSubgraph.incomingBoundaries.map(boundary => (
-                          <li 
-                            key={boundary.id}
-                            className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 rounded border border-purple-200 dark:border-purple-800 text-sm"
-                          >
-                            {boundary.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Detailed boundary connections table */}
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
-                    <ArrowLeftRight className="h-4 w-4 mr-1 text-orange-500" />
-                    Cross-Boundary Rules
-                  </h4>
-                  {getBoundaryRules(selectedSubgraph, states).length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No cross-boundary rules found
-                    </p>
-                  ) : (
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Source State
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Rule
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Destination State
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                          {getBoundaryRules(selectedSubgraph, states).map((rule, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                              <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                                {rule.sourceState}
-                              </td>
-                              <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 max-w-[150px] truncate">
-                                {rule.condition}
-                              </td>
-                              <td className="px-3 py-2 text-sm text-orange-600 dark:text-orange-400 font-medium">
-                                {rule.destState}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                <Scissors className="h-16 w-16 mb-4 opacity-20" />
-                <p>Select a subgraph from the list to view details</p>
               </div>
-            )}
-          </div>
+              
+              {/* Right Side - Selected Partition Details */}
+              <div className="w-2/3 overflow-y-auto p-4">
+                {selectedSubgraph ? (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        {selectedSubgraph.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Contains {selectedSubgraph.states.length} states and {
+                          selectedSubgraph.states.reduce((sum, state) => sum + state.rules.length, 0)
+                        } rules
+                      </p>
+                    </div>
+                    
+                    {/* States list */}
+                    <div className="mb-6">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
+                        States in this subgraph
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedSubgraph.states.map(state => (
+                          <div 
+                            key={state.id}
+                            className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-sm"
+                          >
+                            {state.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Boundary connections */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      {/* Outgoing boundaries */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
+                          <ArrowLeftRight className="h-4 w-4 mr-1 text-blue-500" />
+                          Outgoing Connections ({selectedSubgraph.outgoingBoundaries.length})
+                        </h4>
+                        {selectedSubgraph.outgoingBoundaries.length === 0 ? (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            No outgoing connections to other subgraphs
+                          </p>
+                        ) : (
+                          <ul className="space-y-1">
+                            {selectedSubgraph.outgoingBoundaries.map(boundary => (
+                              <li 
+                                key={boundary.id}
+                                className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800 text-sm"
+                              >
+                                {boundary.name}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      
+                      {/* Incoming boundaries */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
+                          <ArrowLeftRight className="h-4 w-4 mr-1 text-purple-500" />
+                          Incoming Connections ({selectedSubgraph.incomingBoundaries.length})
+                        </h4>
+                        {selectedSubgraph.incomingBoundaries.length === 0 ? (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            No incoming connections from other subgraphs
+                          </p>
+                        ) : (
+                          <ul className="space-y-1">
+                            {selectedSubgraph.incomingBoundaries.map(boundary => (
+                              <li 
+                                key={boundary.id}
+                                className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 rounded border border-purple-200 dark:border-purple-800 text-sm"
+                              >
+                                {boundary.name}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Detailed boundary connections table */}
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center">
+                        <ArrowLeftRight className="h-4 w-4 mr-1 text-orange-500" />
+                        Cross-Boundary Rules
+                      </h4>
+                      {getBoundaryRules(selectedSubgraph, states).length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          No cross-boundary rules found
+                        </p>
+                      ) : (
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-800">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                  Source State
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                  Rule
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                  Destination State
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                              {getBoundaryRules(selectedSubgraph, states).map((rule, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                  <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                                    {rule.sourceState}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 max-w-[150px] truncate">
+                                    {rule.condition}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-orange-600 dark:text-orange-400 font-medium">
+                                    {rule.destState}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                    <Scissors className="h-16 w-16 mb-4 opacity-20" />
+                    <p>Select a subgraph from the list to view details</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Modal footer with explanatory text and legend */}
