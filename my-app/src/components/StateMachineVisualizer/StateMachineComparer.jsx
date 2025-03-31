@@ -544,9 +544,6 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           )}
         </div>
         
-        <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
