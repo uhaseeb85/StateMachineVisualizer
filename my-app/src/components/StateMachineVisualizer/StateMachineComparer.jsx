@@ -4,27 +4,28 @@
  * Component for comparing two state machines and visualizing their differences.
  * Helps users identify the structural and rule differences between two state machines.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Check, BarChart, List, GitCompare } from 'lucide-react';
+import { AlertCircle, Check, BarChart, List, GitCompare, FileUp, Database } from 'lucide-react';
 import { toast } from 'sonner';
+import { parseExcelFile, validateExcelData, generateId, sortRulesByPriority } from './utils';
 
 const StateMachineComparer = ({ isOpen, onClose, states }) => {
   // Store the current state machine as a baseline
   const [baseStateMachine, setBaseStateMachine] = useState(null);
   // State for the second state machine to compare
   const [compareStateMachine, setCompareStateMachine] = useState(null);
-  // Store parsed state machines from localStorage
-  const [savedStateMachines, setSavedStateMachines] = useState([]);
   // Active tab
   const [activeTab, setActiveTab] = useState('structure');
   // Whether comparison is in progress
   const [isComparing, setIsComparing] = useState(false);
+  // File input ref for CSV import
+  const fileInputRef = useRef(null);
   // Comparison results
   const [results, setResults] = useState({
     stateComparison: [],
@@ -39,11 +40,6 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
     }
   });
 
-  // Load saved state machines on component mount
-  useEffect(() => {
-    loadSavedStateMachines();
-  }, []);
-
   // Update baseline state machine when component opens
   useEffect(() => {
     if (isOpen && states.length > 0) {
@@ -55,48 +51,102 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
     }
   }, [isOpen, states]);
 
-  // Load saved state machines from localStorage
-  const loadSavedStateMachines = () => {
-    try {
-      // Get available state machines from localStorage
-      const machines = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key === 'ivrFlow') {
-          machines.push({
-            id: 'saved',
-            name: 'Last Saved State Machine',
-            data: JSON.parse(localStorage.getItem(key))
-          });
-        } else if (key && key.startsWith('ivrFlow_backup_')) {
-          const timestamp = key.replace('ivrFlow_backup_', '');
-          const date = new Date(parseInt(timestamp));
-          machines.push({
-            id: key,
-            name: `Backup from ${date.toLocaleString()}`,
-            data: JSON.parse(localStorage.getItem(key))
-          });
-        }
-      }
-      setSavedStateMachines(machines);
-    } catch (error) {
-      console.error('Error loading saved state machines:', error);
-      toast.error('Failed to load saved state machines');
-    }
+  // Trigger file input click for CSV import
+  const handleImportClick = () => {
+    fileInputRef.current.click();
   };
 
-  // Select a state machine to compare with
-  const selectCompareStateMachine = (machineId) => {
-    const selected = savedStateMachines.find(m => m.id === machineId);
-    if (selected) {
-      setCompareStateMachine(selected);
+  // Process the imported CSV/Excel file
+  const handleFileImport = async (event) => {
+    try {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Process Excel/CSV file
+      const rows = await parseExcelFile(file);
+      const { sourceNodeIndex, destNodeIndex, ruleListIndex, headers } = validateExcelData(rows);
+      
+      // Get priority index if it exists
+      const priorityIndex = headers.findIndex(h => h === 'priority' || h === 'priority ');
+      
+      // Get operation index if it exists
+      const operationIndex = headers.findIndex(h => h === 'operation' || h === 'operation ');
+
+      // Create state map
+      const stateMap = new Map();
+      
+      // Process rows (starting from row 1, skipping header)
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        
+        // Skip empty rows
+        if (!row[sourceNodeIndex] || !row[destNodeIndex]) continue;
+        
+        const sourceNode = row[sourceNodeIndex].toString().trim();
+        const destNode = row[destNodeIndex].toString().trim();
+        const ruleList = row[ruleListIndex]?.toString().trim() || 'TRUE';
+        const priority = priorityIndex !== -1 ? Number(row[priorityIndex] || 50) : 50;
+        const operation = operationIndex !== -1 ? row[operationIndex]?.toString().trim() : '';
+        
+        // Create states if they don't exist
+        if (!stateMap.has(sourceNode)) {
+          stateMap.set(sourceNode, {
+            id: generateId(),
+            name: sourceNode,
+            rules: []
+          });
+        }
+        
+        if (!stateMap.has(destNode)) {
+          stateMap.set(destNode, {
+            id: generateId(),
+            name: destNode,
+            rules: []
+          });
+        }
+        
+        // Add rule
+        const sourceState = stateMap.get(sourceNode);
+        const targetState = stateMap.get(destNode);
+        sourceState.rules.push({
+          id: generateId(),
+          condition: ruleList,
+          nextState: targetState.id,
+          priority: priority,
+          operation: operation
+        });
+      }
+      
+      // Convert Map to array of states
+      const importedStates = Array.from(stateMap.values());
+      
+      // Sort rules by priority
+      importedStates.forEach(state => {
+        state.rules = sortRulesByPriority(state.rules);
+      });
+      
+      // Set as compare state machine
+      setCompareStateMachine({
+        id: 'imported',
+        name: `Imported from ${file.name}`,
+        data: importedStates
+      });
+      
+      toast.success(`Successfully imported "${file.name}" for comparison`);
+      
+      // Reset the file input value
+      event.target.value = '';
+    } catch (error) {
+      console.error('CSV import error:', error);
+      toast.error(`Import error: ${error.message}`);
+      event.target.value = '';
     }
   };
 
   // Run the comparison between the two state machines
   const runComparison = () => {
     if (!baseStateMachine || !compareStateMachine) {
-      toast.error('Please select two state machines to compare');
+      toast.error('Please select a CSV/Excel file to compare');
       return;
     }
 
@@ -301,7 +351,7 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[75vw] max-w-[75%] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+      <DialogContent className="w-[75vw] max-w-[75%] h-[80vh] max-h-[80vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-hidden">
         <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
             <div className="flex items-center gap-2">
@@ -311,7 +361,7 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           </DialogTitle>
         </DialogHeader>
         
-        <div className="py-6 space-y-6">
+        <div className="py-6 space-y-6 overflow-y-auto h-[calc(80vh-140px)]">
           {/* Selection section */}
           <div className="grid grid-cols-2 gap-6">
             <div>
@@ -326,18 +376,34 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             
             <div>
               <h3 className="text-lg font-medium mb-3">State Machine to Compare</h3>
-              <select 
-                className="w-full p-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                value={compareStateMachine?.id || ''}
-                onChange={(e) => selectCompareStateMachine(e.target.value)}
-              >
-                <option value="">Select a state machine...</option>
-                {savedStateMachines.map(machine => (
-                  <option key={machine.id} value={machine.id}>
-                    {machine.name} ({machine.data.length} states)
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-col space-y-3">
+                <Button
+                  onClick={handleImportClick}
+                  className="flex items-center gap-2 w-full p-3 justify-center bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                >
+                  <FileUp className="w-5 h-5" />
+                  Select CSV/Excel File for Comparison
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileImport}
+                  accept=".csv,.xlsx,.xls"
+                  className="hidden"
+                />
+                
+                {compareStateMachine && (
+                  <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-5 h-5 text-blue-500" />
+                      <div className="text-sm font-medium">{compareStateMachine.name}</div>
+                    </div>
+                    <div className="text-sm text-gray-500 mt-2">
+                      {compareStateMachine.data.length} states, {compareStateMachine.data.reduce((total, state) => total + state.rules.length, 0)} rules
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -408,9 +474,9 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="structure" className="mt-4">
+                <TabsContent value="structure" className="mt-4 max-h-[400px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                       <TableRow>
                         <TableHead>State Name</TableHead>
                         <TableHead>Status</TableHead>
@@ -435,9 +501,9 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                   </Table>
                 </TabsContent>
                 
-                <TabsContent value="rules" className="mt-4">
+                <TabsContent value="rules" className="mt-4 max-h-[400px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                       <TableRow>
                         <TableHead>State</TableHead>
                         <TableHead>Rule Condition</TableHead>
