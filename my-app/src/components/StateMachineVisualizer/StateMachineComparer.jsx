@@ -301,7 +301,7 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+      <DialogContent className="w-[75vw] max-w-[75%] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
         <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
             <div className="flex items-center gap-2">
