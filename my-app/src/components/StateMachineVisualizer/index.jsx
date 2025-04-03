@@ -29,6 +29,7 @@ import VersionInfo from './VersionInfo';
 import SplunkConfig from './SplunkConfig';
 import GraphSplitterModal from './GraphSplitterModal';
 import ImportConfirmModal from './ImportConfirmModal';
+import StateMachineComparer from './StateMachineComparer';
 
 // Custom hooks
 import useStateMachine from './hooks/useStateMachine';
@@ -96,6 +97,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
   const [showGraphSplitter, setShowGraphSplitter] = useState(false);
+  const [showStateMachineComparer, setShowStateMachineComparer] = useState(false);
   
   // Import confirmation modal state
   const [showImportConfirm, setShowImportConfirm] = useState(false);
@@ -523,6 +525,13 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     setShowImportConfirm(false);
   };
 
+  /**
+   * Opens the state machine comparer modal
+   */
+  const handleCompareStateMachines = () => {
+    setShowStateMachineComparer(true);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -569,6 +578,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           onChangeMode={onChangeMode}
           onClearData={handleClearAll}
           onSplitGraph={() => setShowGraphSplitter(true)}
+          onCompareStateMachines={handleCompareStateMachines}
         />
 
         {/* Main Panels */}
@@ -735,6 +745,13 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
 
       {/* Version information */}
       <VersionInfo />
+
+      {/* State Machine Comparer Modal */}
+      <StateMachineComparer
+        isOpen={showStateMachineComparer}
+        onClose={() => setShowStateMachineComparer(false)}
+        states={states}
+      />
     </div>
   );
 };

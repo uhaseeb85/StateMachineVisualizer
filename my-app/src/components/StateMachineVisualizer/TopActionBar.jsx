@@ -30,7 +30,8 @@ const TopActionBar = ({
   onExportCSV,
   onChangeMode,
   onClearData,
-  onSplitGraph
+  onSplitGraph,
+  onCompareStateMachines
 }) => {
 
   // State for controlling the confirmation dialog
@@ -236,6 +237,7 @@ const TopActionBar = ({
         onFindPaths={onFindPaths}
         onSimulate={onSimulate}
         onSplitGraph={onSplitGraph}
+        onCompareStateMachines={onCompareStateMachines}
       />
 
       {/* Clear Data Confirmation Dialog */}
@@ -293,7 +295,10 @@ TopActionBar.propTypes = {
   onChangeMode: PropTypes.func.isRequired,
 
   // Graph splitter prop
-  onSplitGraph: PropTypes.func.isRequired
+  onSplitGraph: PropTypes.func.isRequired,
+  
+  // State machine comparison prop
+  onCompareStateMachines: PropTypes.func.isRequired
 };
 
 export default TopActionBar;

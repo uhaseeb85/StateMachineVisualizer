@@ -7,14 +7,15 @@
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Route, Play, Scissors, X } from 'lucide-react'; // Import relevant icons
+import { Route, Play, Scissors, X, GitCompare } from 'lucide-react'; // Import GitCompare icon for the compare feature
 
 const GraphToolsModal = ({ 
   isOpen, 
   onClose, 
   onFindPaths, 
   onSimulate, 
-  onSplitGraph 
+  onSplitGraph,
+  onCompareStateMachines
 }) => {
   
   // Handler functions to call the respective tool function and close the modal
@@ -89,6 +90,23 @@ const GraphToolsModal = ({
               </p>
             </div>
           </div>
+          
+          {/* State Machine Comparison Tool Option */}
+          <div 
+            className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
+            onClick={() => handleSelectTool(onCompareStateMachines)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectTool(onCompareStateMachines); }}
+          >
+            <GitCompare className="w-8 h-8 text-amber-600 dark:text-amber-500 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">State Machine Comparison</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Compare two state machines to identify differences in states, rules, and transitions. Helpful for reviewing changes.
+              </p>
+            </div>
+          </div>
         </div>
         
         <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -108,6 +126,7 @@ GraphToolsModal.propTypes = {
   onFindPaths: PropTypes.func.isRequired,
   onSimulate: PropTypes.func.isRequired,
   onSplitGraph: PropTypes.func.isRequired,
+  onCompareStateMachines: PropTypes.func.isRequired
 };
 
 export default GraphToolsModal; 
