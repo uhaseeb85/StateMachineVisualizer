@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Check, BarChart, List, GitCompare, FileUp, Database } from 'lucide-react';
+import { AlertCircle, Check, BarChart, List, GitCompare, FileUp, Database, X, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseExcelFile, validateExcelData, generateId, sortRulesByPriority } from './utils';
+import * as XLSX from 'xlsx-js-style';
 
 const StateMachineComparer = ({ isOpen, onClose, states }) => {
   // Store the current state machine as a baseline
@@ -344,6 +345,152 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
     }
   };
 
+  // Export comparison results to Excel
+  const exportComparisonResults = () => {
+    if (results.stateComparison.length === 0) {
+      toast.error('No comparison results to export');
+      return;
+    }
+
+    try {
+      // Create a new workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Create a worksheet for state comparison
+      const stateData = [
+        ['State Name', 'Status', 'Rules in Baseline', 'Rules in Comparison']
+      ];
+      
+      results.stateComparison.forEach(state => {
+        stateData.push([
+          state.name,
+          state.status,
+          state.baseRules,
+          state.compareRules
+        ]);
+      });
+      
+      const stateWs = XLSX.utils.aoa_to_sheet(stateData);
+      
+      // Apply styles to the state comparison worksheet
+      stateData.forEach((_, index) => {
+        const rowIndex = index + 1; // Excel is 1-indexed
+        const row = results.stateComparison[index - 1]; // Skip header row
+        
+        if (index > 0 && row) { // Skip header row
+          let fillColor = null;
+          
+          switch (row.status) {
+            case 'added':
+              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
+              break;
+            case 'removed':
+              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
+              break;
+            case 'modified':
+              fillColor = { fgColor: { rgb: "FFF3CD" } }; // Light yellow
+              break;
+            default:
+              fillColor = { fgColor: { rgb: "E9ECEF" } }; // Light gray
+          }
+          
+          // Apply fill to each cell in the row
+          ['A', 'B', 'C', 'D'].forEach(col => {
+            const cellRef = `${col}${rowIndex}`;
+            if (!stateWs[cellRef]) stateWs[cellRef] = {};
+            stateWs[cellRef].s = { fill: fillColor };
+          });
+        }
+      });
+      
+      // Create a worksheet for rule comparison
+      const ruleData = [
+        ['State', 'Rule Condition', 'Status', 'Baseline Next State', 'Comparison Next State']
+      ];
+      
+      results.ruleComparison.forEach(rule => {
+        ruleData.push([
+          rule.stateName,
+          rule.condition,
+          rule.status,
+          rule.baseNextState,
+          rule.compareNextState
+        ]);
+      });
+      
+      const ruleWs = XLSX.utils.aoa_to_sheet(ruleData);
+      
+      // Apply styles to the rule comparison worksheet
+      ruleData.forEach((_, index) => {
+        const rowIndex = index + 1; // Excel is 1-indexed
+        const row = results.ruleComparison[index - 1]; // Skip header row
+        
+        if (index > 0 && row) { // Skip header row
+          let fillColor = null;
+          
+          switch (row.status) {
+            case 'added':
+              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
+              break;
+            case 'removed':
+              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
+              break;
+            case 'modified':
+              fillColor = { fgColor: { rgb: "FFF3CD" } }; // Light yellow
+              break;
+            default:
+              fillColor = { fgColor: { rgb: "E9ECEF" } }; // Light gray
+          }
+          
+          // Apply fill to each cell in the row
+          ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+            const cellRef = `${col}${rowIndex}`;
+            if (!ruleWs[cellRef]) ruleWs[cellRef] = {};
+            ruleWs[cellRef].s = { fill: fillColor };
+          });
+        }
+      });
+      
+      // Create a summary worksheet
+      const summaryData = [
+        ['Comparison Summary'],
+        [''],
+        ['State Changes'],
+        ['Added States', results.summary.addedStates],
+        ['Removed States', results.summary.removedStates],
+        ['Modified States', results.summary.modifiedStates],
+        [''],
+        ['Rule Changes'],
+        ['Added Rules', results.summary.addedRules],
+        ['Removed Rules', results.summary.removedRules],
+        ['Modified Rules', results.summary.modifiedRules],
+        [''],
+        ['Baseline State Machine', baseStateMachine?.name || 'Current State Machine'],
+        ['Comparison State Machine', compareStateMachine?.name || 'Imported State Machine'],
+        ['Comparison Date', new Date().toLocaleString()]
+      ];
+      
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+      
+      // Add worksheets to workbook
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+      XLSX.utils.book_append_sheet(wb, stateWs, 'State Comparison');
+      XLSX.utils.book_append_sheet(wb, ruleWs, 'Rule Comparison');
+      
+      // Generate a filename based on the comparison
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `state_machine_comparison_${timestamp}.xlsx`;
+      
+      // Write and download the file
+      XLSX.writeFile(wb, filename);
+      
+      toast.success('Comparison results exported successfully');
+    } catch (error) {
+      console.error('Error exporting comparison results:', error);
+      toast.error('Failed to export comparison results');
+    }
+  };
+
   // Don't render if not open
   if (!isOpen) {
     return null;
@@ -352,13 +499,20 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[75vw] max-w-[75%] h-[80vh] max-h-[80vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-hidden">
-        <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
+        <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4 relative">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
             <div className="flex items-center gap-2">
               <GitCompare className="w-6 h-6" />
               State Machine Comparison
             </div>
           </DialogTitle>
+          <Button 
+            onClick={onClose} 
+            className="absolute right-0 top-0 h-8 w-8 p-0 rounded-full"
+            variant="ghost"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
         
         <div className="py-6 space-y-6 overflow-y-auto h-[calc(80vh-140px)]">
@@ -420,7 +574,16 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           {/* Results section */}
           {results.stateComparison.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-xl font-medium mb-3">Comparison Results</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xl font-medium">Comparison Results</h3>
+                <Button
+                  onClick={exportComparisonResults}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Results
+                </Button>
+              </div>
               
               {/* Summary section */}
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -544,6 +707,11 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           )}
         </div>
         
+        <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between">
+          <Button variant="outline" onClick={onClose} className="px-6">
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
