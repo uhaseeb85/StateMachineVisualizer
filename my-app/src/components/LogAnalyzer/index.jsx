@@ -340,6 +340,29 @@ const LogAnalyzer = ({ onChangeMode }) => {
         </Button>
       </div>
 
+      {/* First-time user instructions */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <FileText className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+              Getting Started with Splunk Analysis
+            </h3>
+            <ol className="list-decimal pl-4 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <li>Configure your Splunk connection using the "Configure Splunk" button</li>
+              <li>Enter a session ID to identify the logs you want to analyze</li>
+              <li>Upload a log dictionary containing pattern definitions (or use our sample)</li>
+              <li>Click "Analyze Logs" to search for patterns in your Splunk logs</li>
+            </ol>
+            <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              The analysis will match log entries against regex patterns in your dictionary and display matches by severity.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -383,6 +406,29 @@ const LogAnalyzer = ({ onChangeMode }) => {
         <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
           Back
         </Button>
+      </div>
+
+      {/* First-time user instructions */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <FileText className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+              Getting Started with File Analysis
+            </h3>
+            <ol className="list-decimal pl-4 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <li>Upload one or more log files (up to 5 files)</li>
+              <li>Upload a log dictionary containing pattern definitions (or use our sample)</li>
+              <li>Click "Analyze Logs" to search for patterns in your files</li>
+              <li>View results organized by severity with line numbers and context</li>
+            </ol>
+            <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              The log dictionary contains regex patterns that will be matched against your log files to identify issues.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div>
