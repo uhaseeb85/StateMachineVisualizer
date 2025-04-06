@@ -2,31 +2,28 @@
  * LogAnalyzer Component
  * 
  * A standalone log analysis tool that supports both local file analysis,
- * Splunk integration, and LLM-powered analysis. This component allows users to:
+ * and Splunk integration. This component allows users to:
  * - Upload and analyze local log files
  * - Connect to Splunk for remote log analysis
  * - Import/manage log pattern dictionaries
- * - Get AI insights using client-side LLM
  * - View analysis results with context
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft, Brain } from 'lucide-react';
+import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import SplunkConfig from '../StateMachineVisualizer/SplunkConfig';
 import { toast, Toaster } from 'sonner';
 import { searchSplunk } from '@/api/splunk';
-import LlmAnalysis from './LlmAnalysis';
 
 // Constants
 const SCREENS = {
   SELECT: 'select',
   SPLUNK: 'splunk',
-  FILE: 'file',
-  LLM: 'llm'
+  FILE: 'file'
 };
 
 const SEVERITY_COLORS = {
@@ -74,9 +71,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const [splunkLogs, setSplunkLogs] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
   
-  // Create a ref for the file input
-  const fileInputRef = useRef(null);
-
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
     if (logDictionary) {
@@ -261,8 +255,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const handleModeSelect = (mode) => {
     setSelectedMode(mode);
     setScreen(mode === 'splunk' ? SCREENS.SPLUNK : 
-              mode === 'file' ? SCREENS.FILE : 
-              mode === 'llm' ? SCREENS.LLM : SCREENS.SELECT);
+              mode === 'file' ? SCREENS.FILE : SCREENS.SELECT);
   };
 
   // Render Functions
@@ -278,7 +271,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
             </h3>
             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
               <p>
-                The Log Analysis feature is experimental. The LLM analysis requires LM Studio to be running locally.
+                The Log Analysis feature is experimental.
               </p>
             </div>
           </div>
@@ -289,7 +282,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
         Select Analysis Mode
       </h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         {/* Splunk Analysis Card */}
         <div 
           onClick={() => handleModeSelect('splunk')}
@@ -325,26 +318,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
                 Analyze log files with pattern matching
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        {/* LLM Analysis Card */}
-        <div 
-          onClick={() => handleModeSelect('llm')}
-          className="cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors overflow-hidden"
-        >
-          <div className="p-6 h-full flex flex-col">
-            <div className="flex-shrink-0 flex justify-center mb-4">
-              <Brain className="w-12 h-12 text-blue-500" />
-            </div>
-            <div className="text-center flex-grow">
-              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
-                AI Log Analysis
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                Analyze logs with help from AI
               </p>
             </div>
           </div>
@@ -449,116 +422,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
       {renderDictionaryUpload()}
       {renderAnalyzeButton()}
       {renderResults()}
-    </div>
-  );
-
-  const renderLlmAnalysis = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          AI Log Analysis
-        </h2>
-        <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
-          Back
-        </Button>
-      </div>
-
-      {/* Hidden persistent file input */}
-      <Input
-        ref={fileInputRef}
-        type="file"
-        onChange={handleLogFileUpload}
-        accept=".txt,.log"
-        className="hidden"
-        multiple
-      />
-
-      <div className="p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-700 mb-6">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-md font-semibold text-blue-900 dark:text-blue-200">
-            Upload Log Files <span className="text-sm font-normal">({logFiles.length}/5)</span>
-          </h3>
-          {logFiles.length > 0 && (
-            <Button
-              variant="outline" 
-              size="sm"
-              onClick={clearAllLogFiles}
-              className="text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Clear All Files
-            </Button>
-          )}
-        </div>
-        
-        {logFiles.length > 0 ? (
-          <div className="flex flex-col space-y-3">
-            {logFiles.map((file, index) => (
-              <div key={index} className="p-3 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-800 flex justify-between items-center">
-                <div className="flex items-center">
-                  <FileText className="h-5 w-5 text-blue-500 mr-2" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setLogFiles(logFiles.filter((_, i) => i !== index))}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <p className="text-sm text-blue-800 dark:text-blue-300">
-              {logFiles.length === 1 
-                ? "Your log file is ready for AI analysis"
-                : `Your ${logFiles.length} log files are ready for AI analysis`}
-            </p>
-            {logFiles.length < 5 && (
-              <Button
-                onClick={() => fileInputRef.current.click()}
-                variant="outline"
-                size="sm"
-                className="mt-2"
-              >
-                Add More Files
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-md bg-white dark:bg-gray-800">
-              <div className="space-y-1 text-center">
-                <FileText className="mx-auto h-12 w-12 text-blue-400" />
-                <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                  <label
-                    className="relative cursor-pointer rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 focus-within:outline-none"
-                    onClick={() => fileInputRef.current.click()}
-                  >
-                    <span>Upload log files</span>
-                  </label>
-                  <p className="pl-1">or drag and drop</p>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  TXT or LOG up to 10MB each (max 5 files)
-                </p>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-blue-800 dark:text-blue-300">
-              Upload log files to start analyzing with AI
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6">
-        <LlmAnalysis logFiles={logFiles} sessionData={splunkLogs} />
-      </div>
     </div>
   );
 
@@ -730,15 +593,10 @@ const LogAnalyzer = ({ onChangeMode }) => {
         </div>
         
         {/* Main content */}
-        <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 ${
-          screen === SCREENS.LLM 
-            ? 'w-[90%] max-w-[90%] lg:w-[85%] lg:max-w-[85%] xl:w-[80%] xl:max-w-[80%] min-h-[80vh]' 
-            : 'max-w-4xl'
-        } mx-auto`}>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 max-w-4xl mx-auto">
           {screen === SCREENS.SELECT && renderSelectScreen()}
           {screen === SCREENS.SPLUNK && renderSplunkAnalysis()}
           {screen === SCREENS.FILE && renderFileAnalysis()}
-          {screen === SCREENS.LLM && renderLlmAnalysis()}
         </div>
       </div>
       
