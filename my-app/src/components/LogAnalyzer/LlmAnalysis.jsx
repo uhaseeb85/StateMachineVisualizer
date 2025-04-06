@@ -982,7 +982,7 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          AI-Powered Log Analysis
+          
         </h2>
         <div className="flex gap-3 self-end sm:self-auto">
           <Button 
