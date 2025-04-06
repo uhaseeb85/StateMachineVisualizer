@@ -5,6 +5,7 @@
  * using remote LLM APIs (compatible with OpenAI, LM Studio or Ollama).
  * Features a chat-like interface that preserves history within the session.
  * Supports analyzing multiple log files simultaneously.
+ * Can utilize a log dictionary to enhance analysis with known patterns.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Settings, FileText, Brain, Send, X, RefreshCw, Server, Trash } from 'lucide-react';
 import { toast } from 'sonner';
+import PropTypes from 'prop-types';
 
 // Default API endpoints
 const DEFAULT_ENDPOINTS = {
@@ -21,7 +23,7 @@ const DEFAULT_ENDPOINTS = {
   CUSTOM: "http://your-llm-server/v1/chat/completions"
 };
 
-const LlmAnalysis = ({ logFiles, sessionData }) => {
+const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   // State
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,6 +54,13 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
       setLogContents({});
     }
   }, [logFiles]);
+
+  // Add log dictionary info to status log if available
+  useEffect(() => {
+    if (logDictionary) {
+      addStatusLog(`Log dictionary loaded with ${logDictionary.length} patterns. AI will use these for enhanced analysis.`);
+    }
+  }, [logDictionary]);
 
   // Check if API is available
   useEffect(() => {
@@ -198,41 +207,78 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
       const MAX_TOTAL_SIZE = 100000; // characters
       if (combinedLogs.length > MAX_TOTAL_SIZE) {
         combinedLogs = combinedLogs.substring(0, MAX_TOTAL_SIZE) + "\n\n...[content truncated due to size]";
-        addStatusLog("Log content truncated due to large size");
+      }
+      
+      // Format the dictionary information for the AI if available
+      let dictionaryInfo = '';
+      if (logDictionary && logDictionary.length > 0) {
+        dictionaryInfo = '\n\n===== LOG PATTERNS DICTIONARY =====\n';
+        dictionaryInfo += 'Use these known log patterns to help with your analysis:\n\n';
+        
+        logDictionary.forEach((pattern, index) => {
+          dictionaryInfo += `Pattern ${index + 1}:\n`;
+          dictionaryInfo += `Category: ${pattern.category}\n`;
+          dictionaryInfo += `Regex: ${pattern.regex_pattern}\n`;
+          dictionaryInfo += `Cause: ${pattern.cause}\n`;
+          dictionaryInfo += `Severity: ${pattern.severity}\n`;
+          dictionaryInfo += `Suggestions: ${pattern.suggestions}\n\n`;
+        });
+      }
+      
+      // Base system prompt with instructions
+      let systemPrompt = `You are an AI log analyzer. Your task is to analyze log files and provide insights.
+      
+Analyze the log content below carefully. When providing answers:
+1. Be specific and technical in your analysis
+2. Identify patterns, errors, and potential issues
+3. Provide context and suggest possible causes for issues
+4. If appropriate, suggest solutions to identified problems
+5. When possible, cite specific line numbers or timestamps from the logs
+
+${dictionaryInfo ? 'You have been provided with a log patterns dictionary that contains known patterns, their causes, severity levels, and suggested solutions. Use these patterns to enhance your analysis.' : ''}`;
+
+      // Add messages for API call based on API provider
+      let messages = [];
+      
+      if (apiProvider === 'LM_STUDIO' || apiProvider === 'CUSTOM') {
+        messages = [
+          { role: 'system', content: systemPrompt },
+          // Add previous relevant messages from chat history (limit to last 10)
+          ...chatHistory.slice(-10),
+          { 
+            role: 'user', 
+            content: `${query}\n\nHere are the log files to analyze:${combinedLogs}${dictionaryInfo}` 
+          }
+        ];
+      } else if (apiProvider === 'OLLAMA') {
+        messages = [
+          { role: 'system', content: systemPrompt },
+          // Add previous relevant messages from chat history (limit to last 10)
+          ...chatHistory.slice(-10),
+          { 
+            role: 'user', 
+            content: `${query}\n\nHere are the log files to analyze:${combinedLogs}${dictionaryInfo}` 
+          }
+        ];
       }
       
       // Create the prompt
-      const prompt = `You are a log analysis assistant. Analyze the following log files and answer this question: ${query}\n${combinedLogs}`;
+      const prompt = messages.map(message => ({
+        role: message.role,
+        content: message.content
+      })).join('\n');
       
       // Prepare request body based on API provider
       let requestBody;
       if (apiProvider === 'LM_STUDIO' || apiProvider === 'CUSTOM') {
         requestBody = JSON.stringify({
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful log analysis assistant that specializes in finding patterns and issues in log files."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
+          messages: messages,
           stream: true
         });
       } else if (apiProvider === 'OLLAMA') {
         requestBody = JSON.stringify({
           model: modelName || "llama3",
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful log analysis assistant that specializes in finding patterns and issues in log files."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
+          messages: messages,
           stream: true
         });
       }
@@ -429,7 +475,7 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-md font-medium text-gray-900 dark:text-white">
-          LLM API Settings
+          AI Settings
         </h3>
         <Button 
           variant="outline" 
@@ -527,10 +573,10 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
         
         <div className="text-xs mt-2">
           {apiAvailable === true && (
-            <p className="text-green-600 dark:text-green-400">✓ Connected to LLM API</p>
+            <p className="text-green-600 dark:text-green-400">✓ Connected to AI</p>
           )}
           {apiAvailable === false && (
-            <p className="text-red-600 dark:text-red-400">✗ Cannot connect to LLM API</p>
+            <p className="text-red-600 dark:text-red-400">✗ Cannot connect to AI</p>
           )}
           {apiAvailable === null && (
             <p className="text-gray-500">Connection status unknown</p>
@@ -580,7 +626,7 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          LLM-Powered Log Analysis
+          AI-Powered Log Analysis
         </h2>
         <div className="flex gap-2">
           {chatHistory.length > 0 && (
@@ -652,65 +698,9 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
           )}
           
           {/* Two-pane layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left pane - Status and chat input */}
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-start">
-                  <Server className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
-                      LLM API Connection
-                    </h3>
-                    <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
-                      {apiAvailable ? 
-                        "Connected to LLM API. Ready to analyze logs." : 
-                        "Configure LLM API connection in settings."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Log File Info */}
-              {Object.keys(logContents).length > 0 && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800">
-                  <h3 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2 flex items-center">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Loaded Log Files
-                  </h3>
-                  <div className="max-h-36 overflow-y-auto pr-1">
-                    {Object.entries(logContents).map(([fileName, content], index) => (
-                      <div 
-                        key={index} 
-                        className="text-xs flex justify-between items-center py-1.5 border-t border-green-100 dark:border-green-800 first:border-0"
-                      >
-                        <span className="font-medium text-green-800 dark:text-green-300 truncate max-w-[70%]">{fileName}</span>
-                        <span className="text-green-700 dark:text-green-400">
-                          {Math.round(content.length / 1024)} KB
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Status Log */}
-              <div className="border border-gray-200 dark:border-gray-700 rounded-md h-36 overflow-y-auto">
-                <div className="p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-sm font-medium">
-                  Operation Log
-                </div>
-                <div className="p-2 font-mono text-xs">
-                  {statusLog.map((log, i) => (
-                    <div key={i} className={`mb-1 ${log.isError ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'}`}>
-                      [{log.timestamp}] {log.message}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
+          <div className="grid grid-cols-1 gap-6">
             {/* Right pane - Chat interface */}
-            <div className="flex flex-col h-full lg:col-span-2">
+            <div className="flex flex-col h-full">
               {/* Chat messages container */}
               <div 
                 ref={chatContainerRef}
@@ -781,8 +771,25 @@ const LlmAnalysis = ({ logFiles, sessionData }) => {
           </div>
         </>
       )}
+      
+      {logDictionary && (
+        <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700 flex items-center">
+          <div className="flex-shrink-0 mr-2">
+            <Server className="h-5 w-5 text-purple-500" />
+          </div>
+          <p className="text-xs text-purple-800 dark:text-purple-300">
+            Using log dictionary with {logDictionary.length} patterns to enhance AI analysis
+          </p>
+        </div>
+      )}
     </div>
   );
+};
+
+LlmAnalysis.propTypes = {
+  logFiles: PropTypes.array.isRequired,
+  sessionData: PropTypes.object,
+  logDictionary: PropTypes.array
 };
 
 export default LlmAnalysis; 
