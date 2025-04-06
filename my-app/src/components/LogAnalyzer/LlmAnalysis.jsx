@@ -1172,11 +1172,11 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
       </div>
       
       {logDictionary && (
-        <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700 flex items-center">
+        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700 flex items-center">
           <div className="flex-shrink-0 mr-2">
-            <Server className="h-5 w-5 text-purple-500" />
+            <Server className="h-5 w-5 text-green-500" />
           </div>
-          <p className="text-xs text-purple-800 dark:text-purple-300">
+          <p className="text-xs text-green-800 dark:text-green-300">
             Using log dictionary with {logDictionary.length} patterns to enhance AI analysis
           </p>
         </div>
