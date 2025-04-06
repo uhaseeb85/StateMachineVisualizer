@@ -73,7 +73,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
   const [splunkLogs, setSplunkLogs] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
-  const [webGpuSupported, setWebGpuSupported] = useState(null);
 
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
@@ -81,26 +80,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
       sessionStorage.setItem('logDictionary', JSON.stringify(logDictionary));
     }
   }, [logDictionary]);
-
-  // Check for WebGPU support when component loads
-  useEffect(() => {
-    const checkWebGpuSupport = async () => {
-      try {
-        if (!navigator.gpu) {
-          setWebGpuSupported(false);
-          return;
-        }
-        
-        const adapter = await navigator.gpu.requestAdapter();
-        setWebGpuSupported(!!adapter);
-      } catch (error) {
-        console.error('Error checking WebGPU support:', error);
-        setWebGpuSupported(false);
-      }
-    };
-    
-    checkWebGpuSupport();
-  }, []);
 
   // Dictionary Management Functions
   const handleDictionaryUpload = async (event) => {
@@ -278,7 +257,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
             </h3>
             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
               <p>
-                The Log Analysis feature is experimental. All analysis is done in your browser locally.
+                The Log Analysis feature is experimental. The LLM analysis requires LM Studio to be running locally.
               </p>
             </div>
           </div>
@@ -341,20 +320,11 @@ const LogAnalyzer = ({ onChangeMode }) => {
             </div>
             <div className="text-center flex-grow">
               <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
-                LLM Analysis
+                AI Log Analysis
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                Analyze logs with a browser-based AI
+                Analyze logs with help from AI
               </p>
-              
-              {webGpuSupported === false && (
-                <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 flex items-center gap-2">
-                  <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                    Requires WebGPU support (Chrome recommended)
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>
