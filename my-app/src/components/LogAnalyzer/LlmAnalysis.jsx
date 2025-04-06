@@ -93,7 +93,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   // Check API connection based on provider
   const checkApiConnection = async () => {
     try {
-      addStatusLog(`Checking LLM API connection...`);
+      addStatusLog(`Checking AI API connection...`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
@@ -117,15 +117,15 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       
       if (response.ok) {
         setApiAvailable(true);
-        addStatusLog("LLM API connected successfully");
+        addStatusLog("AI API connected successfully");
       } else {
         setApiAvailable(false);
-        addStatusLog("LLM API returned an error", true);
+        addStatusLog("AI API returned an error", true);
       }
     } catch (error) {
       console.error("API connection error:", error);
       setApiAvailable(false);
-      addStatusLog(`Failed to connect to LLM API: ${error.message}`, true);
+      addStatusLog(`Failed to connect to AI API: ${error.message}`, true);
     }
   };
 
@@ -172,6 +172,29 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     }
   };
 
+  // Add stop streaming functionality
+  const stopStreaming = () => {
+    if (isStreaming) {
+      setIsStreaming(false);
+      setLoading(false);
+      addStatusLog('Streaming response stopped by user');
+      
+      // Update the streaming message in chat history to mark it as no longer streaming
+      setChatHistory(prev => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        if (lastIndex >= 0 && updated[lastIndex].role === 'assistant' && updated[lastIndex].streaming) {
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            streaming: false,
+            content: updated[lastIndex].content + " [Stopped]"
+          };
+        }
+        return updated;
+      });
+    }
+  };
+
   // Submit query to LLM API
   const handleQuerySubmit = async () => {
     if (!query.trim() || Object.keys(logContents).length === 0) return;
@@ -179,7 +202,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     try {
       setLoading(true);
       setStreamedResponse('');
-      addStatusLog(`Submitting query to LLM API: ${query}`);
+      addStatusLog(`Submitting query to AI API: ${query}`);
       
       // Add user message to chat history immediately
       const userMessage = {
@@ -334,7 +357,7 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
             return updated;
           });
           
-          addStatusLog('Completed streaming response from LLM API');
+          addStatusLog('Completed streaming response from AI API');
           break;
         }
         
@@ -472,25 +495,15 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
 
   // Render API settings
   const renderSettings = () => (
-    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-md font-medium text-gray-900 dark:text-white">
-          AI Settings
-        </h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowSettings(false)}
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-      
+    <div className="p-5 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+      <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-3">
+        AI Connection Settings
+      </h3>
+
       <div className="space-y-4">
-        {/* API Provider Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            LLM Provider
+          <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+            AI Provider
           </label>
           <div className="grid grid-cols-3 gap-2">
             <div 
@@ -530,7 +543,7 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
             API Endpoint
           </label>
           <Input
@@ -545,7 +558,7 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
         
         {apiProvider === 'OLLAMA' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
               Model Name
             </label>
             <Input
@@ -624,15 +637,19 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
   // Main component UI with two-pane layout
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          AI-Powered Log Analysis
-        </h2>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="flex gap-3 self-end sm:self-auto">
+          <Button 
+            variant="primary" 
+            onClick={() => setShowSettings(!showSettings)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            AI Settings
+          </Button>
           {chatHistory.length > 0 && (
             <Button 
               variant="outline" 
-              size="sm"
               onClick={clearChatHistory}
               className="text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
             >
@@ -640,19 +657,41 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
               Clear History
             </Button>
           )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            API Settings
-          </Button>
         </div>
       </div>
       
+      {showSettings && renderSettings()}
+      
+      {/* API Connection Warning */}
+      {apiAvailable === false && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 mb-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-red-800 dark:text-red-200">
+                Cannot Connect to AI Service
+              </h3>
+              <div className="mt-1 text-sm text-red-700 dark:text-red-300">
+                <p className="mb-2">
+                  Unable to connect to the specified AI service. Please check your network connection and endpoint settings.
+                </p>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="text-red-600 border-red-300"
+                  onClick={checkApiConnection}
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Retry Connection
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {!logFiles || logFiles.length === 0 ? (
-        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
           <div className="flex items-start">
             <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
             <div>
@@ -665,112 +704,92 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
             </div>
           </div>
         </div>
-      ) : (
-        <>
-          {showSettings && renderSettings()}
-          
-          {/* API Connection Warning */}
-          {apiAvailable === false && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 mb-4">
-              <div className="flex items-start">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-200">
-                    Cannot Connect to LLM API
-                  </h3>
-                  <div className="mt-1 text-sm text-red-700 dark:text-red-300">
-                    <p className="mb-2">
-                      Unable to connect to the specified LLM API. Please check your network connection and API endpoint.
-                    </p>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-red-600 border-red-300"
-                      onClick={checkApiConnection}
-                    >
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                      Retry Connection
-                    </Button>
-                  </div>
+      ) : null}
+      
+      {/* Two-pane layout */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Right pane - Chat interface */}
+        <div className="flex flex-col h-full">
+          {/* Chat messages container */}
+          <div 
+            ref={chatContainerRef}
+            className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg mb-4 overflow-y-auto"
+            style={{ height: chatHistory.length ? "60vh" : "auto", minHeight: "400px" }}
+          >
+            {chatHistory.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center text-gray-500 dark:text-gray-400 p-8">
+                  <Brain className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                  <p>Ask a question about your logs to get started</p>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Two-pane layout */}
-          <div className="grid grid-cols-1 gap-6">
-            {/* Right pane - Chat interface */}
-            <div className="flex flex-col h-full">
-              {/* Chat messages container */}
-              <div 
-                ref={chatContainerRef}
-                className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg mb-4 overflow-y-auto"
-                style={{ height: chatHistory.length ? "60vh" : "auto", minHeight: "400px" }}
-              >
-                {chatHistory.length === 0 ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-gray-500 dark:text-gray-400 p-8">
-                      <Brain className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-                      <p>Ask a question about your logs to get started</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4">
-                    {chatHistory.map(renderChatMessage)}
-                  </div>
-                )}
+            ) : (
+              <div className="p-4">
+                {chatHistory.map(renderChatMessage)}
               </div>
-              
-              {/* Query Input */}
-              <div className="space-y-2">
-                <Textarea
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ask a question about your logs..."
-                  className="min-h-[120px] resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleQuerySubmit();
-                    }
-                  }}
-                />
-                <div className="flex space-x-3">
-                  <Button 
-                    onClick={handleQuerySubmit}
-                    disabled={loading || !query.trim() || Object.keys(logContents).length === 0 || apiAvailable === false}
-                    className="flex-1"
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        {isStreaming ? 'Receiving response...' : 'Analyzing...'}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Send
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={clearResponse}
-                    disabled={!query}
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Clear
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Press Shift+Enter for a new line. Press Enter to send.
-                </p>
-              </div>
-            </div>
+            )}
           </div>
-        </>
-      )}
+          
+          {/* Query Input */}
+          <div className="space-y-2">
+            <Textarea
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={(!logFiles || logFiles.length === 0) ? "Upload log files first to start analysis" : "Ask a question about your logs..."}
+              className="min-h-[120px] resize-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleQuerySubmit();
+                }
+              }}
+              disabled={!logFiles || logFiles.length === 0}
+            />
+            <div className="flex space-x-3">
+              <Button 
+                onClick={handleQuerySubmit}
+                disabled={loading || !query.trim() || Object.keys(logContents).length === 0 || apiAvailable === false || isStreaming}
+                className="flex-1"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    {isStreaming ? 'Receiving response...' : 'Analyzing...'}
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send
+                  </>
+                )}
+              </Button>
+              
+              {isStreaming ? (
+                <Button 
+                  variant="destructive" 
+                  onClick={stopStreaming}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Stop
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  onClick={clearResponse}
+                  disabled={!query}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Press Shift+Enter for a new line. Press Enter to send.
+            </p>
+          </div>
+        </div>
+      </div>
       
       {logDictionary && (
         <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700 flex items-center">

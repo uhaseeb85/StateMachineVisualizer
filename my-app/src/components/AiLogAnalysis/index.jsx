@@ -13,7 +13,7 @@ import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, X, FileText, Brain, ArrowLeft, Download } from 'lucide-react';
+import { AlertTriangle, X, FileText, Brain, ArrowLeft, Download, Info, CheckCircle2 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import LlmAnalysis from '../LogAnalyzer/LlmAnalysis';
 import * as XLSX from 'xlsx-js-style';
@@ -55,6 +55,9 @@ const AiLogAnalysis = ({ onChangeMode }) => {
     const savedDictionary = sessionStorage.getItem('logDictionary');
     return savedDictionary ? JSON.parse(savedDictionary) : null;
   });
+  
+  // State for showing guide
+  const [showGuide, setShowGuide] = useState(true);
 
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
@@ -115,6 +118,83 @@ const AiLogAnalysis = ({ onChangeMode }) => {
     toast.info('All log files cleared');
   };
 
+  // First-time user guide component
+  const renderGuide = () => (
+    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 mb-6">
+      <div className="flex justify-between items-start">
+        <div className="flex">
+          <Info className="w-6 h-6 text-blue-500 mr-3 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3">
+              Getting Started with AI Log Analysis
+            </h3>
+            <div className="text-sm text-blue-700 dark:text-blue-300 space-y-4">
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 mr-2 text-xs">1</span>
+                  Configure AI Connection
+                </h4>
+                <p>Click the blue "AI Settings" button to connect to your AI provider (LM Studio, Ollama, or custom endpoint).</p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 mr-2 text-xs">2</span>
+                  Upload Log Files
+                </h4>
+                <p>Upload your log files (up to 5) using the "Upload Log Files" section. Text (.txt) and log (.log) files are supported.</p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 mr-2 text-xs">3</span>
+                  Optional: Add a Log Dictionary
+                </h4>
+                <p>For enhanced analysis, upload a log dictionary with known patterns. You can download a sample dictionary to see the format.</p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 mr-2 text-xs">4</span>
+                  Ask Questions
+                </h4>
+                <p>Type your question in the chat box and press Enter or click Send. The AI will analyze your logs and provide insights.</p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 mr-2 text-xs">5</span>
+                  Control the AI
+                </h4>
+                <p>You can stop the AI's response at any time using the Stop button. Your chat history is preserved during your session.</p>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+              <Button 
+                onClick={() => setShowGuide(false)} 
+                variant="outline" 
+                size="sm"
+                className="text-blue-600 border-blue-300"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Got it
+              </Button>
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowGuide(false)}
+          className="text-gray-500"
+        >
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -145,8 +225,10 @@ const AiLogAnalysis = ({ onChangeMode }) => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 
                       w-[90%] max-w-[90%] lg:w-[85%] lg:max-w-[85%] xl:w-[80%] xl:max-w-[80%] min-h-[80vh] mx-auto">
           
+          {/* First-time user guide */}
+          {showGuide && renderGuide()}
+          
           <div className="space-y-4">
-
             {/* Hidden persistent file input */}
             <Input
               ref={fileInputRef}
