@@ -1,11 +1,12 @@
 /**
  * LogAnalyzer Component
  * 
- * A standalone log analysis tool that supports both local file analysis
- * and Splunk integration. This component allows users to:
+ * A standalone log analysis tool that supports both local file analysis,
+ * Splunk integration, and LLM-powered analysis. This component allows users to:
  * - Upload and analyze local log files
  * - Connect to Splunk for remote log analysis
  * - Import/manage log pattern dictionaries
+ * - Get AI insights using client-side LLM
  * - View analysis results with context
  */
 
@@ -13,17 +14,19 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft, Brain } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import SplunkConfig from '../StateMachineVisualizer/SplunkConfig';
 import { toast, Toaster } from 'sonner';
 import { searchSplunk } from '@/api/splunk';
+import LlmAnalysis from './LlmAnalysis';
 
 // Constants
 const SCREENS = {
   SELECT: 'select',
   SPLUNK: 'splunk',
-  FILE: 'file'
+  FILE: 'file',
+  LLM: 'llm'
 };
 
 const SEVERITY_COLORS = {
@@ -68,6 +71,9 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const [logFile, setLogFile] = useState(null);
   const [screen, setScreen] = useState(SCREENS.SELECT);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
+  const [splunkLogs, setSplunkLogs] = useState(null);
+  const [selectedMode, setSelectedMode] = useState(null);
+  const [webGpuSupported, setWebGpuSupported] = useState(null);
 
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
@@ -75,6 +81,26 @@ const LogAnalyzer = ({ onChangeMode }) => {
       sessionStorage.setItem('logDictionary', JSON.stringify(logDictionary));
     }
   }, [logDictionary]);
+
+  // Check for WebGPU support when component loads
+  useEffect(() => {
+    const checkWebGpuSupport = async () => {
+      try {
+        if (!navigator.gpu) {
+          setWebGpuSupported(false);
+          return;
+        }
+        
+        const adapter = await navigator.gpu.requestAdapter();
+        setWebGpuSupported(!!adapter);
+      } catch (error) {
+        console.error('Error checking WebGPU support:', error);
+        setWebGpuSupported(false);
+      }
+    };
+    
+    checkWebGpuSupport();
+  }, []);
 
   // Dictionary Management Functions
   const handleDictionaryUpload = async (event) => {
@@ -232,6 +258,13 @@ const LogAnalyzer = ({ onChangeMode }) => {
     }
   };
 
+  const handleModeSelect = (mode) => {
+    setSelectedMode(mode);
+    setScreen(mode === 'splunk' ? SCREENS.SPLUNK : 
+              mode === 'file' ? SCREENS.FILE : 
+              mode === 'llm' ? SCREENS.LLM : SCREENS.SELECT);
+  };
+
   // Render Functions
   const renderSelectScreen = () => (
     <div className="space-y-6">
@@ -255,34 +288,76 @@ const LogAnalyzer = ({ onChangeMode }) => {
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
         Select Analysis Mode
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <Button
-          onClick={() => setScreen(SCREENS.SPLUNK)}
-          variant="outline"
-          className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        {/* Splunk Analysis Card */}
+        <div 
+          onClick={() => handleModeSelect('splunk')}
+          className="cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors overflow-hidden"
         >
-          <Database className="w-12 h-12 text-blue-500" />
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Splunk Analysis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Analyze logs directly from your Splunk instance using session ID
-            </p>
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex-shrink-0 flex justify-center mb-4">
+              <Database className="w-12 h-12 text-blue-500" />
+            </div>
+            <div className="text-center flex-grow">
+              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+                Splunk Analysis
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                Analyze logs directly from your Splunk instance
+              </p>
+            </div>
           </div>
-        </Button>
+        </div>
 
-        <Button
-          onClick={() => setScreen(SCREENS.FILE)}
-          variant="outline"
-          className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+        {/* File Analysis Card */}
+        <div 
+          onClick={() => handleModeSelect('file')}
+          className="cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors overflow-hidden"
         >
-          <FileText className="w-12 h-12 text-blue-500" />
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">File Analysis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Upload and analyze a local log file
-            </p>
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex-shrink-0 flex justify-center mb-4">
+              <FileText className="w-12 h-12 text-blue-500" />
+            </div>
+            <div className="text-center flex-grow">
+              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+                File Analysis
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                Analyze log files with pattern matching
+              </p>
+            </div>
           </div>
-        </Button>
+        </div>
+        
+        {/* LLM Analysis Card */}
+        <div 
+          onClick={() => handleModeSelect('llm')}
+          className="cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors overflow-hidden"
+        >
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex-shrink-0 flex justify-center mb-4">
+              <Brain className="w-12 h-12 text-blue-500" />
+            </div>
+            <div className="text-center flex-grow">
+              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+                LLM Analysis
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                Analyze logs with a browser-based AI
+              </p>
+              
+              {webGpuSupported === false && (
+                <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 flex items-center gap-2">
+                  <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Requires WebGPU support (Chrome recommended)
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -382,6 +457,39 @@ const LogAnalyzer = ({ onChangeMode }) => {
       {renderDictionaryUpload()}
       {renderAnalyzeButton()}
       {renderResults()}
+    </div>
+  );
+
+  const renderLlmAnalysis = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          LLM Analysis
+        </h2>
+        <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
+          Back
+        </Button>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Log File
+        </label>
+        <div className="mt-1">
+          <Input
+            type="file"
+            onChange={handleLogFileUpload}
+            accept=".txt,.log"
+          />
+        </div>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Upload a text file containing your logs for LLM analysis
+        </p>
+      </div>
+
+      <div className="mt-6">
+        <LlmAnalysis logFile={logFile} sessionData={splunkLogs} />
+      </div>
     </div>
   );
 
@@ -557,6 +665,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
           {screen === SCREENS.SELECT && renderSelectScreen()}
           {screen === SCREENS.SPLUNK && renderSplunkAnalysis()}
           {screen === SCREENS.FILE && renderFileAnalysis()}
+          {screen === SCREENS.LLM && renderLlmAnalysis()}
         </div>
       </div>
       
