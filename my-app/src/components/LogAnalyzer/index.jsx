@@ -10,7 +10,7 @@
  * - View analysis results with context
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,11 +68,14 @@ const LogAnalyzer = ({ onChangeMode }) => {
   });
   const [results, setResults] = useState(null); // null indicates no analysis performed yet
   const [loading, setLoading] = useState(false);
-  const [logFile, setLogFile] = useState(null);
+  const [logFiles, setLogFiles] = useState([]); // Changed from single file to array of files
   const [screen, setScreen] = useState(SCREENS.SELECT);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
   const [splunkLogs, setSplunkLogs] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
+  
+  // Create a ref for the file input
+  const fileInputRef = useRef(null);
 
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
@@ -116,8 +119,21 @@ const LogAnalyzer = ({ onChangeMode }) => {
 
   // Log Analysis Functions
   const handleLogFileUpload = (event) => {
-    const file = event.target.files[0];
-    setLogFile(file);
+    const newFiles = Array.from(event.target.files);
+    
+    // Check if adding these files would exceed the 5 file limit
+    if (logFiles.length + newFiles.length > 5) {
+      toast.error('Maximum 5 log files allowed');
+      return;
+    }
+    
+    setLogFiles([...logFiles, ...newFiles]);
+    event.target.value = ''; // Reset input to allow selecting the same file again
+  };
+
+  const clearAllLogFiles = () => {
+    setLogFiles([]);
+    toast.info('All log files cleared');
   };
 
   const analyzeLogs = async () => {
@@ -133,11 +149,11 @@ const LogAnalyzer = ({ onChangeMode }) => {
       }
       await analyzeSplunkLogs();
     } else {
-      if (!logFile) {
-        toast.error('Please upload a log file');
+      if (logFiles.length === 0) {
+        toast.error('Please upload at least one log file');
         return;
       }
-      await analyzeLogFile();
+      await analyzeLogFiles();
     }
   };
 
@@ -160,33 +176,38 @@ const LogAnalyzer = ({ onChangeMode }) => {
     }
   };
 
-  const analyzeLogFile = async () => {
+  const analyzeLogFiles = async () => {
     setLoading(true);
     try {
-      const text = await logFile.text();
-      const allLines = text.split('\n').map(line => line.trim());
-      
-      // Create groups of three lines with overlap for better context
-      const logs = [];
-      for (let i = 0; i < allLines.length; i++) {
-        const threeLines = allLines.slice(i, i + 3).join('\n');
-        if (threeLines) {
-          logs.push({
-            message: threeLines,
-            lineNumber: i + 1,
-            context: {
-              before: allLines.slice(Math.max(0, i - 2), i),
-              after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
-            },
-            matchedLines: allLines.slice(i, i + 3)
-          });
+      const logs = await Promise.all(logFiles.map(async (file) => {
+        const text = await file.text();
+        const allLines = text.split('\n').map(line => line.trim());
+        
+        // Create groups of three lines with overlap for better context
+        const logs = [];
+        for (let i = 0; i < allLines.length; i++) {
+          const threeLines = allLines.slice(i, i + 3).join('\n');
+          if (threeLines) {
+            logs.push({
+              message: threeLines,
+              lineNumber: i + 1,
+              context: {
+                before: allLines.slice(Math.max(0, i - 2), i),
+                after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
+              },
+              matchedLines: allLines.slice(i, i + 3)
+            });
+          }
         }
-      }
+        
+        return logs;
+      }));
       
-      processLogs(logs);
+      const combinedLogs = logs.flat();
+      processLogs(combinedLogs);
     } catch (error) {
-      console.error('Error analyzing log file:', error);
-      toast.error('Error analyzing log file: ' + error.message);
+      console.error('Error analyzing log files:', error);
+      toast.error('Error analyzing log files: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -410,17 +431,18 @@ const LogAnalyzer = ({ onChangeMode }) => {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Log File
+          Log Files
         </label>
         <div className="mt-1">
           <Input
             type="file"
             onChange={handleLogFileUpload}
             accept=".txt,.log"
+            multiple
           />
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Upload a text file containing your logs (one log entry per line)
+          Upload text files containing your logs (one log entry per line)
         </p>
       </div>
 
@@ -434,31 +456,108 @@ const LogAnalyzer = ({ onChangeMode }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          LLM Analysis
+          AI Log Analysis
         </h2>
         <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
           Back
         </Button>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Log File
-        </label>
-        <div className="mt-1">
-          <Input
-            type="file"
-            onChange={handleLogFileUpload}
-            accept=".txt,.log"
-          />
+      {/* Hidden persistent file input */}
+      <Input
+        ref={fileInputRef}
+        type="file"
+        onChange={handleLogFileUpload}
+        accept=".txt,.log"
+        className="hidden"
+        multiple
+      />
+
+      <div className="p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-700 mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-md font-semibold text-blue-900 dark:text-blue-200">
+            Upload Log Files <span className="text-sm font-normal">({logFiles.length}/5)</span>
+          </h3>
+          {logFiles.length > 0 && (
+            <Button
+              variant="outline" 
+              size="sm"
+              onClick={clearAllLogFiles}
+              className="text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Clear All Files
+            </Button>
+          )}
         </div>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Upload a text file containing your logs for LLM analysis
-        </p>
+        
+        {logFiles.length > 0 ? (
+          <div className="flex flex-col space-y-3">
+            {logFiles.map((file, index) => (
+              <div key={index} className="p-3 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-800 flex justify-between items-center">
+                <div className="flex items-center">
+                  <FileText className="h-5 w-5 text-blue-500 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setLogFiles(logFiles.filter((_, i) => i !== index))}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              {logFiles.length === 1 
+                ? "Your log file is ready for AI analysis"
+                : `Your ${logFiles.length} log files are ready for AI analysis`}
+            </p>
+            {logFiles.length < 5 && (
+              <Button
+                onClick={() => fileInputRef.current.click()}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                Add More Files
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-md bg-white dark:bg-gray-800">
+              <div className="space-y-1 text-center">
+                <FileText className="mx-auto h-12 w-12 text-blue-400" />
+                <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                  <label
+                    className="relative cursor-pointer rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 focus-within:outline-none"
+                    onClick={() => fileInputRef.current.click()}
+                  >
+                    <span>Upload log files</span>
+                  </label>
+                  <p className="pl-1">or drag and drop</p>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  TXT or LOG up to 10MB each (max 5 files)
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-blue-800 dark:text-blue-300">
+              Upload log files to start analyzing with AI
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-6">
-        <LlmAnalysis logFile={logFile} sessionData={splunkLogs} />
+        <LlmAnalysis logFiles={logFiles} sessionData={splunkLogs} />
       </div>
     </div>
   );
@@ -523,7 +622,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const renderAnalyzeButton = () => (
     <Button 
       onClick={analyzeLogs} 
-      disabled={!logDictionary || loading || (screen === SCREENS.SPLUNK && !sessionId) || (screen === SCREENS.FILE && !logFile)}
+      disabled={!logDictionary || loading || (screen === SCREENS.SPLUNK && !sessionId) || (screen === SCREENS.FILE && logFiles.length === 0)}
       className="w-full"
     >
       {loading ? 'Analyzing...' : 'Analyze Logs'}
@@ -631,7 +730,11 @@ const LogAnalyzer = ({ onChangeMode }) => {
         </div>
         
         {/* Main content */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 max-w-4xl mx-auto">
+        <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-8 ${
+          screen === SCREENS.LLM 
+            ? 'w-[90%] max-w-[90%] lg:w-[85%] lg:max-w-[85%] xl:w-[80%] xl:max-w-[80%] min-h-[80vh]' 
+            : 'max-w-4xl'
+        } mx-auto`}>
           {screen === SCREENS.SELECT && renderSelectScreen()}
           {screen === SCREENS.SPLUNK && renderSplunkAnalysis()}
           {screen === SCREENS.FILE && renderFileAnalysis()}

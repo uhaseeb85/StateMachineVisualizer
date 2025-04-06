@@ -4,6 +4,7 @@
  * This component provides LLM-powered analysis of log files
  * using remote LLM APIs (compatible with OpenAI, LM Studio or Ollama).
  * Features a chat-like interface that preserves history within the session.
+ * Supports analyzing multiple log files simultaneously.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -20,7 +21,7 @@ const DEFAULT_ENDPOINTS = {
   CUSTOM: "http://your-llm-server/v1/chat/completions"
 };
 
-const LlmAnalysis = ({ logFile }) => {
+const LlmAnalysis = ({ logFiles, sessionData }) => {
   // State
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ const LlmAnalysis = ({ logFile }) => {
   const [apiProvider, setApiProvider] = useState('LM_STUDIO'); // 'LM_STUDIO', 'OLLAMA', or 'CUSTOM'
   const [modelName, setModelName] = useState(''); // Only used for Ollama
   const [statusLog, setStatusLog] = useState([]);
-  const [logContent, setLogContent] = useState(null);
+  const [logContents, setLogContents] = useState({}); // Object mapping file names to their content
   const [showSettings, setShowSettings] = useState(false);
   const [apiAvailable, setApiAvailable] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -43,12 +44,14 @@ const LlmAnalysis = ({ logFile }) => {
   // Ref for chat container scrolling
   const chatContainerRef = useRef(null);
 
-  // Load log file content
+  // Load log files' content
   useEffect(() => {
-    if (logFile) {
-      readLogFile();
+    if (logFiles && logFiles.length > 0) {
+      readLogFiles();
+    } else {
+      setLogContents({});
     }
-  }, [logFile]);
+  }, [logFiles]);
 
   // Check if API is available
   useEffect(() => {
@@ -123,23 +126,46 @@ const LlmAnalysis = ({ logFile }) => {
     setStatusLog(prev => [...prev, { message, timestamp, isError }]);
   };
 
-  // Read the log file content
-  const readLogFile = async () => {
+  // Read the log files content
+  const readLogFiles = async () => {
     try {
-      addStatusLog("Reading log file...");
-      const text = await logFile.text();
-      setLogContent(text);
-      addStatusLog(`Log file loaded: ${logFile.name} (${Math.round(text.length / 1024)} KB)`);
+      setLogContents({});
+      
+      if (logFiles.length === 0) {
+        addStatusLog("No log files to read");
+        return;
+      }
+      
+      addStatusLog(`Reading ${logFiles.length} log file(s)...`);
+      
+      const fileContents = {};
+      let totalSize = 0;
+      
+      for (const file of logFiles) {
+        try {
+          const text = await file.text();
+          fileContents[file.name] = text;
+          totalSize += text.length;
+          addStatusLog(`Log file loaded: ${file.name} (${Math.round(text.length / 1024)} KB)`);
+        } catch (error) {
+          console.error(`Error reading log file ${file.name}:`, error);
+          addStatusLog(`Error reading log file ${file.name}: ${error.message}`, true);
+        }
+      }
+      
+      setLogContents(fileContents);
+      addStatusLog(`All log files loaded. Total size: ${Math.round(totalSize / 1024)} KB`);
+      
     } catch (error) {
-      console.error("Error reading log file:", error);
-      addStatusLog(`Error reading log file: ${error.message}`, true);
-      toast.error(`Error reading log file: ${error.message}`);
+      console.error("Error reading log files:", error);
+      addStatusLog(`Error reading log files: ${error.message}`, true);
+      toast.error(`Error reading log files: ${error.message}`);
     }
   };
 
   // Submit query to LLM API
   const handleQuerySubmit = async () => {
-    if (!query.trim() || !logContent) return;
+    if (!query.trim() || Object.keys(logContents).length === 0) return;
     
     try {
       setLoading(true);
@@ -155,13 +181,28 @@ const LlmAnalysis = ({ logFile }) => {
       
       setChatHistory(prev => [...prev, userMessage]);
       
-      // Prepare truncated logs if they're too large
-      const truncatedLogs = logContent.length > 20000 
-        ? logContent.substring(0, 20000) + "...[truncated]" 
-        : logContent;
+      // Combine and truncate logs if they're too large
+      let combinedLogs = '';
+      const MAX_SIZE_PER_FILE = 20000; // characters
+      
+      // Add each file's content with a header
+      Object.entries(logContents).forEach(([fileName, content]) => {
+        const truncatedContent = content.length > MAX_SIZE_PER_FILE
+          ? content.substring(0, MAX_SIZE_PER_FILE) + "...[truncated]"
+          : content;
+          
+        combinedLogs += `\n\n===== FILE: ${fileName} =====\n${truncatedContent}`;
+      });
+      
+      // Ensure total size isn't too large
+      const MAX_TOTAL_SIZE = 100000; // characters
+      if (combinedLogs.length > MAX_TOTAL_SIZE) {
+        combinedLogs = combinedLogs.substring(0, MAX_TOTAL_SIZE) + "\n\n...[content truncated due to size]";
+        addStatusLog("Log content truncated due to large size");
+      }
       
       // Create the prompt
-      const prompt = `You are a log analysis assistant. Analyze the following logs and answer this question: ${query}\n\nLOGS:\n${truncatedLogs}`;
+      const prompt = `You are a log analysis assistant. Analyze the following log files and answer this question: ${query}\n${combinedLogs}`;
       
       // Prepare request body based on API provider
       let requestBody;
@@ -564,7 +605,7 @@ const LlmAnalysis = ({ logFile }) => {
         </div>
       </div>
       
-      {!logFile ? (
+      {!logFiles || logFiles.length === 0 ? (
         <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
           <div className="flex items-start">
             <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
@@ -573,7 +614,7 @@ const LlmAnalysis = ({ logFile }) => {
                 Log File Required
               </h3>
               <div className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                <p>Please upload a log file to use the LLM analysis feature.</p>
+                <p>Please upload log files to use the LLM analysis feature.</p>
               </div>
             </div>
           </div>
@@ -611,7 +652,7 @@ const LlmAnalysis = ({ logFile }) => {
           )}
           
           {/* Two-pane layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left pane - Status and chat input */}
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -630,6 +671,29 @@ const LlmAnalysis = ({ logFile }) => {
                 </div>
               </div>
               
+              {/* Log File Info */}
+              {Object.keys(logContents).length > 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800">
+                  <h3 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2 flex items-center">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Loaded Log Files
+                  </h3>
+                  <div className="max-h-36 overflow-y-auto pr-1">
+                    {Object.entries(logContents).map(([fileName, content], index) => (
+                      <div 
+                        key={index} 
+                        className="text-xs flex justify-between items-center py-1.5 border-t border-green-100 dark:border-green-800 first:border-0"
+                      >
+                        <span className="font-medium text-green-800 dark:text-green-300 truncate max-w-[70%]">{fileName}</span>
+                        <span className="text-green-700 dark:text-green-400">
+                          {Math.round(content.length / 1024)} KB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {/* Status Log */}
               <div className="border border-gray-200 dark:border-gray-700 rounded-md h-36 overflow-y-auto">
                 <div className="p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-sm font-medium">
@@ -646,12 +710,12 @@ const LlmAnalysis = ({ logFile }) => {
             </div>
             
             {/* Right pane - Chat interface */}
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full lg:col-span-2">
               {/* Chat messages container */}
               <div 
                 ref={chatContainerRef}
                 className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg mb-4 overflow-y-auto"
-                style={{ height: chatHistory.length ? "400px" : "auto", minHeight: "250px" }}
+                style={{ height: chatHistory.length ? "60vh" : "auto", minHeight: "400px" }}
               >
                 {chatHistory.length === 0 ? (
                   <div className="h-full flex items-center justify-center">
@@ -673,7 +737,7 @@ const LlmAnalysis = ({ logFile }) => {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Ask a question about your logs..."
-                  className="min-h-[80px] resize-none"
+                  className="min-h-[120px] resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -684,7 +748,7 @@ const LlmAnalysis = ({ logFile }) => {
                 <div className="flex space-x-3">
                   <Button 
                     onClick={handleQuerySubmit}
-                    disabled={loading || !query.trim() || !logContent || apiAvailable === false}
+                    disabled={loading || !query.trim() || Object.keys(logContents).length === 0 || apiAvailable === false}
                     className="flex-1"
                   >
                     {loading ? (
