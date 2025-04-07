@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft, ArrowRight } from 'lucide-react';
+import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft, ArrowRight, Trash } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import SplunkConfig from '../StateMachineVisualizer/SplunkConfig';
 import { toast, Toaster } from 'sonner';
@@ -525,6 +525,44 @@ const LogAnalyzer = ({ onChangeMode }) => {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Upload text files containing your logs (one log entry per line)
         </p>
+        
+        {/* Display uploaded files */}
+        {logFiles.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {logFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center">
+                  <FileText className="h-5 w-5 text-blue-500 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLogFiles(logFiles.filter((_, i) => i !== index))}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllLogFiles}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Clear All Files
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {renderDictionaryUpload()}
