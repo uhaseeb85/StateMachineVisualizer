@@ -271,35 +271,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
       </div>
       
       {/* Features Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center mb-2">
-            <Database className="w-5 h-5 text-blue-500 mr-2" />
-            <h3 className="font-semibold text-blue-800 dark:text-blue-200">Pattern Matching</h3>
-          </div>
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            Find recurring issues using regex patterns to identify errors and warnings
-          </p>
-        </div>
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
-          <div className="flex items-center mb-2">
-            <FileText className="w-5 h-5 text-green-500 mr-2" />
-            <h3 className="font-semibold text-green-800 dark:text-green-200">Context Aware</h3>
-          </div>
-          <p className="text-sm text-green-700 dark:text-green-300">
-            See log patterns with surrounding context to better understand issues
-          </p>
-        </div>
-        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-          <div className="flex items-center mb-2">
-            <Search className="w-5 h-5 text-purple-500 mr-2" />
-            <h3 className="font-semibold text-purple-800 dark:text-purple-200">Flexible Sources</h3>
-          </div>
-          <p className="text-sm text-purple-700 dark:text-purple-300">
-            Analyze logs from files or connect directly to your Splunk instance
-          </p>
-        </div>
-      </div>
       
       <h3 className="text-xl font-semibold text-gray-900 dark:text-white text-center mt-4">
         Choose Your Analysis Method
