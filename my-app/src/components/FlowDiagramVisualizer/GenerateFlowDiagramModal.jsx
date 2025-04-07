@@ -23,11 +23,13 @@ import ReactFlow, {
   ReactFlowProvider,
   getRectOfNodes,
   getTransformForBounds,
+  Panel,
 } from 'reactflow';
 import dagre from '@dagrejs/dagre';
 import StepNode from './CustomNodes/StepNode';
 import 'reactflow/dist/style.css';
 import { toPng } from 'html-to-image';
+import { toSvg } from 'html-to-image';
 
 // Define dimensions for nodes in the flow diagram
 const nodeWidth = 180;
@@ -154,7 +156,7 @@ const FlowDiagramContent = ({
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isGenerating, setIsGenerating] = useState(true);
   const [isExporting, setIsExporting] = useState(false); // New state for export loading
-  const { getNodes, fitView } = useReactFlow(); // Get getNodes from useReactFlow
+  const { getNodes, fitView, setViewport, screenToFlowPosition, getViewport } = useReactFlow(); // Get getNodes from useReactFlow
   const componentRef = useRef();
 
   /**
@@ -285,74 +287,99 @@ const FlowDiagramContent = ({
    * Handles exporting the current flow diagram as a PNG image
    */
   const onExport = useCallback(() => {
-    const nodesToExport = getNodes();
-    if (nodesToExport.length === 0) {
+    const nodes = getNodes();
+    if (nodes.length === 0) {
       console.warn('No nodes to export.');
       return;
     }
 
-    // Set exporting state to true to show loading indicator
     setIsExporting(true);
-
-    // Calculate the bounds of the nodes
-    const nodesBounds = getRectOfNodes(nodesToExport);
     
-    // Calculate the transform needed to fit the bounds into the image dimensions
-    const transform = getTransformForBounds(
-      nodesBounds,
-      imageWidth,
-      imageHeight,
-      0.5, // minZoom
-      2,   // maxZoom
-      imagePadding // Add padding
-    );
-
-    // Get the DOM element of the viewport
-    const viewportElement = document.querySelector('.react-flow__viewport');
-
-    if (!viewportElement) {
-      console.error('React Flow viewport element not found.');
-      setIsExporting(false);
-      return;
-    }
-
-    // Set a short timeout to ensure React has time to update the UI with the loading state
-    setTimeout(() => {
-      toPng(viewportElement, {
-        backgroundColor: '#ffffff', // Set background color for the image
-        width: imageWidth,
-        height: imageHeight,
-        pixelRatio: 2, // Higher quality image (2x resolution)
-        style: {
-          width: `${imageWidth}px`,
-          height: `${imageHeight}px`,
-          transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
-        },
-        // Filter out the controls and minimap from the export
-        filter: (node) => {
-          return !(
-            node?.classList?.contains('react-flow__controls') ||
-            node?.classList?.contains('react-flow__minimap') ||
-            node?.classList?.contains('react-flow__attribution') ||
-            node?.classList?.contains('export-button-container') // Exclude the export button itself
-          );
-        },
-        cacheBust: true, // Avoid caching issues
-      })
-        .then((dataUrl) => {
-          downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
-          setIsExporting(false); // Reset loading state
+    // First fit the view properly
+    fitView({
+      padding: 0.2,
+      includeHiddenNodes: false,
+      duration: 500
+    });
+    
+    // Create a function to perform the actual export after view is fitted
+    const performExport = () => {
+      // Get the react-flow container
+      const reactFlowContainer = document.querySelector('.react-flow');
+      
+      if (!reactFlowContainer) {
+        console.error('React flow container not found');
+        setIsExporting(false);
+        return;
+      }
+      
+      // Hide UI elements that shouldn't be in the export
+      const elementsToHide = [
+        ...reactFlowContainer.querySelectorAll('.react-flow__controls'),
+        ...reactFlowContainer.querySelectorAll('.react-flow__minimap'),
+        ...reactFlowContainer.querySelectorAll('.react-flow__attribution'),
+        ...reactFlowContainer.querySelectorAll('.export-button-container')
+      ];
+      
+      // Store original visibility
+      const originalVisibility = elementsToHide.map(el => el.style.display);
+      
+      // Hide elements
+      elementsToHide.forEach(el => {
+        el.style.display = 'none';
+      });
+      
+      try {
+        // Use the html-to-image library with the right options for this specific case
+        toPng(reactFlowContainer, {
+          backgroundColor: '#ffffff',
+          width: reactFlowContainer.offsetWidth,
+          height: reactFlowContainer.offsetHeight,
+          style: {
+            width: `${reactFlowContainer.offsetWidth}px`,
+            height: `${reactFlowContainer.offsetHeight}px`,
+          },
+          pixelRatio: 2,
+          quality: 1,
+          cacheBust: true,
         })
-        .catch((err) => {
-          console.error('Failed to export diagram:', err);
-          // Reset loading state
-          setIsExporting(false);
+        .then(dataUrl => {
+          // Restore visibility of elements
+          elementsToHide.forEach((el, i) => {
+            el.style.display = originalVisibility[i] || '';
+          });
           
-          // Show an alert for errors in a user-friendly way
+          // Download the image
+          downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+          setIsExporting(false);
+        })
+        .catch(error => {
+          console.error('Export failed:', error);
+          
+          // Restore visibility even on error
+          elementsToHide.forEach((el, i) => {
+            el.style.display = originalVisibility[i] || '';
+          });
+          
+          setIsExporting(false);
           window.alert('Failed to export the diagram. Please try again.');
         });
-    }, 100);
-  }, [getNodes, rootElement?.name]);
+      } catch (error) {
+        console.error('Error during export preparation:', error);
+        
+        // Restore visibility even on error
+        elementsToHide.forEach((el, i) => {
+          el.style.display = originalVisibility[i] || '';
+        });
+        
+        setIsExporting(false);
+        window.alert('Failed to export the diagram. Please try again.');
+      }
+    };
+    
+    // Wait for fitView to complete
+    setTimeout(performExport, 600);
+  }, [getNodes, rootElement?.name, fitView]);
 
   // Show loading indicator while generating the diagram
   if (isGenerating) {
