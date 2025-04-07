@@ -18,6 +18,8 @@ const AnimatedDemo = ({ mode }) => {
       baseUrl = '/assets/flow-diagram-demo.gif'; 
     } else if (mode === 'aiLogAnalysis') {
       baseUrl = '/assets/ai-log-analysis-demo.gif';
+    } else if (mode === 'logAnalyzer') {
+      baseUrl = '/assets/log-analyzer-demo.gif';
     } else {
       // Default fallback
       baseUrl = '/assets/flow-diagram-demo.gif';
@@ -139,7 +141,9 @@ const AnimatedDemo = ({ mode }) => {
                 ? 'State Machine' 
                 : mode === 'flowDiagram' 
                   ? 'Flow Diagram' 
-                  : 'AI Log Analysis'} Demo`}
+                  : mode === 'aiLogAnalysis'
+                    ? 'AI Log Analysis'
+                    : 'Log Analyzer'} Demo`}
               className="rounded-lg shadow-2xl slow-gif"
               style={{
                 maxWidth: '90vw',
@@ -170,12 +174,16 @@ const AnimatedDemo = ({ mode }) => {
             ? '/assets/state-machine-demo.gif'
             : mode === 'flowDiagram'
               ? '/assets/flow-diagram-demo.gif'
-              : '/assets/ai-log-analysis-demo.gif'}
+            : mode === 'aiLogAnalysis'
+              ? '/assets/ai-log-analysis-demo.gif'
+              : '/assets/log-analyzer-demo.gif'}
           alt={`${mode === 'stateMachine' 
             ? 'State Machine' 
             : mode === 'flowDiagram' 
               ? 'Flow Diagram' 
-              : 'AI Log Analysis'} Demo`}
+              : mode === 'aiLogAnalysis'
+                ? 'AI Log Analysis'
+                : 'Log Analyzer'} Demo`}
           className="w-full h-full object-cover object-center slow-gif"
         />
         {/* Darkening overlay on hover */}

@@ -187,16 +187,8 @@ const LandingPage = ({ onGetStarted }) => {
                 Analyze log files to identify patterns and troubleshoot issues.
                 Supports local files and Splunk integration.
               </p>
-              <div className="h-[280px] relative bg-gray-800/50 rounded-lg overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <FileText className="w-20 h-20 text-purple-400 mb-6" />
-                  <div className="text-center px-8">
-                    <h4 className="text-xl font-medium text-purple-300 mb-3">Pattern-Based Analysis</h4>
-                    <p className="text-base text-gray-400">
-                      Identify issues in logs using customizable pattern dictionaries
-                    </p>
-                  </div>
-                </div>
+              <div className="h-[280px] relative">
+                <AnimatedDemo mode="logAnalyzer" />
               </div>
             </div>
             <Button 
