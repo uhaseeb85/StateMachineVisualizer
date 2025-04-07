@@ -2,9 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   GitBranch, 
-  Zap, 
-  Shield, 
-  Code2, 
   Workflow, 
   ArrowRight, 
   Boxes, 
@@ -232,16 +229,8 @@ const LandingPage = ({ onGetStarted }) => {
                 Analyze log files using AI to get intelligent insights and answers.
                 Ask questions about your logs in natural language.
               </p>
-              <div className="h-[280px] relative bg-gray-800/50 rounded-lg overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Brain className="w-20 h-20 text-indigo-400 mb-6" />
-                  <div className="text-center px-8">
-                    <h4 className="text-xl font-medium text-indigo-300 mb-3">AI-Powered Analysis</h4>
-                    <p className="text-base text-gray-400">
-                      Chat with AI about your logs to get intelligent insights
-                    </p>
-                  </div>
-                </div>
+              <div className="h-[280px] relative">
+                <AnimatedDemo mode="aiLogAnalysis" />
               </div>
             </div>
             <Button 
