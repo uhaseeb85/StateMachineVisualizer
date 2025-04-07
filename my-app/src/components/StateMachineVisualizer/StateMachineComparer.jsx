@@ -511,7 +511,7 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             className="absolute right-0 top-0 h-8 w-8 p-0 rounded-full"
             variant="ghost"
           >
-            <X className="h-4 w-4" />
+
           </Button>
         </DialogHeader>
         
