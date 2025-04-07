@@ -14,7 +14,8 @@ import {
   Lightbulb,
   Sparkles,
   Search,
-  FileText
+  FileText,
+  Brain
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
@@ -99,7 +100,7 @@ const LandingPage = ({ onGetStarted }) => {
 
       {/* Mode Selection */}
       <div className="mx-auto max-w-7xl px-6 lg:px-8 py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* State Machine Mode */}
           <motion.div 
             className="group relative rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent p-10 hover:from-blue-500/20 
@@ -206,6 +207,48 @@ const LandingPage = ({ onGetStarted }) => {
                        group-hover:bg-purple-500 group-hover:text-white transition-all duration-300"
             >
               Start Analyzing
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </motion.div>
+          
+          {/* AI Log Analysis Mode */}
+          <motion.div 
+            className="group relative rounded-3xl bg-gradient-to-b from-indigo-500/10 to-transparent p-10 hover:from-indigo-500/20 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
+            onClick={() => handleModeSelect('aiLogAnalysis')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-indigo-500/20">
+                  <Brain className="w-8 h-8 text-indigo-400" />
+                </div>
+                <h3 className="text-2xl font-semibold">AI Log Analysis</h3>
+              </div>
+              <p className="text-gray-400 mb-8 text-lg">
+                Analyze log files using AI to get intelligent insights and answers.
+                Ask questions about your logs in natural language.
+              </p>
+              <div className="h-[280px] relative bg-gray-800/50 rounded-lg overflow-hidden flex items-center justify-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Brain className="w-20 h-20 text-indigo-400 mb-6" />
+                  <div className="text-center px-8">
+                    <h4 className="text-xl font-medium text-indigo-300 mb-3">AI-Powered Analysis</h4>
+                    <p className="text-base text-gray-400">
+                      Chat with AI about your logs to get intelligent insights
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 py-6
+                       group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300"
+            >
+              Start AI Analysis
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>

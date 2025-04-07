@@ -2,6 +2,7 @@ import { useState } from 'react';
 import StateMachineVisualizer from './StateMachineVisualizer';
 import FlowDiagramVisualizer from './FlowDiagramVisualizer';
 import LogAnalyzer from './LogAnalyzer';
+import AiLogAnalysis from './AiLogAnalysis';
 import LandingPage from './LandingPage';
 import { ThemeProvider } from './ThemeProvider';
 
@@ -30,6 +31,10 @@ const AppContent = () => {
 
     if (mode === 'logAnalyzer') {
       return <LogAnalyzer onChangeMode={handleChangeModeClick} />;
+    }
+    
+    if (mode === 'aiLogAnalysis') {
+      return <AiLogAnalysis onChangeMode={handleChangeModeClick} />;
     }
 
     return <FlowDiagramVisualizer onChangeMode={handleChangeModeClick} />;

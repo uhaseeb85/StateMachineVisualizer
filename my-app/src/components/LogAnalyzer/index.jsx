@@ -1,7 +1,7 @@
 /**
  * LogAnalyzer Component
  * 
- * A standalone log analysis tool that supports both local file analysis
+ * A standalone log analysis tool that supports both local file analysis,
  * and Splunk integration. This component allows users to:
  * - Upload and analyze local log files
  * - Connect to Splunk for remote log analysis
@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, X, Download, Settings, FileText, Database, Search, ArrowLeft, ArrowRight, Trash } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import SplunkConfig from '../StateMachineVisualizer/SplunkConfig';
 import { toast, Toaster } from 'sonner';
@@ -65,10 +65,12 @@ const LogAnalyzer = ({ onChangeMode }) => {
   });
   const [results, setResults] = useState(null); // null indicates no analysis performed yet
   const [loading, setLoading] = useState(false);
-  const [logFile, setLogFile] = useState(null);
+  const [logFiles, setLogFiles] = useState([]); // Changed from single file to array of files
   const [screen, setScreen] = useState(SCREENS.SELECT);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
-
+  const [splunkLogs, setSplunkLogs] = useState(null);
+  const [selectedMode, setSelectedMode] = useState(null);
+  
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
     if (logDictionary) {
@@ -111,8 +113,21 @@ const LogAnalyzer = ({ onChangeMode }) => {
 
   // Log Analysis Functions
   const handleLogFileUpload = (event) => {
-    const file = event.target.files[0];
-    setLogFile(file);
+    const newFiles = Array.from(event.target.files);
+    
+    // Check if adding these files would exceed the 5 file limit
+    if (logFiles.length + newFiles.length > 5) {
+      toast.error('Maximum 5 log files allowed');
+      return;
+    }
+    
+    setLogFiles([...logFiles, ...newFiles]);
+    event.target.value = ''; // Reset input to allow selecting the same file again
+  };
+
+  const clearAllLogFiles = () => {
+    setLogFiles([]);
+    toast.info('All log files cleared');
   };
 
   const analyzeLogs = async () => {
@@ -128,11 +143,11 @@ const LogAnalyzer = ({ onChangeMode }) => {
       }
       await analyzeSplunkLogs();
     } else {
-      if (!logFile) {
-        toast.error('Please upload a log file');
+      if (logFiles.length === 0) {
+        toast.error('Please upload at least one log file');
         return;
       }
-      await analyzeLogFile();
+      await analyzeLogFiles();
     }
   };
 
@@ -155,33 +170,38 @@ const LogAnalyzer = ({ onChangeMode }) => {
     }
   };
 
-  const analyzeLogFile = async () => {
+  const analyzeLogFiles = async () => {
     setLoading(true);
     try {
-      const text = await logFile.text();
-      const allLines = text.split('\n').map(line => line.trim());
-      
-      // Create groups of three lines with overlap for better context
-      const logs = [];
-      for (let i = 0; i < allLines.length; i++) {
-        const threeLines = allLines.slice(i, i + 3).join('\n');
-        if (threeLines) {
-          logs.push({
-            message: threeLines,
-            lineNumber: i + 1,
-            context: {
-              before: allLines.slice(Math.max(0, i - 2), i),
-              after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
-            },
-            matchedLines: allLines.slice(i, i + 3)
-          });
+      const logs = await Promise.all(logFiles.map(async (file) => {
+        const text = await file.text();
+        const allLines = text.split('\n').map(line => line.trim());
+        
+        // Create groups of three lines with overlap for better context
+        const logs = [];
+        for (let i = 0; i < allLines.length; i++) {
+          const threeLines = allLines.slice(i, i + 3).join('\n');
+          if (threeLines) {
+            logs.push({
+              message: threeLines,
+              lineNumber: i + 1,
+              context: {
+                before: allLines.slice(Math.max(0, i - 2), i),
+                after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
+              },
+              matchedLines: allLines.slice(i, i + 3)
+            });
+          }
         }
-      }
+        
+        return logs;
+      }));
       
-      processLogs(logs);
+      const combinedLogs = logs.flat();
+      processLogs(combinedLogs);
     } catch (error) {
-      console.error('Error analyzing log file:', error);
-      toast.error('Error analyzing log file: ' + error.message);
+      console.error('Error analyzing log files:', error);
+      toast.error('Error analyzing log files: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -232,76 +252,157 @@ const LogAnalyzer = ({ onChangeMode }) => {
     }
   };
 
+  const handleModeSelect = (mode) => {
+    setSelectedMode(mode);
+    setScreen(mode === 'splunk' ? SCREENS.SPLUNK : 
+              mode === 'file' ? SCREENS.FILE : SCREENS.SELECT);
+  };
+
   // Render Functions
   const renderSelectScreen = () => (
-    <div className="space-y-6">
-      {/* Warning Banner */}
-      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-        <div className="flex items-start">
-          <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
-              Experimental Feature
-            </h3>
-            <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
-              <p>
-                The Log Analysis feature is experimental. All analysis is done in your browser locally.
+    <div className="space-y-8">
+      <div className="text-center space-y-3">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Log Analysis Tools
+        </h2>
+        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          Powerful pattern matching and analysis to help you identify critical issues in your logs
+        </p>
+      </div>
+      
+      {/* Features Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center mb-2">
+            <Database className="w-5 h-5 text-blue-500 mr-2" />
+            <h3 className="font-semibold text-blue-800 dark:text-blue-200">Pattern Matching</h3>
+          </div>
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Find recurring issues using regex patterns to identify errors and warnings
+          </p>
+        </div>
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+          <div className="flex items-center mb-2">
+            <FileText className="w-5 h-5 text-green-500 mr-2" />
+            <h3 className="font-semibold text-green-800 dark:text-green-200">Context Aware</h3>
+          </div>
+          <p className="text-sm text-green-700 dark:text-green-300">
+            See log patterns with surrounding context to better understand issues
+          </p>
+        </div>
+        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+          <div className="flex items-center mb-2">
+            <Search className="w-5 h-5 text-purple-500 mr-2" />
+            <h3 className="font-semibold text-purple-800 dark:text-purple-200">Flexible Sources</h3>
+          </div>
+          <p className="text-sm text-purple-700 dark:text-purple-300">
+            Analyze logs from files or connect directly to your Splunk instance
+          </p>
+        </div>
+      </div>
+      
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white text-center mt-4">
+        Choose Your Analysis Method
+      </h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+        {/* Splunk Analysis Card */}
+        <div 
+          onClick={() => handleModeSelect('splunk')}
+          className="cursor-pointer rounded-xl border-2 border-blue-200 dark:border-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors overflow-hidden shadow-sm hover:shadow-md"
+        >
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex-shrink-0 flex justify-center mb-6">
+              <div className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-4">
+                <Database className="w-14 h-14 text-blue-500" />
+              </div>
+            </div>
+            <div className="text-center flex-grow space-y-3">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Splunk Analysis
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Connect to your Splunk instance to analyze logs remotely
               </p>
+              <ul className="text-sm text-left ml-5 space-y-1 text-gray-600 dark:text-gray-400 list-disc">
+                <li>Query logs directly from Splunk</li>
+                <li>Use session IDs to focus analysis</li>
+                <li>No need to download log files</li>
+              </ul>
+              <div className="pt-4">
+                <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/40 px-3 py-1 text-sm font-medium text-blue-800 dark:text-blue-300">
+                  <ArrowRight className="w-3 h-3 mr-1" />
+                  Select Splunk
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* File Analysis Card */}
+        <div 
+          onClick={() => handleModeSelect('file')}
+          className="cursor-pointer rounded-xl border-2 border-green-200 dark:border-green-700 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors overflow-hidden shadow-sm hover:shadow-md"
+        >
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex-shrink-0 flex justify-center mb-6">
+              <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-4">
+                <FileText className="w-14 h-14 text-green-500" />
+              </div>
+            </div>
+            <div className="text-center flex-grow space-y-3">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                File Analysis
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Upload and analyze your local log files
+              </p>
+              <ul className="text-sm text-left ml-5 space-y-1 text-gray-600 dark:text-gray-400 list-disc">
+                <li>Analyze log files downloaded to your PC</li>
+                <li>View results with line numbers</li>
+                <li>See context around matched patterns</li>
+              </ul>
+              <div className="pt-4">
+                <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/40 px-3 py-1 text-sm font-medium text-green-800 dark:text-green-300">
+                  <ArrowRight className="w-3 h-3 mr-1" />
+                  Select File Analysis
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
-        Select Analysis Mode
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <Button
-          onClick={() => setScreen(SCREENS.SPLUNK)}
-          variant="outline"
-          className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-        >
-          <Database className="w-12 h-12 text-blue-500" />
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Splunk Analysis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Analyze logs directly from your Splunk instance using session ID
-            </p>
+      <div className="mt-10 p-5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="flex items-start space-x-4">
+          <div className="bg-blue-100 dark:bg-blue-800 p-2 rounded-full flex-shrink-0">
+            <Download className="w-6 h-6 text-blue-600 dark:text-blue-300" />
           </div>
-        </Button>
-
-        <Button
-          onClick={() => setScreen(SCREENS.FILE)}
-          variant="outline"
-          className="p-6 h-auto flex flex-col items-center gap-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-        >
-          <FileText className="w-12 h-12 text-blue-500" />
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">File Analysis</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Upload and analyze a local log file
+          <div className="flex-grow">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2">
+              Log Dictionary
+            </h3>
+            <p className="text-sm text-blue-800 dark:text-blue-300 mb-4">
+              A log dictionary contains regex patterns to match in your logs. These patterns help identify common issues and provide context on their severity and potential solutions.
             </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={downloadSampleDictionary}
+                variant="outline"
+                className="text-blue-600 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Sample Dictionary
+              </Button>
+              <Button
+                onClick={() => handleModeSelect('file')}
+                variant="ghost"
+                className="text-gray-600 dark:text-gray-300"
+              >
+                Learn More About Log Dictionaries
+              </Button>
+            </div>
           </div>
-        </Button>
-      </div>
-
-      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-          About Log Dictionary
-        </h3>
-        <p className="text-sm text-blue-800 dark:text-blue-300 mb-4">
-          A log dictionary contains patterns to match in your logs. You can upload your own or use our sample.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={downloadSampleDictionary}
-            variant="outline"
-            size="sm"
-            className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Download Sample Dictionary
-          </Button>
         </div>
       </div>
     </div>
@@ -316,6 +417,29 @@ const LogAnalyzer = ({ onChangeMode }) => {
         <Button variant="outline" onClick={() => setScreen(SCREENS.SELECT)}>
           Back
         </Button>
+      </div>
+
+      {/* First-time user instructions */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <FileText className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+              Getting Started with Splunk Analysis
+            </h3>
+            <ol className="list-decimal pl-4 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <li>Configure your Splunk connection using the "Configure Splunk" button</li>
+              <li>Enter a session ID to identify the logs you want to analyze</li>
+              <li>Upload a log dictionary containing pattern definitions (or use our sample)</li>
+              <li>Click "Analyze Logs" to search for patterns in your Splunk logs</li>
+            </ol>
+            <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              The analysis will match log entries against regex patterns in your dictionary and display matches by severity.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -363,20 +487,82 @@ const LogAnalyzer = ({ onChangeMode }) => {
         </Button>
       </div>
 
+      {/* First-time user instructions */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <FileText className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+              Getting Started with File Analysis
+            </h3>
+            <ol className="list-decimal pl-4 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <li>Upload one or more log files (up to 5 files)</li>
+              <li>Upload a log dictionary containing pattern definitions (or use our sample)</li>
+              <li>Click "Analyze Logs" to search for patterns in your files</li>
+              <li>View results organized by severity with line numbers and context</li>
+            </ol>
+            <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              The log dictionary contains regex patterns that will be matched against your log files to identify issues.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Log File
+          Log Files
         </label>
         <div className="mt-1">
           <Input
             type="file"
             onChange={handleLogFileUpload}
             accept=".txt,.log"
+            multiple
           />
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Upload a text file containing your logs (one log entry per line)
+          Upload text files containing your logs (one log entry per line)
         </p>
+        
+        {/* Display uploaded files */}
+        {logFiles.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {logFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center">
+                  <FileText className="h-5 w-5 text-blue-500 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLogFiles(logFiles.filter((_, i) => i !== index))}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllLogFiles}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Clear All Files
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {renderDictionaryUpload()}
@@ -445,7 +631,7 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const renderAnalyzeButton = () => (
     <Button 
       onClick={analyzeLogs} 
-      disabled={!logDictionary || loading || (screen === SCREENS.SPLUNK && !sessionId) || (screen === SCREENS.FILE && !logFile)}
+      disabled={!logDictionary || loading || (screen === SCREENS.SPLUNK && !sessionId) || (screen === SCREENS.FILE && logFiles.length === 0)}
       className="w-full"
     >
       {loading ? 'Analyzing...' : 'Analyze Logs'}
