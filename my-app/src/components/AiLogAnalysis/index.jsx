@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, X, FileText, Brain, ArrowLeft, Download, Info, CheckCircle2, BookOpen, Upload, HelpCircle, Settings } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import LlmAnalysis from '../LogAnalyzer/LlmAnalysis';
+import LlmAnalysis from './LlmAnalysis';
 import * as XLSX from 'xlsx-js-style';
 
 // Sample patterns for the dictionary
