@@ -10,9 +10,21 @@ const AnimatedDemo = ({ mode }) => {
   const [progress, setProgress] = useState(0);
 
   const getGifUrl = () => {
-    const baseUrl = mode === 'stateMachine' 
-      ? '/assets/state-machine-demo.gif'
-      : '/assets/flow-diagram-demo.gif';
+    let baseUrl;
+    
+    if (mode === 'stateMachine') {
+      baseUrl = '/assets/state-machine-demo.gif';
+    } else if (mode === 'flowDiagram') {
+      baseUrl = '/assets/flow-diagram-demo.gif'; 
+    } else if (mode === 'aiLogAnalysis') {
+      baseUrl = '/assets/ai-log-analysis-demo.gif';
+    } else if (mode === 'logAnalyzer') {
+      baseUrl = '/assets/log-analyzer-demo.gif';
+    } else {
+      // Default fallback
+      baseUrl = '/assets/flow-diagram-demo.gif';
+    }
+    
     return `${baseUrl}?t=${timestamp}`;
   };
 
@@ -125,7 +137,13 @@ const AnimatedDemo = ({ mode }) => {
             {/* Image */}
             <img
               src={getGifUrl()}
-              alt={`${mode === 'stateMachine' ? 'State Machine' : 'Flow Diagram'} Demo`}
+              alt={`${mode === 'stateMachine' 
+                ? 'State Machine' 
+                : mode === 'flowDiagram' 
+                  ? 'Flow Diagram' 
+                  : mode === 'aiLogAnalysis'
+                    ? 'AI Log Analysis'
+                    : 'Log Analyzer'} Demo`}
               className="rounded-lg shadow-2xl slow-gif"
               style={{
                 maxWidth: '90vw',
@@ -154,8 +172,18 @@ const AnimatedDemo = ({ mode }) => {
         <img
           src={mode === 'stateMachine' 
             ? '/assets/state-machine-demo.gif'
-            : '/assets/flow-diagram-demo.gif'}
-          alt={`${mode === 'stateMachine' ? 'State Machine' : 'Flow Diagram'} Demo`}
+            : mode === 'flowDiagram'
+              ? '/assets/flow-diagram-demo.gif'
+            : mode === 'aiLogAnalysis'
+              ? '/assets/ai-log-analysis-demo.gif'
+              : '/assets/log-analyzer-demo.gif'}
+          alt={`${mode === 'stateMachine' 
+            ? 'State Machine' 
+            : mode === 'flowDiagram' 
+              ? 'Flow Diagram' 
+              : mode === 'aiLogAnalysis'
+                ? 'AI Log Analysis'
+                : 'Log Analyzer'} Demo`}
           className="w-full h-full object-cover object-center slow-gif"
         />
         {/* Darkening overlay on hover */}
