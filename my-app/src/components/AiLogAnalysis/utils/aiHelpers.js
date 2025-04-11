@@ -65,7 +65,7 @@ export const getDemoResponse = (userQuery) => {
   // Ensure we have a string to work with
   const query = (userQuery || "").toLowerCase();
   
-  // Default response if query is empty or none of the keywords match
+  // Default response if query is empty
   if (!query.trim()) {
     return DEMO_RESPONSES.default || "I've analyzed your logs and found some interesting patterns. Would you like me to explain them in detail?";
   }
@@ -73,14 +73,20 @@ export const getDemoResponse = (userQuery) => {
   // Check for keyword matches
   if (DEMO_KEYWORDS.error.some(keyword => query.includes(keyword))) {
     return DEMO_RESPONSES.error || "I've found several error patterns in your logs that might need attention.";
-  } else if (DEMO_KEYWORDS.performance.some(keyword => query.includes(keyword))) {
+  } 
+  
+  if (DEMO_KEYWORDS.performance.some(keyword => query.includes(keyword))) {
     return DEMO_RESPONSES.performance || "Your logs show some performance issues that could be optimized.";
-  } else if (DEMO_KEYWORDS.authentication.some(keyword => query.includes(keyword))) {
+  } 
+  
+  if (DEMO_KEYWORDS.authentication.some(keyword => query.includes(keyword))) {
     return DEMO_RESPONSES.authentication || "I've analyzed the authentication events in your logs and found some patterns worth reviewing.";
-  } else if (DEMO_KEYWORDS.summary.some(keyword => query.includes(keyword))) {
+  } 
+  
+  if (DEMO_KEYWORDS.summary.some(keyword => query.includes(keyword))) {
     return DEMO_RESPONSES.summary || "Here's a summary of the main events in your logs.";
   }
   
-  // Fallback to default response
+  // Always return default response if no keywords match
   return DEMO_RESPONSES.default || "I've analyzed your logs and found some interesting patterns. Would you like me to explain them in detail?";
 }; 

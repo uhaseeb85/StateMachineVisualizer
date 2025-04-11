@@ -18,33 +18,40 @@ const useAiStreaming = (addStatusLogFunc) => {
    */
   const simulateStreamingResponse = async (response, updateChatHistory) => {
     // Ensure we have a valid response string
-    if (!response) {
-      console.error("Empty response provided to simulateStreamingResponse");
-      toast.error("Demo response failed - empty content");
+    if (!response || typeof response !== 'string') {
+      console.error("Invalid response provided to simulateStreamingResponse:", response);
+      const errorResponse = "I apologize, but I encountered an error generating a response. Please try again.";
+      
+      // Add error message to chat history
+      updateChatHistory(prev => [...prev, {
+        role: 'assistant',
+        content: errorResponse,
+        timestamp: new Date().toISOString(),
+        isError: true
+      }]);
+      
       setLoading(false);
       return;
     }
     
-    const safeResponse = response;
+    const safeResponse = response.trim();
     console.log("Simulating streaming response - length:", safeResponse.length);
     
     setIsStreaming(true);
     setLoading(true);
     setStreamedResponse('');
     
-    // Add a streaming message to chat history
-    const streamingMessage = {
-      role: 'assistant',
-      content: ' ', // Initialize with a space to avoid empty content error
-      timestamp: new Date().toISOString(),
-      streaming: true
-    };
-    
-    updateChatHistory(prev => [...prev, streamingMessage]);
-    
     try {
+      // Add initial streaming message to chat history
+      updateChatHistory(prev => [...prev, {
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+        streaming: true
+      }]);
+      
       // Split into chunks with slight delays
-      const chunks = 10; // Split into 10 chunks regardless of content
+      const chunks = Math.min(10, Math.ceil(safeResponse.length / 20)); // Adjust chunk size based on content length
       const chunkSize = Math.ceil(safeResponse.length / chunks);
       
       for (let i = 0; i < safeResponse.length; i += chunkSize) {
@@ -67,30 +74,13 @@ const useAiStreaming = (addStatusLogFunc) => {
           if (lastIndex >= 0 && updated[lastIndex].streaming) {
             updated[lastIndex] = {
               ...updated[lastIndex],
-              content: updated[lastIndex].content + chunk
+              content: (updated[lastIndex].content || '') + chunk
             };
           }
           return updated;
         });
       }
-    } catch (error) {
-      console.error("Error in streaming simulation:", error);
-      toast.error("Demo simulation error: " + error.message);
       
-      // If streaming fails, add the full response at once as a fallback
-      updateChatHistory(prev => {
-        const updated = [...prev];
-        const lastIndex = updated.length - 1;
-        if (lastIndex >= 0 && updated[lastIndex].streaming) {
-          updated[lastIndex] = {
-            ...updated[lastIndex],
-            content: safeResponse,
-            streaming: false
-          };
-        }
-        return updated;
-      });
-    } finally {
       // Mark streaming as complete
       setIsStreaming(false);
       setLoading(false);
@@ -102,6 +92,7 @@ const useAiStreaming = (addStatusLogFunc) => {
         if (lastIndex >= 0 && updated[lastIndex].streaming) {
           updated[lastIndex] = {
             ...updated[lastIndex],
+            content: safeResponse, // Ensure final content is complete
             streaming: false
           };
         }
@@ -109,6 +100,27 @@ const useAiStreaming = (addStatusLogFunc) => {
       });
       
       addStatusLogFunc('Completed demo response');
+    } catch (error) {
+      console.error("Error in streaming simulation:", error);
+      
+      // Add error message to chat history
+      updateChatHistory(prev => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        if (lastIndex >= 0 && updated[lastIndex].streaming) {
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            content: "I apologize, but I encountered an error while generating the response. Please try again.",
+            streaming: false,
+            isError: true
+          };
+        }
+        return updated;
+      });
+      
+      setIsStreaming(false);
+      setLoading(false);
+      addStatusLogFunc('Error in demo response simulation', true);
     }
   };
 
