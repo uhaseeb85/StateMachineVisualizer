@@ -83,15 +83,15 @@ export const processLogFiles = async (files, progressCallback = () => {}) => {
     
     // Read file in chunks to avoid blocking the UI
     const fileSize = file.size;
-    const chunkSize = 1024 * 1024; // 1MB chunks for file reading
+    const fileChunkSize = 1024 * 1024; // 1MB chunks for file reading
     let offset = 0;
     let fileContent = '';
     
     while (offset < fileSize) {
-      const blob = file.slice(offset, offset + chunkSize);
+      const blob = file.slice(offset, offset + fileChunkSize);
       const chunkText = await blob.text();
       fileContent += chunkText;
-      offset += chunkSize;
+      offset += fileChunkSize;
       
       // Update progress during file reading
       const readProgress = Math.min(15, (offset / fileSize) * 15);
@@ -108,12 +108,12 @@ export const processLogFiles = async (files, progressCallback = () => {}) => {
     progressCallback(Math.round((fileIndex / files.length) * 30) + 15);
     
     // Process lines in smaller chunks to allow frequent UI updates
-    const chunkSize = 1000; // Reduced chunk size from 5000 to 1000 lines
-    const totalChunks = Math.ceil(allLines.length / chunkSize);
+    const lineChunkSize = 1000; // Reduced chunk size from 5000 to 1000 lines
+    const totalChunks = Math.ceil(allLines.length / lineChunkSize);
     
     for (let chunk = 0; chunk < totalChunks; chunk++) {
-      const startLine = chunk * chunkSize;
-      const endLine = Math.min((chunk + 1) * chunkSize, allLines.length);
+      const startLine = chunk * lineChunkSize;
+      const endLine = Math.min((chunk + 1) * lineChunkSize, allLines.length);
       
       // Create groups of three lines with overlap for better context
       for (let i = startLine; i < endLine; i++) {

@@ -261,12 +261,12 @@ const LogAnalyzer = ({ onChangeMode }) => {
             // Use setTimeout to allow UI to update before CPU-intensive work starts
             setTimeout(async () => {
               // Process logs in small batches with UI yielding
-              const batchSize = 1000;
-              const batches = Math.ceil(combinedLogs.length / batchSize);
+              const logBatchSize = 1000;
+              const batches = Math.ceil(combinedLogs.length / logBatchSize);
               let processedResults = [];
               
               for (let i = 0; i < batches; i++) {
-                const batchLogs = combinedLogs.slice(i * batchSize, (i+1) * batchSize);
+                const batchLogs = combinedLogs.slice(i * logBatchSize, (i+1) * logBatchSize);
                 const batchResults = processLogs(batchLogs, logDictionary);
                 processedResults = [...processedResults, ...batchResults];
                 

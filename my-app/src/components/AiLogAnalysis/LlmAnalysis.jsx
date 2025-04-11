@@ -231,17 +231,17 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         try {
           // Read file in smaller chunks to prevent UI from blocking
           const fileSize = file.size;
-          const chunkSize = 1024 * 1024; // 1MB chunks
+          const fileChunkSize = 1024 * 1024; // 1MB chunks
           let offset = 0;
           let text = '';
           
           addStatusLog(`Reading ${file.name} (${Math.round(fileSize / 1024)} KB)...`);
           
           while (offset < fileSize) {
-            const blob = file.slice(offset, offset + chunkSize);
+            const blob = file.slice(offset, offset + fileChunkSize);
             const chunkText = await blob.text();
             text += chunkText;
-            offset += chunkSize;
+            offset += fileChunkSize;
             
             // Report progress periodically
             const percentRead = Math.round((offset / fileSize) * 100);
