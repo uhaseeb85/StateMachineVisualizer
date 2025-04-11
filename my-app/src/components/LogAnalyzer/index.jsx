@@ -17,6 +17,7 @@ import * as XLSX from 'xlsx-js-style';
 import SplunkConfig from '../StateMachineVisualizer/SplunkConfig';
 import { toast, Toaster } from 'sonner';
 import { searchSplunk } from '@/api/splunk';
+import { processLogsWithWorkers, isWebWorkerSupported } from './workerUtils';
 
 // Import subcomponents
 import SelectScreen from './SelectScreen';
@@ -26,7 +27,6 @@ import FileAnalysis from './FileAnalysis';
 // Import constants and utilities
 import { SCREENS } from './constants';
 import { processLogFiles } from './utils';
-import { processLogsWithWorkers } from './workerUtils';
 
 const LogAnalyzer = ({ onChangeMode }) => {
   // Core state management
@@ -211,9 +211,15 @@ const LogAnalyzer = ({ onChangeMode }) => {
         setProgress(Math.floor(progressValue / 2));
       });
       
-      // Use Web Workers for pattern matching
+      // Use Web Workers for pattern matching if they're available
       if (combinedLogs.length > 0 && logDictionary.length > 0) {
         try {
+          // Check if Web Workers are supported
+          if (!isWebWorkerSupported()) {
+            toast.warning("Web Workers not supported in your browser. Using main thread processing instead.");
+            throw new Error("Web Workers not supported");
+          }
+          
           const resultsArray = await processLogsWithWorkers(
             combinedLogs, 
             logDictionary,
@@ -240,9 +246,52 @@ const LogAnalyzer = ({ onChangeMode }) => {
           setIsUsingWorkers(false);
           setProgress(60);
           
+          // Show specific error based on the problem
+          if (workerError.message.includes("not supported")) {
+            toast.warning("Using fallback processing method: Web Workers not supported in this browser.");
+          } else {
+            toast.warning(`Using fallback processing method: Web Worker error - ${workerError.message}. Performance may be reduced.`);
+          }
+          
           // Import the legacy processing function dynamically
           const { processLogs } = await import('./utils');
-          const resultsArray = processLogs(combinedLogs, logDictionary);
+          
+          // Process logs with periodic UI thread yielding to prevent page freezing
+          const resultsArray = await new Promise(resolve => {
+            // Use setTimeout to allow UI to update before CPU-intensive work starts
+            setTimeout(async () => {
+              // Process logs in small batches with UI yielding
+              const batchSize = 1000;
+              const batches = Math.ceil(combinedLogs.length / batchSize);
+              let processedResults = [];
+              
+              for (let i = 0; i < batches; i++) {
+                const batchLogs = combinedLogs.slice(i * batchSize, (i+1) * batchSize);
+                const batchResults = processLogs(batchLogs, logDictionary);
+                processedResults = [...processedResults, ...batchResults];
+                
+                // Update progress
+                const batchProgress = Math.round(((i + 1) / batches) * 40);
+                setProgress(60 + batchProgress);
+                
+                // Yield to UI thread
+                await new Promise(r => setTimeout(r, 10));
+              }
+              
+              // Merge and deduplicate results
+              const mergedResults = new Map();
+              processedResults.forEach(result => {
+                if (mergedResults.has(result.pattern.category)) {
+                  const existing = mergedResults.get(result.pattern.category);
+                  existing.totalMatches += result.totalMatches;
+                } else {
+                  mergedResults.set(result.pattern.category, result);
+                }
+              });
+              
+              resolve(Array.from(mergedResults.values()));
+            }, 50);
+          });
           
           setProgress(100);
           setResults(resultsArray);
@@ -252,9 +301,6 @@ const LogAnalyzer = ({ onChangeMode }) => {
           } else {
             toast.success(`Found ${resultsArray.length} pattern matches`);
           }
-          
-          // Show warning about fallback
-          toast.warning('Using fallback processing method. Performance may be reduced.');
         }
       } else {
         setProgress(100);

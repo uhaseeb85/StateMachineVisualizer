@@ -1,27 +1,46 @@
 /**
  * Process log files for AI analysis
  * @param {Object} logContents Object containing log file contents
- * @returns {string} Combined and formatted log content
+ * @param {Function} progressCallback Optional callback for progress updates
+ * @returns {Promise<string>} Combined and formatted log content
  */
-export const processCombinedLogs = (logContents) => {
+export const processCombinedLogs = async (logContents, progressCallback = () => {}) => {
   // Combine and truncate logs if they're too large
   let combinedLogs = '';
   const MAX_SIZE_PER_FILE = 20000; // characters
+  const fileEntries = Object.entries(logContents);
+  const totalFiles = fileEntries.length;
   
-  // Add each file's content with a header
-  Object.entries(logContents).forEach(([fileName, content]) => {
+  // Add each file's content with a header, processing asynchronously
+  for (let i = 0; i < fileEntries.length; i++) {
+    const [fileName, content] = fileEntries[i];
+    
+    // Yield to UI thread to prevent blocking
+    await new Promise(resolve => setTimeout(resolve, 1));
+    
+    // Update progress if callback provided
+    progressCallback(Math.round((i / totalFiles) * 100));
+    
     const truncatedContent = content.length > MAX_SIZE_PER_FILE
       ? content.substring(0, MAX_SIZE_PER_FILE) + "...[truncated]"
       : content;
       
     combinedLogs += `\n\n===== FILE: ${fileName} =====\n${truncatedContent}`;
-  });
+    
+    // Ensure total size isn't too large as we go
+    if (combinedLogs.length > 90000) { // Start truncating before hitting the hard limit
+      break;
+    }
+  }
   
-  // Ensure total size isn't too large
+  // Final size check
   const MAX_TOTAL_SIZE = 100000; // characters
   if (combinedLogs.length > MAX_TOTAL_SIZE) {
     combinedLogs = combinedLogs.substring(0, MAX_TOTAL_SIZE) + "\n\n...[content truncated due to size]";
   }
+  
+  // Final progress update
+  progressCallback(100);
   
   return combinedLogs;
 };

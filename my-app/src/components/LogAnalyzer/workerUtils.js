@@ -52,6 +52,14 @@ export const mergeWorkerResults = (workerResults) => {
 };
 
 /**
+ * Check if Web Workers are supported in this browser
+ * @returns {boolean} True if Web Workers are supported
+ */
+export const isWebWorkerSupported = () => {
+  return typeof Worker !== 'undefined';
+};
+
+/**
  * Process logs using Web Workers
  * @param {Array} logs - Array of log entries
  * @param {Array} patterns - Array of regex patterns
@@ -62,6 +70,12 @@ export const processLogsWithWorkers = (logs, patterns, progressCallback = () => 
   return new Promise((resolve, reject) => {
     if (!logs || !patterns || logs.length === 0 || patterns.length === 0) {
       resolve([]);
+      return;
+    }
+    
+    // Check if Web Workers are supported
+    if (!isWebWorkerSupported()) {
+      reject(new Error('Web Workers are not supported in this browser'));
       return;
     }
     
@@ -79,105 +93,116 @@ export const processLogsWithWorkers = (logs, patterns, progressCallback = () => 
     const workerProgress = new Map();
     const workerResults = new Map();
     
-    // Create and start workers
-    const workers = patternBatches.map((patternBatch, index) => {
-      const worker = new Worker('/regexWorker.js');
-      const workerId = `worker-${index}`;
-      
-      workerProgress.set(workerId, 0);
-      
-      // Handle messages from worker
-      worker.onmessage = (e) => {
-        const { type, workerId, value, results, error } = e.data;
-        
-        if (type === 'progress') {
-          // Update progress
-          workerProgress.set(workerId, value);
+    try {
+      // Create and start workers
+      const workers = patternBatches.map((patternBatch, index) => {
+        try {
+          const worker = new Worker('/regexWorker.js');
+          const workerId = `worker-${index}`;
           
-          // Calculate overall progress - average of all workers
-          const totalProgress = Array.from(workerProgress.values())
-            .reduce((sum, val) => sum + val, 0) / workerProgress.size;
+          workerProgress.set(workerId, 0);
           
-          progressCallback(Math.round(totalProgress));
-        } 
-        else if (type === 'result') {
-          // Store results
-          workerResults.set(workerId, results);
+          // Handle messages from worker
+          worker.onmessage = (e) => {
+            const { type, workerId, value, results, error } = e.data;
+            
+            if (type === 'progress') {
+              // Update progress
+              workerProgress.set(workerId, value);
+              
+              // Calculate overall progress - average of all workers
+              const totalProgress = Array.from(workerProgress.values())
+                .reduce((sum, val) => sum + val, 0) / workerProgress.size;
+              
+              progressCallback(Math.round(totalProgress));
+            } 
+            else if (type === 'result') {
+              // Store results
+              workerResults.set(workerId, results);
+              
+              // Check if all workers are done
+              if (workerResults.size === patternBatches.length) {
+                // All workers completed - merge results
+                const allResults = mergeWorkerResults(Array.from(workerResults.values()));
+                
+                // Terminate all workers
+                workers.forEach(w => w.terminate());
+                
+                // Resolve with merged results
+                resolve(allResults);
+              }
+            }
+            else if (type === 'error') {
+              console.error(`Worker ${workerId} error:`, error);
+              reject(new Error(`Worker error: ${error}`));
+              
+              // Terminate all workers
+              workers.forEach(w => w.terminate());
+            }
+          };
           
-          // Check if all workers are done
-          if (workerResults.size === patternBatches.length) {
-            // All workers completed - merge results
-            const allResults = mergeWorkerResults(Array.from(workerResults.values()));
+          // Handle worker errors
+          worker.onerror = (error) => {
+            console.error(`Worker ${workerId} error:`, error);
+            const errorMsg = error.message || 'Unknown error in Web Worker';
+            reject(new Error(`Worker error (${workerId}): ${errorMsg}`));
             
             // Terminate all workers
             workers.forEach(w => w.terminate());
-            
-            // Resolve with merged results
-            resolve(allResults);
-          }
-        }
-        else if (type === 'error') {
-          console.error(`Worker ${workerId} error:`, error);
-          reject(new Error(`Worker error: ${error}`));
+          };
           
-          // Terminate all workers
-          workers.forEach(w => w.terminate());
+          // Start the worker
+          worker.postMessage({
+            logs,
+            patterns: patternBatch,
+            workerId
+          });
+          
+          return worker;
+        } catch (workerCreationError) {
+          console.error('Error creating worker:', workerCreationError);
+          throw new Error(`Failed to create worker ${index}: ${workerCreationError.message}`);
         }
-      };
-      
-      // Handle worker errors
-      worker.onerror = (error) => {
-        console.error(`Worker ${workerId} error:`, error);
-        reject(error);
-        
-        // Terminate all workers
-        workers.forEach(w => w.terminate());
-      };
-      
-      // Start the worker
-      worker.postMessage({
-        logs,
-        patterns: patternBatch,
-        workerId
       });
       
-      return worker;
-    });
-    
-    // Add a timeout safety mechanism in case workers get stuck
-    const timeout = setTimeout(() => {
-      console.warn('Worker processing timeout - forcing completion');
-      
-      // If any workers are still running, terminate them
-      workers.forEach(worker => worker.terminate());
-      
-      // If we have some results, return them
-      if (workerResults.size > 0) {
-        const partialResults = mergeWorkerResults(Array.from(workerResults.values()));
-        resolve(partialResults);
-      } else {
-        // No results at all
-        reject(new Error('Processing timed out without results'));
-      }
-    }, 120000); // 2 minute timeout
-    
-    // Clear timeout when all workers complete
-    const clearTimeoutWhenDone = () => {
-      clearTimeout(timeout);
-    };
-    
-    // Add the clear timeout callback to the promise chain
-    resolve.then = function(onFulfilled, onRejected) {
-      return Promise.prototype.then.call(this, 
-        result => {
-          clearTimeoutWhenDone();
-          return onFulfilled ? onFulfilled(result) : result;
-        },
-        error => {
-          clearTimeoutWhenDone();
-          return onRejected ? onRejected(error) : Promise.reject(error);
+      // Add a timeout safety mechanism in case workers get stuck
+      const timeout = setTimeout(() => {
+        console.warn('Worker processing timeout - forcing completion');
+        
+        // If any workers are still running, terminate them
+        workers.forEach(worker => worker.terminate());
+        
+        // If we have some results, return them
+        if (workerResults.size > 0) {
+          const partialResults = mergeWorkerResults(Array.from(workerResults.values()));
+          resolve(partialResults);
+        } else {
+          // No results at all
+          reject(new Error('Processing timed out without results'));
         }
-      );
-    };
+      }, 120000); // 2 minute timeout
+      
+      // Clear timeout when all workers complete
+      const clearTimeoutWhenDone = () => {
+        clearTimeout(timeout);
+      };
+      
+      // Add the clear timeout callback to the promise chain
+      resolve.then = function(onFulfilled, onRejected) {
+        return Promise.prototype.then.call(this, 
+          result => {
+            clearTimeoutWhenDone();
+            return onFulfilled ? onFulfilled(result) : result;
+          },
+          error => {
+            clearTimeoutWhenDone();
+            return onRejected ? onRejected(error) : Promise.reject(error);
+          }
+        );
+      };
+    } catch (error) {
+      console.error('Error setting up Web Workers:', error);
+      reject(new Error(`Failed to set up Web Workers: ${error.message}`));
+    }
   });
 }; 

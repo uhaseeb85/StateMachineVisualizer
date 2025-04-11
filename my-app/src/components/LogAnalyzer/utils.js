@@ -80,15 +80,35 @@ export const processLogFiles = async (files, progressCallback = () => {}) => {
   // Process each file sequentially with progress updates
   for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
     const file = files[fileIndex];
-    const text = await file.text();
-    const allLines = text.split('\n').map(line => line.trim());
+    
+    // Read file in chunks to avoid blocking the UI
+    const fileSize = file.size;
+    const chunkSize = 1024 * 1024; // 1MB chunks for file reading
+    let offset = 0;
+    let fileContent = '';
+    
+    while (offset < fileSize) {
+      const blob = file.slice(offset, offset + chunkSize);
+      const chunkText = await blob.text();
+      fileContent += chunkText;
+      offset += chunkSize;
+      
+      // Update progress during file reading
+      const readProgress = Math.min(15, (offset / fileSize) * 15);
+      progressCallback(Math.round((fileIndex / files.length) * 30) + readProgress);
+      
+      // Yield to UI thread
+      await new Promise(resolve => setTimeout(resolve, 5));
+    }
+    
+    const allLines = fileContent.split('\n').map(line => line.trim());
     
     const fileResults = [];
     // Update progress after file is read
-    progressCallback(Math.round((fileIndex / files.length) * 30));
+    progressCallback(Math.round((fileIndex / files.length) * 30) + 15);
     
-    // Process lines in chunks to allow UI updates and report progress
-    const chunkSize = 5000; // Process 5000 lines at a time
+    // Process lines in smaller chunks to allow frequent UI updates
+    const chunkSize = 1000; // Reduced chunk size from 5000 to 1000 lines
     const totalChunks = Math.ceil(allLines.length / chunkSize);
     
     for (let chunk = 0; chunk < totalChunks; chunk++) {
@@ -109,6 +129,11 @@ export const processLogFiles = async (files, progressCallback = () => {}) => {
             matchedLines: allLines.slice(i, i + 3)
           });
         }
+        
+        // Yield more frequently - every 200 lines
+        if ((i - startLine) % 200 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 1));
+        }
       }
       
       // Update progress based on chunks processed and file progress
@@ -116,8 +141,8 @@ export const processLogFiles = async (files, progressCallback = () => {}) => {
       const overallProgress = 30 + (fileIndex / files.length * 70) + (fileProgress * 70 / files.length);
       progressCallback(Math.round(overallProgress));
       
-      // Allow UI to update by yielding execution
-      await new Promise(resolve => setTimeout(resolve, 0));
+      // Allow UI to update by yielding execution more frequently
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
     
     logs.push(...fileResults);

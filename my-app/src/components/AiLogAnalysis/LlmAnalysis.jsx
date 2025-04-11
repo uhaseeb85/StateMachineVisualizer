@@ -229,7 +229,30 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       
       for (const file of logFiles) {
         try {
-          const text = await file.text();
+          // Read file in smaller chunks to prevent UI from blocking
+          const fileSize = file.size;
+          const chunkSize = 1024 * 1024; // 1MB chunks
+          let offset = 0;
+          let text = '';
+          
+          addStatusLog(`Reading ${file.name} (${Math.round(fileSize / 1024)} KB)...`);
+          
+          while (offset < fileSize) {
+            const blob = file.slice(offset, offset + chunkSize);
+            const chunkText = await blob.text();
+            text += chunkText;
+            offset += chunkSize;
+            
+            // Report progress periodically
+            const percentRead = Math.round((offset / fileSize) * 100);
+            if (percentRead % 20 === 0) { // Report every 20%
+              addStatusLog(`Reading ${file.name}: ${percentRead}% complete`);
+            }
+            
+            // Yield to the UI thread to prevent browser from showing unresponsive warning
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+          
           fileContents[file.name] = text;
           totalSize += text.length;
           addStatusLog(`Log file loaded: ${file.name} (${Math.round(text.length / 1024)} KB)`);
@@ -294,8 +317,15 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       }
       
       // Continue with real API call if not in demo mode
-      // Process log files
-      const combinedLogs = processCombinedLogs(logContents);
+      // Process log files with progress tracking
+      addStatusLog("Processing log files...");
+      const combinedLogs = await processCombinedLogs(logContents, (progress) => {
+        // Update status log with progress every 25%
+        if (progress % 25 === 0) {
+          addStatusLog(`Processing logs: ${progress}% complete`);
+        }
+      });
+      addStatusLog("Log processing complete");
       
       // Format the dictionary information for the AI if available
       const dictionaryInfo = formatLogDictionary(logDictionary);
@@ -304,6 +334,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       const systemPrompt = createSystemPrompt(dictionaryInfo);
       
       // Prepare messages for API
+      addStatusLog("Preparing message for AI...");
       const messages = prepareApiMessages(
         chatHistory,
         currentQuery,
@@ -333,6 +364,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         });
       }
       
+      addStatusLog("Sending request to AI API...");
       // Call LLM API with streaming enabled
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -346,6 +378,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
+      addStatusLog("Response received, streaming content...");
       // Add placeholder for assistant response
       setChatHistory(prev => [...prev, {
         role: 'assistant',
