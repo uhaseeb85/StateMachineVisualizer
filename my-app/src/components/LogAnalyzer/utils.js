@@ -9,11 +9,23 @@ import * as XLSX from 'xlsx-js-style';
 export const processLogs = (logs, dictionary) => {
   const matchGroups = new Map();
   
+  // Pre-compile regex patterns for better performance
+  const compiledPatterns = dictionary.map(pattern => {
+    try {
+      return {
+        pattern,
+        regex: new RegExp(pattern.regex_pattern, 'i')
+      };
+    } catch (error) {
+      console.error(`Invalid regex pattern: ${pattern.regex_pattern}`, error);
+      return null;
+    }
+  }).filter(p => p !== null);
+  
   // Process each log entry against all patterns
   logs.forEach(log => {
-    dictionary.forEach(pattern => {
+    compiledPatterns.forEach(({ pattern, regex }) => {
       try {
-        const regex = new RegExp(pattern.regex_pattern, 'i');
         const match = regex.test(log.message);
         
         if (match) {
@@ -31,7 +43,7 @@ export const processLogs = (logs, dictionary) => {
           }
         }
       } catch (error) {
-        console.error(`Invalid regex pattern: ${pattern.regex_pattern}`, error);
+        console.error(`Error testing pattern: ${pattern.regex_pattern}`, error);
       }
     });
   });
@@ -56,32 +68,63 @@ export const downloadSampleDictionary = (samplePatterns) => {
 /**
  * Process and parse uploaded log files
  * @param {Array} files - Array of file objects
+ * @param {Function} progressCallback - Callback function to report progress (0-100)
  * @returns {Promise<Array>} - Promise resolving to processed log entries
  */
-export const processLogFiles = async (files) => {
-  const logs = await Promise.all(files.map(async (file) => {
+export const processLogFiles = async (files, progressCallback = () => {}) => {
+  // Report initial progress
+  progressCallback(0);
+  
+  const logs = [];
+  
+  // Process each file sequentially with progress updates
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+    const file = files[fileIndex];
     const text = await file.text();
     const allLines = text.split('\n').map(line => line.trim());
     
-    // Create groups of three lines with overlap for better context
-    const logs = [];
-    for (let i = 0; i < allLines.length; i++) {
-      const threeLines = allLines.slice(i, i + 3).join('\n');
-      if (threeLines) {
-        logs.push({
-          message: threeLines,
-          lineNumber: i + 1,
-          context: {
-            before: allLines.slice(Math.max(0, i - 2), i),
-            after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
-          },
-          matchedLines: allLines.slice(i, i + 3)
-        });
+    const fileResults = [];
+    // Update progress after file is read
+    progressCallback(Math.round((fileIndex / files.length) * 30));
+    
+    // Process lines in chunks to allow UI updates and report progress
+    const chunkSize = 5000; // Process 5000 lines at a time
+    const totalChunks = Math.ceil(allLines.length / chunkSize);
+    
+    for (let chunk = 0; chunk < totalChunks; chunk++) {
+      const startLine = chunk * chunkSize;
+      const endLine = Math.min((chunk + 1) * chunkSize, allLines.length);
+      
+      // Create groups of three lines with overlap for better context
+      for (let i = startLine; i < endLine; i++) {
+        const threeLines = allLines.slice(i, i + 3).join('\n');
+        if (threeLines) {
+          fileResults.push({
+            message: threeLines,
+            lineNumber: i + 1,
+            context: {
+              before: allLines.slice(Math.max(0, i - 2), i),
+              after: allLines.slice(i + 3, Math.min(allLines.length, i + 6))
+            },
+            matchedLines: allLines.slice(i, i + 3)
+          });
+        }
       }
+      
+      // Update progress based on chunks processed and file progress
+      const fileProgress = (chunk + 1) / totalChunks;
+      const overallProgress = 30 + (fileIndex / files.length * 70) + (fileProgress * 70 / files.length);
+      progressCallback(Math.round(overallProgress));
+      
+      // Allow UI to update by yielding execution
+      await new Promise(resolve => setTimeout(resolve, 0));
     }
     
-    return logs;
-  }));
+    logs.push(...fileResults);
+  }
   
-  return logs.flat();
+  // Final progress update
+  progressCallback(100);
+  
+  return logs;
 }; 

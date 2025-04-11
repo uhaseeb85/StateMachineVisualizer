@@ -2,11 +2,12 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Settings } from 'lucide-react';
+import { FileText, Settings, Cpu } from 'lucide-react';
 import { SCREENS } from './constants';
 import DictionaryUpload from './DictionaryUpload';
 import AnalyzeButton from './AnalyzeButton';
 import ResultsDisplay from './ResultsDisplay';
+import { Progress } from "@/components/ui/progress";
 
 const SplunkAnalysis = ({
   sessionId,
@@ -18,8 +19,10 @@ const SplunkAnalysis = ({
   setShowSplunkConfig,
   analyzeLogs,
   loading,
+  progress,
   results,
-  logFiles
+  logFiles,
+  isUsingWorkers
 }) => {
   return (
     <div className="space-y-4">
@@ -88,6 +91,42 @@ const SplunkAnalysis = ({
           clearDictionary={clearDictionary} 
         />
         
+        {/* Progress Bar */}
+        {loading && (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Analyzing Splunk logs...
+                </span>
+                
+                {/* Show processor indicator */}
+                {progress > 50 && (
+                  <div className="flex items-center bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded text-xs">
+                    <Cpu className="h-3 w-3 mr-1 text-blue-500" />
+                    <span className="text-blue-700 dark:text-blue-300">
+                      {isUsingWorkers ? 'Parallel Processing' : 'Single Thread'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {progress}%
+              </span>
+            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+              {progress < 30 && "Querying Splunk..."}
+              {progress >= 30 && progress < 50 && "Processing log entries..."}
+              {progress >= 50 && progress < 90 && 
+                (isUsingWorkers 
+                  ? "Matching patterns using parallel workers..." 
+                  : "Matching patterns...")}
+              {progress >= 90 && "Finalizing results..."}
+            </p>
+          </div>
+        )}
+        
         <AnalyzeButton 
           analyzeLogs={analyzeLogs}
           loading={loading}
@@ -113,8 +152,10 @@ SplunkAnalysis.propTypes = {
   setShowSplunkConfig: PropTypes.func.isRequired,
   analyzeLogs: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
+  progress: PropTypes.number.isRequired,
   results: PropTypes.array,
-  logFiles: PropTypes.array.isRequired
+  logFiles: PropTypes.array.isRequired,
+  isUsingWorkers: PropTypes.bool
 };
 
 export default SplunkAnalysis; 

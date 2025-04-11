@@ -25,7 +25,8 @@ import FileAnalysis from './FileAnalysis';
 
 // Import constants and utilities
 import { SCREENS } from './constants';
-import { processLogs, processLogFiles } from './utils';
+import { processLogFiles } from './utils';
+import { processLogsWithWorkers } from './workerUtils';
 
 const LogAnalyzer = ({ onChangeMode }) => {
   // Core state management
@@ -36,11 +37,13 @@ const LogAnalyzer = ({ onChangeMode }) => {
   });
   const [results, setResults] = useState(null); // null indicates no analysis performed yet
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0); // Track processing progress (0-100)
   const [logFiles, setLogFiles] = useState([]); // Changed from single file to array of files
   const [screen, setScreen] = useState(SCREENS.SELECT);
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
   const [splunkLogs, setSplunkLogs] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
+  const [isUsingWorkers, setIsUsingWorkers] = useState(true); // Flag to track if workers are used
   
   // Persist dictionary to sessionStorage when it changes
   useEffect(() => {
@@ -117,47 +120,154 @@ const LogAnalyzer = ({ onChangeMode }) => {
 
   const analyzeSplunkLogs = async () => {
     setLoading(true);
+    setProgress(0);
     try {
       const config = JSON.parse(localStorage.getItem('splunkConfig'));
       if (!config) {
         throw new Error('Splunk configuration not found. Please configure Splunk first.');
       }
 
-      const searchQuery = `index=${config.index} sessionId=${sessionId}`;
-      const logs = await searchSplunk(config, searchQuery);
-      const resultsArray = processLogs(logs, logDictionary);
-      setResults(resultsArray);
+      // Update progress as we begin the Splunk search
+      setProgress(10);
       
-      if (resultsArray.length === 0) {
-        toast.info('No patterns matched in the logs');
+      const searchQuery = `index=${config.index} sessionId=${sessionId}`;
+      // Update progress as the Splunk query runs
+      setProgress(30);
+      
+      const logs = await searchSplunk(config, searchQuery);
+      // Update progress after receiving logs
+      setProgress(50);
+      
+      // Small delay to allow UI to render
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      // Use Web Workers for pattern matching
+      if (logs.length > 0 && logDictionary.length > 0) {
+        try {
+          const resultsArray = await processLogsWithWorkers(
+            logs, 
+            logDictionary,
+            (progressValue) => {
+              // Map worker progress (0-100) to overall progress (50-100)
+              setProgress(50 + Math.floor(progressValue / 2));
+            }
+          );
+          
+          // Final progress update
+          setProgress(100);
+          setResults(resultsArray);
+          
+          if (resultsArray.length === 0) {
+            toast.info('No patterns matched in the logs');
+          } else {
+            toast.success(`Found ${resultsArray.length} pattern matches`);
+          }
+          setIsUsingWorkers(true);
+        } catch (workerError) {
+          console.error('Worker processing failed, falling back to main thread:', workerError);
+          
+          // Fallback to main thread processing if workers fail
+          setIsUsingWorkers(false);
+          setProgress(60);
+          
+          // Import the legacy processing function dynamically
+          const { processLogs } = await import('./utils');
+          const resultsArray = processLogs(logs, logDictionary);
+          
+          setProgress(100);
+          setResults(resultsArray);
+          
+          if (resultsArray.length === 0) {
+            toast.info('No patterns matched in the logs');
+          } else {
+            toast.success(`Found ${resultsArray.length} pattern matches`);
+          }
+          
+          // Show warning about fallback
+          toast.warning('Using fallback processing method. Performance may be reduced.');
+        }
       } else {
-        toast.success(`Found ${resultsArray.length} pattern matches`);
+        setProgress(100);
+        setResults([]);
+        toast.info('No logs or patterns to process');
       }
     } catch (error) {
       console.error('Error analyzing Splunk logs:', error);
       toast.error('Error analyzing Splunk logs: ' + error.message);
     } finally {
       setLoading(false);
+      // Don't reset progress here so that user can see 100% completion
+      // Progress will reset when starting a new analysis
     }
   };
 
   const analyzeLogFiles = async () => {
     setLoading(true);
+    setProgress(0);
     try {
-      const combinedLogs = await processLogFiles(logFiles);
-      const resultsArray = processLogs(combinedLogs, logDictionary);
-      setResults(resultsArray);
+      // Update the processLogFiles call to include progress tracking
+      const combinedLogs = await processLogFiles(logFiles, (progressValue) => {
+        // Map file processing progress (0-100) to overall progress (0-50)
+        setProgress(Math.floor(progressValue / 2));
+      });
       
-      if (resultsArray.length === 0) {
-        toast.info('No patterns matched in the logs');
+      // Use Web Workers for pattern matching
+      if (combinedLogs.length > 0 && logDictionary.length > 0) {
+        try {
+          const resultsArray = await processLogsWithWorkers(
+            combinedLogs, 
+            logDictionary,
+            (progressValue) => {
+              // Map worker progress (0-100) to overall progress (50-100)
+              setProgress(50 + Math.floor(progressValue / 2));
+            }
+          );
+          
+          // Final progress update
+          setProgress(100);
+          setResults(resultsArray);
+          
+          if (resultsArray.length === 0) {
+            toast.info('No patterns matched in the logs');
+          } else {
+            toast.success(`Found ${resultsArray.length} pattern matches`);
+          }
+          setIsUsingWorkers(true);
+        } catch (workerError) {
+          console.error('Worker processing failed, falling back to main thread:', workerError);
+          
+          // Fallback to main thread processing if workers fail
+          setIsUsingWorkers(false);
+          setProgress(60);
+          
+          // Import the legacy processing function dynamically
+          const { processLogs } = await import('./utils');
+          const resultsArray = processLogs(combinedLogs, logDictionary);
+          
+          setProgress(100);
+          setResults(resultsArray);
+          
+          if (resultsArray.length === 0) {
+            toast.info('No patterns matched in the logs');
+          } else {
+            toast.success(`Found ${resultsArray.length} pattern matches`);
+          }
+          
+          // Show warning about fallback
+          toast.warning('Using fallback processing method. Performance may be reduced.');
+        }
       } else {
-        toast.success(`Found ${resultsArray.length} pattern matches`);
+        setProgress(100);
+        setResults([]);
+        toast.info('No logs or patterns to process');
       }
     } catch (error) {
       console.error('Error analyzing log files:', error);
       toast.error('Error analyzing log files: ' + error.message);
     } finally {
       setLoading(false);
+      // Don't reset progress here so that user can see 100% completion
+      // Progress will reset when starting a new analysis
     }
   };
 
@@ -213,8 +323,10 @@ const LogAnalyzer = ({ onChangeMode }) => {
               setShowSplunkConfig={setShowSplunkConfig}
               analyzeLogs={analyzeLogs}
               loading={loading}
+              progress={progress}
               results={results}
               logFiles={logFiles}
+              isUsingWorkers={isUsingWorkers}
             />
           )}
           
@@ -226,12 +338,14 @@ const LogAnalyzer = ({ onChangeMode }) => {
               setScreen={setScreen}
               analyzeLogs={analyzeLogs}
               loading={loading}
+              progress={progress}
               results={results}
               logFiles={logFiles}
               setLogFiles={setLogFiles}
               handleLogFileUpload={handleLogFileUpload}
               clearAllLogFiles={clearAllLogFiles}
               sessionId={sessionId}
+              isUsingWorkers={isUsingWorkers}
             />
           )}
         </div>
