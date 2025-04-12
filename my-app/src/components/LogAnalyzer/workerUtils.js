@@ -97,7 +97,9 @@ export const processLogsWithWorkers = (logs, patterns, progressCallback = () => 
       // Create and start workers
       const workers = patternBatches.map((patternBatch, index) => {
         try {
-          const worker = new Worker('/regexWorker.js');
+          // Create worker with relative path that works in Vite
+          const workerUrl = new URL('./regexWorker.js', import.meta.url);
+          const worker = new Worker(workerUrl, { type: 'module' });
           const workerId = `worker-${index}`;
           
           workerProgress.set(workerId, 0);

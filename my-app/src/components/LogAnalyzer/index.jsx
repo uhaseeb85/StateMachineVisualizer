@@ -220,6 +220,16 @@ const LogAnalyzer = ({ onChangeMode }) => {
             throw new Error("Web Workers not supported");
           }
           
+          try {
+            // First attempt to load the worker to test if the path is correct
+            const testWorker = new Worker(new URL('./regexWorker.js', import.meta.url), { type: 'module' });
+            testWorker.terminate(); // Terminate immediately if successful
+          } catch (workerLoadError) {
+            console.error('Failed to load worker:', workerLoadError);
+            toast.error(`Failed to load Web Worker: ${workerLoadError.message}`);
+            throw new Error(`Worker load failed: ${workerLoadError.message}`);
+          }
+          
           const resultsArray = await processLogsWithWorkers(
             combinedLogs, 
             logDictionary,
