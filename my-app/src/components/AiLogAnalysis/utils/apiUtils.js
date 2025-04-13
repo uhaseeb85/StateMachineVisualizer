@@ -7,9 +7,14 @@
 export const processCombinedLogs = async (logContents, progressCallback = () => {}) => {
   // Combine and truncate logs if they're too large
   let combinedLogs = '';
-  const MAX_SIZE_PER_FILE = 20000; // characters
+  const MAX_TOTAL_SIZE = 120000; // characters total across all files
   const fileEntries = Object.entries(logContents);
   const totalFiles = fileEntries.length;
+  
+  // Calculate dynamic max size per file based on number of files
+  const MAX_SIZE_PER_FILE = totalFiles > 0 
+    ? Math.floor(MAX_TOTAL_SIZE / totalFiles) 
+    : MAX_TOTAL_SIZE;
   
   // Add each file's content with a header, processing asynchronously
   for (let i = 0; i < fileEntries.length; i++) {
@@ -28,13 +33,12 @@ export const processCombinedLogs = async (logContents, progressCallback = () => 
     combinedLogs += `\n\n===== FILE: ${fileName} =====\n${truncatedContent}`;
     
     // Ensure total size isn't too large as we go
-    if (combinedLogs.length > 90000) { // Start truncating before hitting the hard limit
+    if (combinedLogs.length > MAX_TOTAL_SIZE * 0.9) { // Start truncating before hitting the hard limit
       break;
     }
   }
   
   // Final size check
-  const MAX_TOTAL_SIZE = 100000; // characters
   if (combinedLogs.length > MAX_TOTAL_SIZE) {
     combinedLogs = combinedLogs.substring(0, MAX_TOTAL_SIZE) + "\n\n...[content truncated due to size]";
   }
