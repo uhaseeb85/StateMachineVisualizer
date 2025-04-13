@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Tooling Suite</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js"></script>
     <style>
         * {
             margin: 0;
@@ -290,6 +291,73 @@
             color: #94a3b8;
         }
         
+        /* Edit mode styling */
+        [contenteditable] {
+            outline: none;
+            padding: 2px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        [contenteditable]:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        
+        [contenteditable]:focus {
+            background-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* Controls for edit mode and export */
+        .presentation-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .control-button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        
+        .control-button:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .control-button.edit-mode {
+            background: #059669;
+        }
+        
+        .control-button.edit-mode:hover {
+            background: #047857;
+        }
+        
+        .control-button.edit-mode.active {
+            background: #dc2626;
+        }
+        
+        .control-button.edit-mode.active:hover {
+            background: #b91c1c;
+        }
+        
         @media (max-width: 768px) {
             .tools-section {
                 grid-template-columns: 1fr;
@@ -302,132 +370,168 @@
             .roi-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .presentation-controls {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="presentation-container">
+    <div class="presentation-controls">
+        <button id="edit-mode-toggle" class="control-button edit-mode">
+            <span class="button-icon">✏️</span>
+            Enable Edit Mode
+        </button>
+        <button id="export-png" class="control-button">
+            <span class="button-icon">📷</span>
+            Export as PNG
+        </button>
+    </div>
+    
+    <div class="presentation-container" id="presentation-container">
         <header>
-            <h1>Developer Tooling Suite</h1>
-            <p class="subtitle">A collection of advanced tools designed to streamline development workflows and improve productivity</p>
-            <p class="cta-text">Funding this project will deliver measurable improvements in operational efficiency, system reliability, and team productivity.</p>
+            <h1 contenteditable="false">Developer Tooling Suite</h1>
+            <p class="subtitle" contenteditable="false">A collection of advanced tools designed to streamline development workflows and improve productivity</p>
+            <p class="cta-text" contenteditable="false">Funding this project will deliver measurable improvements in operational efficiency, system reliability, and team productivity.</p>
         </header>
         
         <div class="tools-section">
             <div class="tool-card" id="flow-card">
                 <div class="tool-header">
-                    <h2 class="tool-title">Flow Diagram Builder</h2>
+                    <h2 class="tool-title" contenteditable="false">Flow Diagram Builder</h2>
                     <div class="tool-icon flow-icon">📊</div>
                 </div>
                 <div class="tool-content">
-                    <p class="tool-subtitle">Visualize and understand complex process flows</p>
+                    <p class="tool-subtitle" contenteditable="false">Visualize and understand complex process flows</p>
                     <ul class="tool-features">
-                        <li>Interactive visualization of business processes and workflows</li>
-                        <li>Auto-layout of steps and connections for clear hierarchy</li>
-                        <li>One-click PNG export for documentation and presentations</li>
+                        <li contenteditable="false">Interactive visualization of business processes and workflows</li>
+                        <li contenteditable="false">Auto-layout of steps and connections for clear hierarchy</li>
+                        <li contenteditable="false">One-click PNG export for documentation and presentations</li>
+                        <li contenteditable="false">Advanced path finding for complex workflows</li>
+                        <li contenteditable="false">Simulation capabilities to validate flow logic</li>
                     </ul>
                     <div class="business-value">
-                        <strong>Business Value</strong>
-                        Reduces time to understand processes significantly, improves documentation quality, and enhances cross-team communication
+                        <strong contenteditable="false">Business Value</strong>
+                        <span contenteditable="false">Reduces time to understand processes significantly, improves documentation quality, and enhances cross-team communication</span>
                     </div>
                 </div>
             </div>
             
             <div class="tool-card" id="log-card">
                 <div class="tool-header">
-                    <h2 class="tool-title">Log Analyzer</h2>
+                    <h2 class="tool-title" contenteditable="false">Log Analyzer</h2>
                     <div class="tool-icon log-icon">📜</div>
                 </div>
                 <div class="tool-content">
-                    <p class="tool-subtitle">Process and analyze large log files with unprecedented speed</p>
+                    <p class="tool-subtitle" contenteditable="false">Process and analyze large log files with unprecedented speed</p>
                     <ul class="tool-features">
-                        <li>Parallel processing via Web Workers ensures UI remains responsive</li>
-                        <li>Chunked file reading handles multi-gigabyte logs efficiently</li>
-                        <li>Real-time progress reporting during lengthy operations</li>
+                        <li contenteditable="false">Parallel processing via Web Workers ensures UI remains responsive</li>
+                        <li contenteditable="false">Chunked file reading handles multi-gigabyte logs efficiently</li>
+                        <li contenteditable="false">Real-time progress reporting during lengthy operations</li>
+                        <li contenteditable="false">Advanced filtering and pattern matching capabilities</li>
+                        <li contenteditable="false">Timeline visualization for temporal analysis</li>
                     </ul>
                     <div class="business-value">
-                        <strong>Business Value</strong>
-                        Reduces analysis time from hours to minutes, enables faster incident resolution, and improves system reliability
+                        <strong contenteditable="false">Business Value</strong>
+                        <span contenteditable="false">Reduces analysis time from hours to minutes, enables faster incident resolution, and improves system reliability</span>
                     </div>
                 </div>
             </div>
             
             <div class="tool-card" id="ai-card">
                 <div class="tool-header">
-                    <h2 class="tool-title">AI Log Analyzer</h2>
+                    <h2 class="tool-title" contenteditable="false">AI Log Analyzer</h2>
                     <div class="tool-icon ai-icon">🤖</div>
                 </div>
                 <div class="tool-content">
-                    <p class="tool-subtitle">Leverage AI to extract meaningful insights automatically</p>
+                    <p class="tool-subtitle" contenteditable="false">Leverage AI to extract meaningful insights automatically</p>
                     <ul class="tool-features">
-                        <li>Automatic pattern recognition identifies recurring issues</li>
-                        <li>Anomaly detection flags unusual system behavior</li>
-                        <li>Natural language summaries of complex log data</li>
+                        <li contenteditable="false">Automatic pattern recognition identifies recurring issues</li>
+                        <li contenteditable="false">Anomaly detection flags unusual system behavior</li>
+                        <li contenteditable="false">Natural language summaries of complex log data</li>
+                        <li contenteditable="false">Integration with existing log analysis workflows</li>
+                        <li contenteditable="false">Predictive analytics for proactive monitoring</li>
                     </ul>
                     <div class="business-value">
-                        <strong>Business Value</strong>
-                        Proactively identifies lot of potential issues before they impact users
+                        <strong contenteditable="false">Business Value</strong>
+                        <span contenteditable="false">Proactively identifies potential issues before they impact users, reducing downtime and maintenance costs</span>
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="roi-section" id="roi-section">
-            <h2>ROI Highlights</h2>
+            <h2 contenteditable="false">ROI Highlights</h2>
             <div class="roi-grid">
                 <div class="roi-item">
                     <h3 class="roi-title">
                         <span class="roi-icon">⏱️</span>
-                        Troubleshooting Efficiency
+                        <span contenteditable="false">Troubleshooting Efficiency</span>
                     </h3>
-                    <p class="roi-description">Majorreduction in troubleshooting time through automated log analysis and intelligent pattern detection</p>
+                    <p class="roi-description" contenteditable="false">Major reduction in troubleshooting time through automated log analysis and intelligent pattern detection</p>
                 </div>
                 <div class="roi-item">
                     <h3 class="roi-title">
                         <span class="roi-icon">📝</span>
-                        Documentation Improvement
+                        <span contenteditable="false">Documentation Improvement</span>
                     </h3>
-                    <p class="roi-description">Significant improvement in process documentation efficiency with automated flow diagrams and exports</p>
+                    <p class="roi-description" contenteditable="false">Significant improvement in process documentation efficiency with automated flow diagrams and exports</p>
                 </div>
                 <div class="roi-item">
                     <h3 class="roi-title">
                         <span class="roi-icon">👥</span>
-                        Team Onboarding
+                        <span contenteditable="false">Team Onboarding</span>
                     </h3>
-                    <p class="roi-description">Much Faster onboarding for new team members through clear visualizations and improved documentation</p>
+                    <p class="roi-description" contenteditable="false">Much faster onboarding for new team members through clear visualizations and improved documentation</p>
+                </div>
+                <div class="roi-item">
+                    <h3 class="roi-title">
+                        <span class="roi-icon">🔍</span>
+                        <span contenteditable="false">Incident Response</span>
+                    </h3>
+                    <p class="roi-description" contenteditable="false">Reduced mean time to resolution (MTTR) for critical incidents through faster log analysis and insights</p>
                 </div>
             </div>
-            <div class="conclusion">
+            <div class="conclusion" contenteditable="false">
                 This integrated tooling suite transforms how teams visualize, analyze, and troubleshoot complex systems, resulting in significant time and cost savings.
             </div>
         </div>
         
         <div class="tech-section" id="tech-section">
-            <h2>Technologies</h2>
+            <h2 contenteditable="false">Technologies</h2>
             <div class="tech-grid">
                 <div class="tech-item">
                     <div class="tech-icon">⚛️</div>
-                    <div class="tech-name">React</div>
+                    <div class="tech-name" contenteditable="false">React</div>
                 </div>
                 <div class="tech-item">
                     <div class="tech-icon">🔷</div>
-                    <div class="tech-name">TypeScript</div>
+                    <div class="tech-name" contenteditable="false">TypeScript</div>
                 </div>
                 <div class="tech-item">
                     <div class="tech-icon">📊</div>
-                    <div class="tech-name">D3.js</div>
+                    <div class="tech-name" contenteditable="false">D3.js</div>
                 </div>
                 <div class="tech-item">
                     <div class="tech-icon">⚡</div>
-                    <div class="tech-name">Web Workers</div>
+                    <div class="tech-name" contenteditable="false">Web Workers</div>
                 </div>
                 <div class="tech-item">
                     <div class="tech-icon">🧠</div>
-                    <div class="tech-name">TensorFlow.js</div>
+                    <div class="tech-name" contenteditable="false">TensorFlow.js</div>
                 </div>
                 <div class="tech-item">
-                    <div class="tech-icon">📦</div>
-                    <div class="tech-name">Webpack</div>
+                    <div class="tech-icon">🌊</div>
+                    <div class="tech-name" contenteditable="false">React Flow</div>
+                </div>
+                <div class="tech-item">
+                    <div class="tech-icon">🎨</div>
+                    <div class="tech-name" contenteditable="false">Tailwind CSS</div>
+                </div>
+                <div class="tech-item">
+                    <div class="tech-icon">⚙️</div>
+                    <div class="tech-name" contenteditable="false">Vite</div>
                 </div>
             </div>
         </div>
@@ -471,6 +575,60 @@
                     ease: "power2.out"
                 }
             );
+            
+            // Edit Mode Toggle
+            const editModeToggle = document.getElementById('edit-mode-toggle');
+            let editModeEnabled = false;
+            
+            editModeToggle.addEventListener('click', () => {
+                editModeEnabled = !editModeEnabled;
+                
+                // Update button text and style
+                if (editModeEnabled) {
+                    editModeToggle.classList.add('active');
+                    editModeToggle.innerHTML = '<span class="button-icon">✓</span> Disable Edit Mode';
+                } else {
+                    editModeToggle.classList.remove('active');
+                    editModeToggle.innerHTML = '<span class="button-icon">✏️</span> Enable Edit Mode';
+                }
+                
+                // Enable/disable contenteditable for all elements
+                document.querySelectorAll('[contenteditable]').forEach(element => {
+                    element.setAttribute('contenteditable', editModeEnabled);
+                });
+            });
+            
+            // Export to PNG functionality
+            const exportPngButton = document.getElementById('export-png');
+            
+            exportPngButton.addEventListener('click', () => {
+                // Hide the controls during the capture
+                const controls = document.querySelector('.presentation-controls');
+                controls.style.display = 'none';
+                
+                // Use html-to-image to capture the presentation
+                htmlToImage.toPng(document.getElementById('presentation-container'), {
+                    quality: 1,
+                    backgroundColor: '#0f172a'
+                })
+                .then(function (dataUrl) {
+                    // Create a download link
+                    const link = document.createElement('a');
+                    link.download = 'developer-tooling-presentation.png';
+                    link.href = dataUrl;
+                    link.click();
+                    
+                    // Show the controls again
+                    controls.style.display = 'flex';
+                })
+                .catch(function (error) {
+                    console.error('Error exporting to PNG:', error);
+                    alert('Failed to export as PNG: ' + error.message);
+                    
+                    // Show the controls again
+                    controls.style.display = 'flex';
+                });
+            });
         });
     </script>
 </body>
