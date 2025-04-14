@@ -75,6 +75,12 @@
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
             max-width: 300px;
             backdrop-filter: blur(10px);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+        }
+        
+        .contributors-section:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 30px rgba(59, 130, 246, 0.2);
         }
         
         .contributors-title {
@@ -88,6 +94,12 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+            transition: transform 0.3s ease, letter-spacing 0.3s ease;
+        }
+        
+        .contributors-section:hover .contributors-title {
+            transform: scale(1.05);
+            letter-spacing: 0.3px;
         }
         
         .contributors-list {
@@ -98,6 +110,80 @@
             display: flex;
             align-items: center;
             margin-bottom: 8px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .contributor-item:hover {
+            transform: scale(1.1) translateX(5px);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+        }
+        
+        .contributor-item:hover .contributor-avatar {
+            transform: scale(1.2);
+            box-shadow: 0 5px 10px rgba(59, 130, 246, 0.3);
+            animation: avatarPulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatarPulse {
+            0% {
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 10px rgba(59, 130, 246, 0.6), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+        }
+        
+        /* Add different colors for each contributor avatar when hovered */
+        .contributor-item:nth-child(1):hover .contributor-avatar {
+            background: linear-gradient(135deg, #3b82f6, #0ea5e9);
+            animation: avatar1Pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatar1Pulse {
+            0% {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+            100% {
+                transform: scale(1.25);
+                box-shadow: 0 0 10px rgba(59, 130, 246, 0.6), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+        }
+        
+        .contributor-item:nth-child(2):hover .contributor-avatar {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+            animation: avatar2Pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatar2Pulse {
+            0% {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 rgba(236, 72, 153, 0), 0 5px 10px rgba(236, 72, 153, 0.3);
+            }
+            100% {
+                transform: scale(1.25);
+                box-shadow: 0 0 10px rgba(236, 72, 153, 0.6), 0 5px 10px rgba(236, 72, 153, 0.3);
+            }
+        }
+        
+        .contributor-item:nth-child(3):hover .contributor-avatar {
+            background: linear-gradient(135deg, #8b5cf6, #d946ef);
+            animation: avatar3Pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatar3Pulse {
+            0% {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 rgba(139, 92, 246, 0), 0 5px 10px rgba(139, 92, 246, 0.3);
+            }
+            100% {
+                transform: scale(1.25);
+                box-shadow: 0 0 10px rgba(139, 92, 246, 0.6), 0 5px 10px rgba(139, 92, 246, 0.3);
+            }
         }
         
         .contributor-avatar {
@@ -112,17 +198,20 @@
             font-size: 12px;
             margin-right: 8px;
             font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
         .contributor-name {
             font-size: 14px;
             color: #475569;
+            transition: color 0.3s ease, font-weight 0.3s ease;
         }
         
         .contributor-role {
             font-size: 12px;
             color: #64748b;
             margin-left: auto;
+            transition: color 0.3s ease;
         }
         
         h1 {
@@ -167,7 +256,7 @@
             background: rgba(255, 255, 255, 0.9);
             border-radius: 16px;
             overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.5s ease-out, border-color 0.3s ease-out;
             transform: translateY(20px);
             opacity: 0;
             display: flex;
@@ -176,12 +265,92 @@
             border: 1px solid rgba(148, 163, 184, 0.1);
             height: 100%;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            position: relative;
+            z-index: 1;
         }
         
         .tool-card:hover {
-            transform: translateY(-5px) scale(1.02) !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-15px) scale(1.12) !important;
+            box-shadow: 0 40px 70px -15px rgba(0, 0, 0, 0.3), 0 0 30px rgba(99, 102, 241, 0.25);
+            border-color: rgba(99, 102, 241, 0.6);
+            z-index: 10;
+        }
+        
+        .tool-card:hover::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            z-index: -1;
+        }
+        
+        .tool-card:hover .tool-icon {
+            transform: scale(1.2);
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.2);
+            animation: iconPulse 2s infinite alternate;
+        }
+        
+        @keyframes iconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+            }
+        }
+        
+        .tool-card:hover .tool-title {
+            /* No general gradient - handled by specific cards */
+        }
+        
+        .tool-card:hover .business-value {
+            background: rgba(239, 246, 255, 1);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-5px) scale(1.03);
+            border-left-width: 6px;
+        }
+        
+        .tool-card:hover .business-value strong {
+            color: #1e40af;
+            font-size: 18px;
+            letter-spacing: 0.2px;
+        }
+        
+        .tool-card:hover .tool-features li {
+            animation: listItemAppear 0.5s forwards;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(4) {
+            animation-delay: 0.2s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+        
+        @keyframes listItemAppear {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(8px);
+                color: #1e293b;
+            }
         }
         
         .tool-header {
@@ -198,6 +367,7 @@
             font-weight: 700;
             margin: 0;
             color: #1e293b;
+            transition: color 0.3s ease, background 0.3s ease;
         }
         
         .tool-icon {
@@ -209,6 +379,7 @@
             border-radius: 12px;
             font-size: 24px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
         .flow-icon {
@@ -252,6 +423,7 @@
             position: relative;
             padding-left: 28px;
             color: #475569;
+            transition: transform 0.3s ease, color 0.3s ease;
         }
         
         .tool-features li:before {
@@ -273,6 +445,7 @@
             border-left: 4px solid #3b82f6;
             margin-top: auto;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            transition: background 0.3s ease, box-shadow 0.4s ease, transform 0.4s ease, border-left-width 0.3s ease;
         }
         
         .business-value strong {
@@ -280,6 +453,7 @@
             display: block;
             margin-bottom: 5px;
             font-size: 17px;
+            transition: color 0.3s ease, font-size 0.3s ease, letter-spacing 0.3s ease;
         }
         
         .bottom-section {
@@ -323,15 +497,27 @@
             padding: 18px;
             background: rgba(243, 244, 246, 0.8);
             border-radius: 10px;
-            transition: transform 0.2s;
+            transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.3s ease-out, box-shadow 0.45s ease-out;
             border: 1px solid rgba(226, 232, 240, 0.8);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            position: relative;
+            z-index: 1;
         }
         
         .roi-item:hover {
-            transform: translateY(-3px);
-            border-color: rgba(59, 130, 246, 0.3);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            transform: translateY(-8px) scale(1.08);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            z-index: 2;
+        }
+        
+        .roi-item:hover .roi-title {
+            color: #2563eb;
+        }
+        
+        .roi-item:hover .roi-icon {
+            transform: scale(1.15);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
         }
         
         .roi-title {
@@ -339,6 +525,7 @@
             margin-bottom: 10px;
             color: #1e293b;
             font-size: 18px;
+            transition: color 0.3s ease;
         }
         
         .roi-icon {
@@ -351,6 +538,7 @@
             padding: 5px;
             border-radius: 6px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
         .roi-description {
@@ -410,11 +598,22 @@
         
         .tech-item {
             text-align: center;
-            transition: transform 0.2s;
+            transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
         }
         
         .tech-item:hover {
-            transform: translateY(-5px);
+            transform: translateY(-10px) scale(1.15);
+        }
+        
+        .tech-item:hover .tech-icon {
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        .tech-item:hover .tech-name {
+            color: #2563eb;
+            font-weight: 600;
         }
         
         .tech-icon {
@@ -430,12 +629,14 @@
             padding: 12px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
         
         .tech-name {
             font-size: 14px;
             color: #334155;
             font-weight: 500;
+            transition: color 0.3s ease, font-weight 0.2s ease;
         }
         
         /* Accent decorations */
@@ -550,6 +751,133 @@
                 transform-origin: center top;
                 margin-bottom: 40px;
             }
+        }
+        
+        /* Flow card specific hover effect */
+        #flow-card:hover::after {
+            box-shadow: 0 0 30px 5px rgba(59, 130, 246, 0.3);
+            animation: flowGlowPulse 2s infinite alternate;
+        }
+        
+        @keyframes flowGlowPulse {
+            0% {
+                opacity: 0.7;
+                box-shadow: 0 0 30px 8px rgba(59, 130, 246, 0.4);
+            }
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 45px 15px rgba(59, 130, 246, 0.6);
+            }
+        }
+        
+        /* Log card specific hover effect */
+        #log-card:hover::after {
+            box-shadow: 0 0 30px 5px rgba(236, 72, 153, 0.3);
+            animation: logGlowPulse 2s infinite alternate;
+        }
+        
+        @keyframes logGlowPulse {
+            0% {
+                opacity: 0.7;
+                box-shadow: 0 0 30px 8px rgba(236, 72, 153, 0.4);
+            }
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 45px 15px rgba(236, 72, 153, 0.6);
+            }
+        }
+        
+        /* AI card specific hover effect */
+        #ai-card:hover::after {
+            box-shadow: 0 0 30px 5px rgba(139, 92, 246, 0.3);
+            animation: aiGlowPulse 2s infinite alternate;
+        }
+        
+        @keyframes aiGlowPulse {
+            0% {
+                opacity: 0.7;
+                box-shadow: 0 0 30px 8px rgba(139, 92, 246, 0.4);
+            }
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 45px 15px rgba(139, 92, 246, 0.6);
+            }
+        }
+        
+        /* Card specific hover gradients */
+        #flow-card:hover .tool-title {
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        #log-card:hover .tool-title {
+            background: linear-gradient(90deg, #ec4899, #f43f5e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        #ai-card:hover .tool-title {
+            background: linear-gradient(90deg, #8b5cf6, #d946ef);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        #flow-card:hover .flow-icon {
+            animation: flowIconPulse 2s infinite alternate;
+        }
+        
+        @keyframes flowIconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+                background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+                background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            }
+        }
+        
+        #log-card:hover .log-icon {
+            animation: logIconPulse 2s infinite alternate;
+        }
+        
+        @keyframes logIconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+                background: linear-gradient(135deg, #ec4899, #f43f5e);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+                background: linear-gradient(135deg, #f43f5e, #ec4899);
+            }
+        }
+        
+        #ai-card:hover .ai-icon {
+            animation: aiIconPulse 2s infinite alternate;
+        }
+        
+        @keyframes aiIconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+                background: linear-gradient(135deg, #8b5cf6, #d946ef);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+                background: linear-gradient(135deg, #d946ef, #8b5cf6);
+            }
+        }
+        
+        .contributor-item:hover .contributor-name {
+            color: #1e40af;
+            font-weight: 600;
+        }
+        
+        .contributor-item:hover .contributor-role {
+            color: #3b82f6;
         }
     </style>
 </head>
@@ -818,6 +1146,48 @@
                 stagger: 0.5
             });
             
+            // Function to handle scroll animation
+            function handleScroll() {
+                const scrollPosition = window.scrollY;
+                const windowHeight = window.innerHeight;
+                
+                // Calculate scale based on scroll position
+                const scrollPercentage = Math.min(Math.max(0, scrollPosition / (windowHeight * 0.5)), 1);
+                const scale = 0.98 + (scrollPercentage * 0.02); // Scale from 0.98 to 1
+                
+                // Get base scale for responsive adjustment
+                const baseScale = Math.min(window.innerWidth / 1920, 0.95);
+                
+                // Apply the scale transformation with both responsive scaling and scroll effect
+                document.getElementById('presentation-container').style.transform = `scale(${baseScale * scale})`;
+            }
+            
+            // Add scroll event listener
+            window.addEventListener('scroll', handleScroll);
+            
+            // Call handleScroll once at load
+            handleScroll();
+            
+            // Ensure the presentation maintains its aspect ratio when the window is resized
+            function adjustPresentationSize() {
+                // Instead of directly modifying the transform, we'll call handleScroll
+                // which will apply both the resize and scroll effects
+                handleScroll();
+                
+                // Get the base scale for responsive adjustment
+                const baseScale = Math.min(window.innerWidth / 1920, 0.95);
+                
+                // Update margin and min-height
+                const container = document.getElementById('presentation-container');
+                container.style.marginBottom = `${40 * baseScale}px`;
+                
+                // Ensure the body can scroll enough to see the entire scaled content
+                document.body.style.minHeight = `${1080 * baseScale + 120}px`;
+            }
+            
+            window.addEventListener('resize', adjustPresentationSize);
+            adjustPresentationSize(); // Call once at load
+            
             // Edit Mode Toggle
             const editModeToggle = document.getElementById('edit-mode-toggle');
             let editModeEnabled = false;
@@ -903,22 +1273,6 @@
                     controls.style.display = 'flex';
                 });
             });
-
-            // Ensure the presentation maintains its aspect ratio when the window is resized
-            function adjustPresentationSize() {
-                const container = document.getElementById('presentation-container');
-                const windowWidth = window.innerWidth;
-                const scale = Math.min(windowWidth / 1920, 0.95);
-                
-                container.style.transform = `scale(${scale})`;
-                container.style.marginBottom = `${40 * scale}px`;
-                
-                // Ensure the body can scroll enough to see the entire scaled content
-                document.body.style.minHeight = `${1080 * scale + 120}px`;
-            }
-            
-            window.addEventListener('resize', adjustPresentationSize);
-            adjustPresentationSize(); // Call once at load
         });
     </script>
 </body>
