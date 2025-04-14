@@ -55,6 +55,74 @@
             position: relative;
             border-bottom: 1px solid rgba(148, 163, 184, 0.2);
             margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header-content {
+            flex: 1;
+            max-width: 800px;
+        }
+        
+        .contributors-section {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .contributors-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .contributors-list {
+            list-style-type: none;
+        }
+        
+        .contributor-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .contributor-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-right: 8px;
+            font-weight: 600;
+        }
+        
+        .contributor-name {
+            font-size: 14px;
+            color: #475569;
+        }
+        
+        .contributor-role {
+            font-size: 12px;
+            color: #64748b;
+            margin-left: auto;
         }
         
         h1 {
@@ -504,9 +572,37 @@
         <div class="accent-circle accent-circle-3"></div>
         
         <header>
-            <h1 contenteditable="false">Developer Tooling Suite</h1>
-            <p class="subtitle" contenteditable="false">A collection of advanced tools designed to streamline development workflows and improve productivity</p>
-            <p class="cta-text" contenteditable="false">This tooling suite offers solutions for workflow visualization, data analysis, and AI-assisted insights that can help address key operational challenges.</p>
+            <div class="header-content">
+                <h1 contenteditable="false">Developer Tooling Suite</h1>
+                <p class="subtitle" contenteditable="false">A collection of advanced tools designed to streamline development workflows and improve productivity</p>
+                <p class="cta-text" contenteditable="false">This tooling suite offers solutions for workflow visualization, data analysis, and AI-assisted insights that can help address key operational challenges.</p>
+            </div>
+            
+            <div class="contributors-section">
+                <h3 class="contributors-title" contenteditable="false">Project Contributors</h3>
+                <ul class="contributors-list">
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">JD</div>
+                        <span class="contributor-name" contenteditable="false">Jane Doe</span>
+                        <span class="contributor-role" contenteditable="false">Lead Developer</span>
+                    </li>
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">JS</div>
+                        <span class="contributor-name" contenteditable="false">John Smith</span>
+                        <span class="contributor-role" contenteditable="false">UI/UX Designer</span>
+                    </li>
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">AM</div>
+                        <span class="contributor-name" contenteditable="false">Alex Miller</span>
+                        <span class="contributor-role" contenteditable="false">Data Scientist</span>
+                    </li>
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">+</div>
+                        <span class="contributor-name" contenteditable="false">Add Name</span>
+                        <span class="contributor-role" contenteditable="false">Role</span>
+                    </li>
+                </ul>
+            </div>
         </header>
         
         <div class="tools-section">
