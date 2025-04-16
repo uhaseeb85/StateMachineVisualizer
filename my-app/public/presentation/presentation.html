@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Development Tooling Suite - Investment Proposal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f4f8;
+            color: #334155;
+            overflow: auto;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 0;
+        }
+        
+        .presentation-container {
+            width: 1920px;
+            height: 1080px;
+            overflow: visible;
+            position: relative;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(140deg, #ffffff, #f0f9ff, #eef2ff);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            padding: 40px;
+            border-radius: 24px;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50% }
+            50% { background-position: 100% 50% }
+            100% { background-position: 0% 50% }
+        }
+        
+        header {
+            padding-bottom: 25px;
+            position: relative;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header-content {
+            flex: 1;
+            max-width: 800px;
+        }
+        
+        .contributors-section {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 15px 22px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+            max-width: 460px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+        }
+        
+        .contributors-section:hover {
+            transform: scale(1.03);
+            box-shadow: 0 15px 30px rgba(59, 130, 246, 0.25);
+        }
+        
+        .contributors-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            transition: transform 0.3s ease, letter-spacing 0.3s ease;
+        }
+        
+        .contributors-section:hover .contributors-title {
+            transform: scale(1.05);
+            letter-spacing: 0.5px;
+        }
+        
+        .contributors-list {
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .contributor-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(226, 232, 240, 0.6);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .contributor-item:hover {
+            transform: scale(1.07) translateX(5px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .contributor-item:hover .contributor-avatar {
+            transform: scale(1.2);
+            box-shadow: 0 5px 10px rgba(59, 130, 246, 0.3);
+            animation: avatarPulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatarPulse {
+            0% {
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 10px rgba(59, 130, 246, 0.6), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+        }
+        
+        /* Add different colors for each contributor avatar when hovered */
+        .contributor-item:nth-child(1):hover .contributor-avatar {
+            background: linear-gradient(135deg, #3b82f6, #0ea5e9);
+            animation: avatar1Pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatar1Pulse {
+            0% {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+            100% {
+                transform: scale(1.25);
+                box-shadow: 0 0 10px rgba(59, 130, 246, 0.6), 0 5px 10px rgba(59, 130, 246, 0.3);
+            }
+        }
+        
+        .contributor-item:nth-child(2):hover .contributor-avatar {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+            animation: avatar2Pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatar2Pulse {
+            0% {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 rgba(236, 72, 153, 0), 0 5px 10px rgba(236, 72, 153, 0.3);
+            }
+            100% {
+                transform: scale(1.25);
+                box-shadow: 0 0 10px rgba(236, 72, 153, 0.6), 0 5px 10px rgba(236, 72, 153, 0.3);
+            }
+        }
+        
+        .contributor-item:nth-child(3):hover .contributor-avatar {
+            background: linear-gradient(135deg, #8b5cf6, #d946ef);
+            animation: avatar3Pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes avatar3Pulse {
+            0% {
+                transform: scale(1.2);
+                box-shadow: 0 0 0 rgba(139, 92, 246, 0), 0 5px 10px rgba(139, 92, 246, 0.3);
+            }
+            100% {
+                transform: scale(1.25);
+                box-shadow: 0 0 10px rgba(139, 92, 246, 0.6), 0 5px 10px rgba(139, 92, 246, 0.3);
+            }
+        }
+        
+        .contributor-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-right: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .contributor-name {
+            font-size: 18px;
+            font-weight: 500;
+            color: #334155;
+            transition: color 0.3s ease, font-weight 0.3s ease;
+        }
+        
+        .contributor-role {
+            font-size: 14px;
+            color: #64748b;
+            margin-left: auto;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        h1 {
+            font-size: 52px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #3b82f6, #6366f1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 15px;
+            letter-spacing: -1px;
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            color: #475569;
+            margin-bottom: 15px;
+            max-width: 800px;
+            font-weight: 500;
+        }
+        
+        .cta-text {
+            font-size: 18px;
+            color: #475569;
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px 25px;
+            border-radius: 12px;
+            border-left: 4px solid #3b82f6;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+        }
+        
+        .tools-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .tool-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.5s ease-out, border-color 0.3s ease-out;
+            transform: translateY(20px);
+            opacity: 0;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            height: 100%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-15px) scale(1.12) !important;
+            box-shadow: 0 40px 70px -15px rgba(0, 0, 0, 0.3), 0 0 30px rgba(99, 102, 241, 0.25);
+            border-color: rgba(99, 102, 241, 0.6);
+            z-index: 10;
+        }
+        
+        .tool-card:hover::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            z-index: -1;
+        }
+        
+        .tool-card:hover .tool-icon {
+            transform: scale(1.2);
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.2);
+            animation: iconPulse 2s infinite alternate;
+        }
+        
+        @keyframes iconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+            }
+        }
+        
+        .tool-card:hover .tool-title {
+            /* No general gradient - handled by specific cards */
+        }
+        
+        .tool-card:hover .business-value {
+            background: rgba(239, 246, 255, 1);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-5px) scale(1.03);
+            border-left-width: 6px;
+        }
+        
+        .tool-card:hover .business-value strong {
+            color: #1e40af;
+            font-size: 18px;
+            letter-spacing: 0.2px;
+        }
+        
+        .tool-card:hover .tool-features li {
+            animation: listItemAppear 0.5s forwards;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(4) {
+            animation-delay: 0.2s;
+        }
+        
+        .tool-card:hover .tool-features li:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+        
+        @keyframes listItemAppear {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(8px);
+                color: #1e293b;
+            }
+        }
+        
+        .tool-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.8));
+        }
+        
+        .tool-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            color: #1e293b;
+            transition: color 0.3s ease, background 0.3s ease;
+        }
+        
+        .tool-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            border-radius: 12px;
+            font-size: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .flow-icon {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: white;
+        }
+        
+        .log-icon {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+            color: white;
+        }
+        
+        .ai-icon {
+            background: linear-gradient(135deg, #8b5cf6, #d946ef);
+            color: white;
+        }
+        
+        .tool-content {
+            padding: 20px 25px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        
+        .tool-subtitle {
+            font-size: 18px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 15px;
+        }
+        
+        .tool-features {
+            list-style-type: none;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+        
+        .tool-features li {
+            padding: 8px 0;
+            position: relative;
+            padding-left: 28px;
+            color: #475569;
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+        
+        .tool-features li:before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 14px;
+            width: 16px;
+            height: 16px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z'/%3E%3C/svg%3E");
+            background-size: contain;
+        }
+        
+        .business-value {
+            background: rgba(239, 246, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            border-left: 4px solid #3b82f6;
+            margin-top: auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            transition: background 0.3s ease, box-shadow 0.4s ease, transform 0.4s ease, border-left-width 0.3s ease;
+        }
+        
+        .business-value strong {
+            color: #2563eb;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 17px;
+            transition: color 0.3s ease, font-size 0.3s ease, letter-spacing 0.3s ease;
+        }
+        
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-top: auto;
+        }
+        
+        .roi-section {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 16px;
+            opacity: 0;
+            transform: translateY(20px);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            height: 100%;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.05);
+        }
+        
+        .roi-section h2 {
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .roi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .roi-item {
+            padding: 18px;
+            background: rgba(243, 244, 246, 0.8);
+            border-radius: 10px;
+            transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.3s ease-out, box-shadow 0.45s ease-out;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .roi-item:hover {
+            transform: translateY(-8px) scale(1.08);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            z-index: 2;
+        }
+        
+        .roi-item:hover .roi-title {
+            color: #2563eb;
+        }
+        
+        .roi-item:hover .roi-icon {
+            transform: scale(1.15);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .roi-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1e293b;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        
+        .roi-icon {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            margin-right: 8px;
+            vertical-align: middle;
+            background: #fff;
+            padding: 5px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .roi-description {
+            color: #475569;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .roi-highlight {
+            color: #2563eb;
+            font-weight: 600;
+        }
+        
+        .conclusion {
+            margin-top: 15px;
+            padding: 18px;
+            background: rgba(219, 234, 254, 0.8);
+            border-radius: 8px;
+            font-size: 17px;
+            line-height: 1.6;
+            color: #1e40af;
+            font-weight: 500;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        
+        .tech-section {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
+            padding: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            height: 100%;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.05);
+        }
+        
+        .tech-section h2 {
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e293b;
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            justify-items: center;
+        }
+        
+        .tech-item {
+            text-align: center;
+            transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+        
+        .tech-item:hover {
+            transform: translateY(-10px) scale(1.15);
+        }
+        
+        .tech-item:hover .tech-icon {
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        .tech-item:hover .tech-name {
+            color: #2563eb;
+            font-weight: 600;
+        }
+        
+        .tech-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 30px;
+            background: linear-gradient(to bottom right, #f0f9ff, #e0f2fe);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .tech-name {
+            font-size: 14px;
+            color: #334155;
+            font-weight: 500;
+            transition: color 0.3s ease, font-weight 0.2s ease;
+        }
+        
+        /* Accent decorations */
+        .accent-circle {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.2;
+            z-index: -1;
+        }
+        
+        .accent-circle-1 {
+            width: 300px;
+            height: 300px;
+            background: #3b82f6;
+            top: -80px;
+            left: -80px;
+        }
+        
+        .accent-circle-2 {
+            width: 400px;
+            height: 400px;
+            background: #8b5cf6;
+            bottom: -100px;
+            right: -100px;
+        }
+        
+        .accent-circle-3 {
+            width: 250px;
+            height: 250px;
+            background: #ec4899;
+            bottom: 30%;
+            left: 0;
+        }
+        
+        /* Edit mode styling */
+        [contenteditable] {
+            outline: none;
+            padding: 2px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        [contenteditable]:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        
+        [contenteditable]:focus {
+            background-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* Controls for edit mode and export */
+        .presentation-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .control-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .control-button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .control-button.edit-mode {
+            background: #10b981;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .control-button.edit-mode:hover {
+            background: #059669;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+        
+        .control-button.edit-mode.active {
+            background: #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .control-button.edit-mode.active:hover {
+            background: #dc2626;
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+        }
+        
+        @media (max-width: 1920px) {
+            .presentation-container {
+                transform: scale(calc(min(100vw / 1920, 0.95)));
+                transform-origin: center top;
+                margin-bottom: 40px;
+            }
+        }
+        
+        /* Flow card specific hover effect */
+        #flow-card:hover::after {
+            box-shadow: 0 0 30px 5px rgba(59, 130, 246, 0.3);
+            animation: flowGlowPulse 2s infinite alternate;
+        }
+        
+        @keyframes flowGlowPulse {
+            0% {
+                opacity: 0.7;
+                box-shadow: 0 0 30px 8px rgba(59, 130, 246, 0.4);
+            }
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 45px 15px rgba(59, 130, 246, 0.6);
+            }
+        }
+        
+        /* Log card specific hover effect */
+        #log-card:hover::after {
+            box-shadow: 0 0 30px 5px rgba(236, 72, 153, 0.3);
+            animation: logGlowPulse 2s infinite alternate;
+        }
+        
+        @keyframes logGlowPulse {
+            0% {
+                opacity: 0.7;
+                box-shadow: 0 0 30px 8px rgba(236, 72, 153, 0.4);
+            }
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 45px 15px rgba(236, 72, 153, 0.6);
+            }
+        }
+        
+        /* AI card specific hover effect */
+        #ai-card:hover::after {
+            box-shadow: 0 0 30px 5px rgba(139, 92, 246, 0.3);
+            animation: aiGlowPulse 2s infinite alternate;
+        }
+        
+        @keyframes aiGlowPulse {
+            0% {
+                opacity: 0.7;
+                box-shadow: 0 0 30px 8px rgba(139, 92, 246, 0.4);
+            }
+            100% {
+                opacity: 0.9;
+                box-shadow: 0 0 45px 15px rgba(139, 92, 246, 0.6);
+            }
+        }
+        
+        /* Card specific hover gradients */
+        #flow-card:hover .tool-title {
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        #log-card:hover .tool-title {
+            background: linear-gradient(90deg, #ec4899, #f43f5e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        #ai-card:hover .tool-title {
+            background: linear-gradient(90deg, #8b5cf6, #d946ef);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        #flow-card:hover .flow-icon {
+            animation: flowIconPulse 2s infinite alternate;
+        }
+        
+        @keyframes flowIconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+                background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+                background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            }
+        }
+        
+        #log-card:hover .log-icon {
+            animation: logIconPulse 2s infinite alternate;
+        }
+        
+        @keyframes logIconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+                background: linear-gradient(135deg, #ec4899, #f43f5e);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+                background: linear-gradient(135deg, #f43f5e, #ec4899);
+            }
+        }
+        
+        #ai-card:hover .ai-icon {
+            animation: aiIconPulse 2s infinite alternate;
+        }
+        
+        @keyframes aiIconPulse {
+            0% {
+                transform: scale(1.2) rotate(-5deg);
+                background: linear-gradient(135deg, #8b5cf6, #d946ef);
+            }
+            100% {
+                transform: scale(1.3) rotate(5deg);
+                background: linear-gradient(135deg, #d946ef, #8b5cf6);
+            }
+        }
+        
+        .contributor-item:hover .contributor-name {
+            color: #1e40af;
+            font-weight: 600;
+        }
+        
+        .contributor-item:hover .contributor-role {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-controls">
+        <button id="edit-mode-toggle" class="control-button edit-mode">
+            <span class="button-icon">✏️</span>
+            Enable Edit Mode
+        </button>
+        <button id="export-png" class="control-button">
+            <span class="button-icon">📷</span>
+            Export as PNG
+        </button>
+    </div>
+    
+    <div class="presentation-container" id="presentation-container">
+        <!-- Accent decorations -->
+        <div class="accent-circle accent-circle-1"></div>
+        <div class="accent-circle accent-circle-2"></div>
+        <div class="accent-circle accent-circle-3"></div>
+        
+        <header>
+            <div class="header-content">
+                <h1 contenteditable="false">Enterprise Intelligence Suite</h1>
+                <p class="subtitle" contenteditable="false">A collection of advanced tools designed to streamline development workflows and improve productivity</p>
+                <p class="cta-text" contenteditable="false">This tooling suite offers solutions for workflow visualization, data analysis, and AI-assisted insights that can help address key operational challenges.</p>
+            </div>
+            
+            <div class="contributors-section">
+                <h3 class="contributors-title" contenteditable="false">Team #19 - Synapse</h3>
+                <ul class="contributors-list">
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">HU</div>
+                        <span class="contributor-name" contenteditable="false">Haseeb Usman Ali</span>
+                    </li>
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">AO</div>
+                        <span class="contributor-name" contenteditable="false">Angel Ortiz</span>
+                    </li>
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">VR</div>
+                        <span class="contributor-name" contenteditable="false">Vamsi Krishna</span>
+                    </li>
+                    <li class="contributor-item">
+                        <div class="contributor-avatar">EG</div>
+                        <span class="contributor-name" contenteditable="false">Emma Gu</span>
+                    </li>
+                </ul>
+            </div>
+        </header>
+        
+        <div class="tools-section">
+            <div class="tool-card" id="flow-card">
+                <div class="tool-header">
+                    <h2 class="tool-title" contenteditable="false">Flow Diagram Builder</h2>
+                    <div class="tool-icon flow-icon">📊</div>
+                </div>
+                <div class="tool-content">
+                    <p class="tool-subtitle" contenteditable="false">Visualize and understand complex process flows</p>
+                    <ul class="tool-features">
+                        <li contenteditable="false">Interactive visualization of business processes and workflows</li>
+                        <li contenteditable="false">Auto-layout of steps and connections for clear hierarchy</li>
+                        <li contenteditable="false">PNG export for documentation and presentations</li>
+                        <li contenteditable="false">Path finding capabilities for complex workflows</li>
+                        <li contenteditable="false">Process simulation for testing workflow logic</li>
+                    </ul>
+                    <div class="business-value">
+                        <strong contenteditable="false">Business Value</strong>
+                        <span contenteditable="false">Improves process understanding, enhances documentation quality, and facilitates better cross-team communication</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tool-card" id="log-card">
+                <div class="tool-header">
+                    <h2 class="tool-title" contenteditable="false">Log Analyzer</h2>
+                    <div class="tool-icon log-icon">📜</div>
+                </div>
+                <div class="tool-content">
+                    <p class="tool-subtitle" contenteditable="false">Process and analyze large log files efficiently</p>
+                    <ul class="tool-features">
+                        <li contenteditable="false">Parallel processing with Web Workers keeps UI responsive</li>
+                        <li contenteditable="false">Chunked file reading handles large log files</li>
+                        <li contenteditable="false">Splunk integration</li>
+                        <li contenteditable="false">Filtering and pattern matching capabilities with Regex</li>
+                        <li contenteditable="false">Multiple log file support</li>
+                    </ul>
+                    <div class="business-value">
+                        <strong contenteditable="false">Business Value</strong>
+                        <span contenteditable="false">Reduces analysis time for large log files, enables faster troubleshooting, and improves system reliability</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tool-card" id="ai-card">
+                <div class="tool-header">
+                    <h2 class="tool-title" contenteditable="false">AI Log Analyzer</h2>
+                    <div class="tool-icon ai-icon">🤖</div>
+                </div>
+                <div class="tool-content">
+                    <p class="tool-subtitle" contenteditable="false">Apply AI to extract insights from log data</p>
+                    <ul class="tool-features">
+                        <li contenteditable="false">Use AI/LLM to analyze issues</li>
+                        <li contenteditable="false">Use Log Dictionaries for adding project knowledge to the LLM</li>
+                        <li contenteditable="false">Natural language summaries of complex log data</li>
+                        <li contenteditable="false">Chat with the LLM to get answers to questions regarding the log data</li>
+                        <li contenteditable="false">Multiple LLM integrations</li>
+                    </ul>
+                    <div class="business-value">
+                        <strong contenteditable="false">Business Value</strong>
+                        <span contenteditable="false">Helps identify potential issues earlier, potentially reducing system downtime and maintenance costs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-section">
+            <div class="roi-section" id="roi-section">
+                <h2 contenteditable="false">Business Benefits</h2>
+                <div class="roi-grid">
+                    <div class="roi-item">
+                        <h3 class="roi-title">
+                            <span class="roi-icon">⏱️</span>
+                            <span contenteditable="false">Troubleshooting Efficiency</span>
+                        </h3>
+                        <p class="roi-description" contenteditable="false">Accelerate troubleshooting through faster log analysis and automated pattern detection, potentially reducing resolution times</p>
+                    </div>
+                    <div class="roi-item">
+                        <h3 class="roi-title">
+                            <span class="roi-icon">📝</span>
+                            <span contenteditable="false">Documentation Quality</span>
+                        </h3>
+                        <p class="roi-description" contenteditable="false">Improve process documentation with clear visual diagrams, potentially reducing errors and misunderstandings</p>
+                    </div>
+                    <div class="roi-item">
+                        <h3 class="roi-title">
+                            <span class="roi-icon">👥</span>
+                            <span contenteditable="false">Team Onboarding</span>
+                        </h3>
+                        <p class="roi-description" contenteditable="false">Support faster onboarding through improved process visualizations and documentation, helping new team members understand workflows</p>
+                    </div>
+                    <div class="roi-item">
+                        <h3 class="roi-title">
+                            <span class="roi-icon">🔍</span>
+                            <span contenteditable="false">Operational Insights</span>
+                        </h3>
+                        <p class="roi-description" contenteditable="false">Gain deeper understanding of system behavior through AI-assisted analysis, potentially leading to better operational decisions</p>
+                    </div>
+                </div>
+                <div class="conclusion" contenteditable="false">
+                    This tooling suite can help teams visualize, analyze, and troubleshoot complex systems more effectively, potentially leading to significant time and resource savings.
+                </div>
+            </div>
+            
+            <div class="tech-section" id="tech-section">
+                <h2 contenteditable="false">Technology Stack</h2>
+                <div class="tech-grid">
+                    <div class="tech-item">
+                        <div class="tech-icon">⚛️</div>
+                        <div class="tech-name" contenteditable="false">React</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🌊</div>
+                        <div class="tech-name" contenteditable="false">React Flow</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🔢</div>
+                        <div class="tech-name" contenteditable="false">XLSX-JS</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🖼️</div>
+                        <div class="tech-name" contenteditable="false">html-to-image</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">📦</div>
+                        <div class="tech-name" contenteditable="false">JSZip</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🔍</div>
+                        <div class="tech-name" contenteditable="false">React Joyride</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🎨</div>
+                        <div class="tech-name" contenteditable="false">Tailwind CSS</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">⚙️</div>
+                        <div class="tech-name" contenteditable="false">Vite</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🧩</div>
+                        <div class="tech-name" contenteditable="false">Radix UI</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">✨</div>
+                        <div class="tech-name" contenteditable="false">Framer Motion</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🔔</div>
+                        <div class="tech-name" contenteditable="false">Sonner</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-icon">🔣</div>
+                        <div class="tech-name" contenteditable="false">Lucide React</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Animate tool cards
+            const cards = document.querySelectorAll('.tool-card');
+            gsap.fromTo(cards, 
+                { y: 30, opacity: 0 }, 
+                { 
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.7, 
+                    stagger: 0.15, 
+                    ease: "power3.out"
+                }
+            );
+            
+            // Animate ROI section
+            gsap.fromTo('#roi-section', 
+                { y: 30, opacity: 0 }, 
+                { 
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    delay: 0.5, 
+                    ease: "power2.out"
+                }
+            );
+            
+            // Animate tech section
+            gsap.fromTo('#tech-section', 
+                { y: 30, opacity: 0 }, 
+                { 
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    delay: 0.7, 
+                    ease: "power2.out"
+                }
+            );
+            
+            // Animate accent circles
+            gsap.fromTo('.accent-circle', 
+                { scale: 0.5, opacity: 0 }, 
+                { 
+                    scale: 1, 
+                    opacity: 0.2, 
+                    duration: 1.5, 
+                    stagger: 0.2, 
+                    ease: "elastic.out(1, 0.7)"
+                }
+            );
+            
+            // Subtle floating animation for accent circles
+            gsap.to('.accent-circle', {
+                y: 20,
+                duration: 4,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut",
+                stagger: 0.5
+            });
+            
+            // Function to handle scroll animation
+            function handleScroll() {
+                const scrollPosition = window.scrollY;
+                const windowHeight = window.innerHeight;
+                
+                // Calculate scale based on scroll position
+                const scrollPercentage = Math.min(Math.max(0, scrollPosition / (windowHeight * 0.5)), 1);
+                const scale = 0.98 + (scrollPercentage * 0.02); // Scale from 0.98 to 1
+                
+                // Get base scale for responsive adjustment
+                const baseScale = Math.min(window.innerWidth / 1920, 0.95);
+                
+                // Apply the scale transformation with both responsive scaling and scroll effect
+                document.getElementById('presentation-container').style.transform = `scale(${baseScale * scale})`;
+            }
+            
+            // Add scroll event listener
+            window.addEventListener('scroll', handleScroll);
+            
+            // Call handleScroll once at load
+            handleScroll();
+            
+            // Ensure the presentation maintains its aspect ratio when the window is resized
+            function adjustPresentationSize() {
+                // Instead of directly modifying the transform, we'll call handleScroll
+                // which will apply both the resize and scroll effects
+                handleScroll();
+                
+                // Get the base scale for responsive adjustment
+                const baseScale = Math.min(window.innerWidth / 1920, 0.95);
+                
+                // Update margin and min-height
+                const container = document.getElementById('presentation-container');
+                container.style.marginBottom = `${40 * baseScale}px`;
+                
+                // Ensure the body can scroll enough to see the entire scaled content
+                document.body.style.minHeight = `${1080 * baseScale + 120}px`;
+            }
+            
+            window.addEventListener('resize', adjustPresentationSize);
+            adjustPresentationSize(); // Call once at load
+            
+            // Edit Mode Toggle
+            const editModeToggle = document.getElementById('edit-mode-toggle');
+            let editModeEnabled = false;
+            
+            editModeToggle.addEventListener('click', () => {
+                editModeEnabled = !editModeEnabled;
+                
+                // Update button text and style
+                if (editModeEnabled) {
+                    editModeToggle.classList.add('active');
+                    editModeToggle.innerHTML = '<span class="button-icon">✓</span> Disable Edit Mode';
+                } else {
+                    editModeToggle.classList.remove('active');
+                    editModeToggle.innerHTML = '<span class="button-icon">✏️</span> Enable Edit Mode';
+                }
+                
+                // Enable/disable contenteditable for all elements
+                document.querySelectorAll('[contenteditable]').forEach(element => {
+                    element.setAttribute('contenteditable', editModeEnabled);
+                });
+            });
+            
+            // Export to PNG functionality
+            const exportPngButton = document.getElementById('export-png');
+            
+            exportPngButton.addEventListener('click', () => {
+                // Hide the controls during the capture
+                const controls = document.querySelector('.presentation-controls');
+                controls.style.display = 'none';
+                
+                // Get the container
+                const container = document.getElementById('presentation-container');
+                
+                // Save original styles to restore later
+                const originalTransform = container.style.transform;
+                const originalMargin = container.style.marginBottom;
+                const originalBodyOverflow = document.body.style.overflow;
+                
+                // Reset scaling and adjustments for capture
+                container.style.transform = 'none';
+                container.style.marginBottom = '0';
+                document.body.style.overflow = 'hidden';
+                
+                // Use html-to-image with fixed dimensions matching original design
+                htmlToImage.toPng(container, {
+                    quality: 1,
+                    width: 1920,
+                    height: 1080,
+                    backgroundColor: '#f0f4f8',
+                    pixelRatio: 1, // Ensure 1:1 pixel ratio
+                    skipAutoScale: true,
+                    style: {
+                        transform: 'none',
+                        width: '1920px',
+                        height: '1080px'
+                    }
+                })
+                .then(function (dataUrl) {
+                    // Create a download link
+                    const link = document.createElement('a');
+                    link.download = 'developer-tooling-suite.png';
+                    link.href = dataUrl;
+                    link.click();
+                    
+                    // Restore original styles
+                    container.style.transform = originalTransform;
+                    container.style.marginBottom = originalMargin;
+                    document.body.style.overflow = originalBodyOverflow;
+                    
+                    // Show the controls again
+                    controls.style.display = 'flex';
+                })
+                .catch(function (error) {
+                    console.error('Error exporting to PNG:', error);
+                    alert('Failed to export as PNG: ' + error.message);
+                    
+                    // Restore original styles
+                    container.style.transform = originalTransform;
+                    container.style.marginBottom = originalMargin;
+                    document.body.style.overflow = originalBodyOverflow;
+                    
+                    // Show the controls again
+                    controls.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
