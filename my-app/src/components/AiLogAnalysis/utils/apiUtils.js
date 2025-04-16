@@ -7,7 +7,7 @@
 export const processCombinedLogs = async (logContents, progressCallback = () => {}) => {
   // Combine and truncate logs if they're too large
   let combinedLogs = '';
-  const MAX_TOTAL_SIZE = 120000; // characters total across all files
+  const MAX_TOTAL_SIZE = 500000; // characters total across all files
   const fileEntries = Object.entries(logContents);
   const totalFiles = fileEntries.length;
   
