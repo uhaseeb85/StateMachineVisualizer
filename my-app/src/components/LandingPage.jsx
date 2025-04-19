@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   GitBranch, 
@@ -12,12 +12,44 @@ import {
   Sparkles,
   Search,
   FileText,
-  Brain
+  Brain,
+  BarChart3,
+  LogIn
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
 
-const LandingPage = ({ onGetStarted }) => {
+const API_URL = 'http://localhost:5001';
+
+const LandingPage = ({ onGetStarted, onLoginClick, onDashboardClick, isAuthenticated }) => {
+  // Record page view on component mount
+  useEffect(() => {
+    const recordPageView = async () => {
+      try {
+        console.log('Recording page view...');
+        
+        // Record a view
+        const response = await fetch(`${API_URL}/api/page-view`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to record page view: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Page view recorded successfully, new count:', data.count);
+      } catch (error) {
+        console.error('Failed to record page view:', error.message);
+      }
+    };
+
+    recordPageView();
+  }, []);
+
   const handleModeSelect = (mode) => {
     localStorage.setItem('visualizer_mode', mode);
     onGetStarted();
@@ -69,7 +101,39 @@ const LandingPage = ({ onGetStarted }) => {
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
         
-        <div className="relative pt-24 pb-16 sm:pt-32 sm:pb-24">
+        {/* Nav Bar */}
+        <div className="relative z-10">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Workflow className="h-6 w-6 text-blue-500" />
+                <span className="font-semibold text-lg">Visual Flow Builder</span>
+              </div>
+              <div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-slate-700 bg-slate-800/50 hover:bg-slate-800 text-slate-300"
+                  onClick={isAuthenticated ? onDashboardClick : onLoginClick}
+                >
+                  {isAuthenticated ? (
+                    <>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Admin Login
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="relative pt-16 pb-16 sm:pt-24 sm:pb-24">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <motion.h1 

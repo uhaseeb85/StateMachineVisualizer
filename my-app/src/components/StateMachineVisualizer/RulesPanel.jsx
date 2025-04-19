@@ -45,8 +45,11 @@ const RulesPanel = ({
   const [newRulePriority, setNewRulePriority] = useState(50);
   const [newRuleOperation, setNewRuleOperation] = useState("");
 
+  // Ensure states is an array
+  const statesArray = Array.isArray(states) ? states : [];
+
   // Get current state details
-  const currentState = states.find(state => state.id === selectedState);
+  const currentState = statesArray.find(state => state.id === selectedState);
 
   /**
    * Initialize rule dictionary from localStorage on component mount
@@ -84,7 +87,7 @@ const RulesPanel = ({
       return;
     }
 
-    const updatedStates = states.map(state => {
+    const updatedStates = statesArray.map(state => {
       if (state.id === selectedState) {
         // Check if rule with same condition already exists
         const existingRuleIndex = state.rules.findIndex(
@@ -97,7 +100,7 @@ const RulesPanel = ({
           return state; // Return unchanged state
         } else {
           // Add new rule
-          addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
+          addToChangeLog(`Added new rule to state "${state.name}": ${newRuleCondition.trim()} → ${statesArray.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
           
           const newRules = [...state.rules, {
             id: Date.now(),
@@ -117,7 +120,7 @@ const RulesPanel = ({
     });
 
     // If the state was actually updated (no duplicates found)
-    if (updatedStates !== states) {
+    if (updatedStates !== statesArray) {
       setStates(updatedStates);
       setNewRuleCondition("");
       setNewRuleNextState("");
@@ -131,10 +134,10 @@ const RulesPanel = ({
    * @param {string} ruleId - ID of the rule to delete
    */
   const deleteRule = (ruleId) => {
-    const updatedStates = states.map(state => {
+    const updatedStates = statesArray.map(state => {
       if (state.id === selectedState) {
         const ruleToDelete = state.rules.find(rule => rule.id === ruleId);
-        const targetState = states.find(s => s.id === ruleToDelete.nextState);
+        const targetState = statesArray.find(s => s.id === ruleToDelete.nextState);
         addToChangeLog(`Deleted rule from state "${state.name}": ${ruleToDelete.condition} → ${targetState?.name} (Priority: ${ruleToDelete.priority !== undefined && ruleToDelete.priority !== null ? ruleToDelete.priority : 50})`);
         
         return {
@@ -157,11 +160,11 @@ const RulesPanel = ({
     e.stopPropagation();
     
     // First, get the target state that this rule is pointing to
-    const targetState = states.find(s => s.id === stateId);
+    const targetState = statesArray.find(s => s.id === stateId);
     
     if (targetState && targetState.name) {
       // Find all states with the same name
-      const sameNameStates = states.filter(s => 
+      const sameNameStates = statesArray.filter(s => 
         s.id !== targetState.id && 
         s.name.toLowerCase() === targetState.name.toLowerCase()
       );
@@ -276,7 +279,7 @@ const RulesPanel = ({
       return;
     }
 
-    const updatedStates = states.map(state => {
+    const updatedStates = statesArray.map(state => {
       if (state.id === selectedState) {
         // Check if another rule has the same condition name (excluding the rule being edited)
         const duplicateRule = state.rules.find(rule => 
@@ -292,8 +295,8 @@ const RulesPanel = ({
         const updatedRules = state.rules.map(rule => {
           if (rule.id === editingRuleId) {
             const oldRule = { ...rule };
-            const oldTargetState = states.find(s => s.id === oldRule.nextState)?.name || 'unknown';
-            const newTargetState = states.find(s => s.id === newRuleNextState)?.name || 'unknown';
+            const oldTargetState = statesArray.find(s => s.id === oldRule.nextState)?.name || 'unknown';
+            const newTargetState = statesArray.find(s => s.id === newRuleNextState)?.name || 'unknown';
             
             const newRule = {
               ...rule,
@@ -318,7 +321,7 @@ const RulesPanel = ({
     });
 
     // If the state was actually updated (no duplicates found)
-    if (updatedStates !== states) {
+    if (updatedStates !== statesArray) {
       setStates(updatedStates);
       setEditingRuleId(null);
       setEditingRuleCondition("");
@@ -346,7 +349,7 @@ const RulesPanel = ({
       return;
     }
 
-    const updatedStates = states.map(state => {
+    const updatedStates = statesArray.map(state => {
       if (state.id === selectedState) {
         const ruleIndex = state.rules.findIndex(rule => rule.id === insertingBeforeRuleId);
         if (ruleIndex === -1) return state;
@@ -362,7 +365,7 @@ const RulesPanel = ({
         const updatedRules = [...state.rules];
         updatedRules.splice(ruleIndex, 0, newRule);
 
-        addToChangeLog(`Inserted new rule before rule #${ruleIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${states.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
+        addToChangeLog(`Inserted new rule before rule #${ruleIndex + 1} in state "${state.name}": ${newRuleCondition.trim()} → ${statesArray.find(s => s.id === newRuleNextState)?.name} (Priority: ${newRulePriority})`);
 
         return {
           ...state,
@@ -509,7 +512,7 @@ const RulesPanel = ({
               className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
             >
               <option value="">Select target state</option>
-              {states.map((state) => (
+              {statesArray.map((state) => (
                 <option key={state.id} value={state.id}>
                   {state.name}
                 </option>
@@ -585,7 +588,7 @@ const RulesPanel = ({
       {/* Rules List Section */}
       <div className="space-y-2">
         {currentState?.rules.map((rule, index) => {
-          const targetState = states.find(s => s.id === rule.nextState);
+          const targetState = statesArray.find(s => s.id === rule.nextState);
           const ruleDescriptions = getRuleDescriptions(rule.condition);
           const isSelected = selectedRuleId === rule.id;
           const isEditing = editingRuleId === rule.id;
@@ -638,7 +641,7 @@ const RulesPanel = ({
                                  text-gray-700 dark:text-white border-none"
                       >
                         <option value="">Select target state</option>
-                        {states.map((state) => (
+                        {statesArray.map((state) => (
                           <option key={state.id} value={state.id}>
                             {state.name}
                           </option>
