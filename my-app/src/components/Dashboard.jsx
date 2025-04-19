@@ -207,7 +207,7 @@ const Dashboard = ({ onLogout }) => {
         ) : analyticsData ? (
           <div className="space-y-6">
             {/* Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -221,52 +221,6 @@ const Dashboard = ({ onLogout }) => {
                     <div className="flex items-center gap-2">
                       <Activity className="h-8 w-8 text-blue-400" />
                       <span className="text-3xl font-bold text-white">{analyticsData.totalVisits}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <Card className="bg-slate-800 border-slate-700">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-slate-200 text-lg">Unique Visitors</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-8 w-8 text-green-400" />
-                      <span className="text-3xl font-bold text-white">{analyticsData.uniqueVisitors}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <Card className="bg-slate-800 border-slate-700">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-slate-200 text-lg">Recent Visits (24h)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-8 w-8 text-purple-400" />
-                      <span className="text-3xl font-bold text-white">
-                        {analyticsData.recentVisits
-                          .filter(visit => {
-                            const visitDate = new Date(visit.timestamp);
-                            const dayAgo = new Date();
-                            dayAgo.setDate(dayAgo.getDate() - 1);
-                            return visitDate > dayAgo;
-                          })
-                          .length
-                        }
-                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -306,128 +260,66 @@ const Dashboard = ({ onLogout }) => {
               </motion.div>
             </div>
             
-            {/* Tabs for detailed data */}
+            {/* Component Usage Tab */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
             >
-              <Tabs defaultValue="recent" className="w-full">
-                <TabsList className="bg-slate-800 border border-slate-700">
-                  <TabsTrigger value="recent" className="data-[state=active]:bg-slate-700">Recent Activity</TabsTrigger>
-                  <TabsTrigger value="components" className="data-[state=active]:bg-slate-700">Component Usage</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="recent" className="mt-4">
-                  <Card className="bg-slate-800 border-slate-700">
-                    <CardHeader>
-                      <CardTitle className="text-slate-200">Recent Visitors</CardTitle>
-                      <CardDescription className="text-slate-400">
-                        The most recent {analyticsData.recentVisits.length} visitors to your application
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="rounded-md overflow-hidden border border-slate-700">
-                        <Table>
-                          <TableHeader className="bg-slate-900">
-                            <TableRow>
-                              <TableHead className="text-slate-300">Timestamp</TableHead>
-                              <TableHead className="text-slate-300">IP Address</TableHead>
-                              <TableHead className="text-slate-300">Browser</TableHead>
-                              <TableHead className="text-slate-300">Referrer</TableHead>
+              <Card className="bg-slate-800 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-slate-200">Component Usage Statistics</CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Usage data for each component in the application
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md overflow-hidden border border-slate-700">
+                    <Table>
+                      <TableHeader className="bg-slate-900">
+                        <TableRow>
+                          <TableHead className="text-slate-300">Component</TableHead>
+                          <TableHead className="text-slate-300">Usage Count</TableHead>
+                          <TableHead className="text-slate-300">Percentage</TableHead>
+                          <TableHead className="text-slate-300">Visualization</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(analyticsData.componentUsage)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([component, count]) => (
+                            <TableRow key={component} className="hover:bg-slate-700/50">
+                              <TableCell className="text-slate-300 font-medium">
+                                <div className="flex items-center gap-2">
+                                  {getComponentIcon(component)}
+                                  {formatComponentName(component)}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-slate-300">{count}</TableCell>
+                              <TableCell className="text-slate-300">{usagePercentages[component]}%</TableCell>
+                              <TableCell className="w-[200px]">
+                                <div className="w-full bg-slate-700 rounded-full h-2.5">
+                                  <div 
+                                    className="bg-indigo-600 h-2.5 rounded-full" 
+                                    style={{ width: `${usagePercentages[component]}%` }}
+                                  ></div>
+                                </div>
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {analyticsData.recentVisits.map((visit, index) => (
-                              <TableRow key={index} className="hover:bg-slate-700/50">
-                                <TableCell className="text-slate-300 font-medium">
-                                  {formatDate(visit.timestamp)}
-                                </TableCell>
-                                <TableCell className="text-slate-300">
-                                  {visit.ip}
-                                </TableCell>
-                                <TableCell className="text-slate-300">
-                                  {getBrowserFromUA(visit.userAgent)}
-                                </TableCell>
-                                <TableCell className="text-slate-300 truncate max-w-[200px]">
-                                  {visit.referer === 'direct' 
-                                    ? <Badge variant="outline" className="bg-slate-700/50 text-slate-300">Direct</Badge>
-                                    : visit.referer || 'Unknown'}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                            
-                            {analyticsData.recentVisits.length === 0 && (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center text-slate-400 py-8">
-                                  No recent visits recorded
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                
-                <TabsContent value="components" className="mt-4">
-                  <Card className="bg-slate-800 border-slate-700">
-                    <CardHeader>
-                      <CardTitle className="text-slate-200">Component Usage Statistics</CardTitle>
-                      <CardDescription className="text-slate-400">
-                        Usage data for each component in the application
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="rounded-md overflow-hidden border border-slate-700">
-                        <Table>
-                          <TableHeader className="bg-slate-900">
-                            <TableRow>
-                              <TableHead className="text-slate-300">Component</TableHead>
-                              <TableHead className="text-slate-300">Usage Count</TableHead>
-                              <TableHead className="text-slate-300">Percentage</TableHead>
-                              <TableHead className="text-slate-300">Visualization</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {Object.entries(analyticsData.componentUsage)
-                              .sort((a, b) => b[1] - a[1])
-                              .map(([component, count]) => (
-                                <TableRow key={component} className="hover:bg-slate-700/50">
-                                  <TableCell className="text-slate-300 font-medium">
-                                    <div className="flex items-center gap-2">
-                                      {getComponentIcon(component)}
-                                      {formatComponentName(component)}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-slate-300">{count}</TableCell>
-                                  <TableCell className="text-slate-300">{usagePercentages[component]}%</TableCell>
-                                  <TableCell className="w-[200px]">
-                                    <div className="w-full bg-slate-700 rounded-full h-2.5">
-                                      <div 
-                                        className="bg-indigo-600 h-2.5 rounded-full" 
-                                        style={{ width: `${usagePercentages[component]}%` }}
-                                      ></div>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                              
-                            {Object.values(analyticsData.componentUsage).every(count => count === 0) && (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center text-slate-400 py-8">
-                                  No component usage recorded
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                          ))}
+                          
+                        {Object.values(analyticsData.componentUsage).every(count => count === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-slate-400 py-8">
+                              No component usage recorded
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           </div>
         ) : null}
