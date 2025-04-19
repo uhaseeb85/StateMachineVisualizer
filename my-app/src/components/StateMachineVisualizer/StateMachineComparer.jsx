@@ -43,12 +43,17 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
 
   // Update baseline state machine when component opens
   useEffect(() => {
-    if (isOpen && states.length > 0) {
-      setBaseStateMachine({
-        id: 'current',
-        name: 'Current State Machine',
-        data: JSON.parse(JSON.stringify(states)) // Deep copy
-      });
+    if (isOpen && states) {
+      // Ensure states is an array
+      const statesArray = Array.isArray(states) ? states : [];
+      
+      if (statesArray.length > 0) {
+        setBaseStateMachine({
+          id: 'current',
+          name: 'Current State Machine',
+          data: JSON.parse(JSON.stringify(statesArray)) // Deep copy
+        });
+      }
     }
   }, [isOpen, states]);
 
@@ -720,7 +725,10 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
 StateMachineComparer.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  states: PropTypes.array.isRequired
+  states: PropTypes.oneOfType([
+    PropTypes.array,
+    PropTypes.object
+  ]).isRequired
 };
 
 export default StateMachineComparer; 

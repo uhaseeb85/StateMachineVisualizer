@@ -38,8 +38,11 @@ const StatePanel = ({
   const [editingStateId, setEditingStateId] = useState(null);
   const [editingStateName, setEditingStateName] = useState('');
 
+  // Ensure states is an array
+  const statesArray = Array.isArray(states) ? states : [];
+
   // Get unique graph sources for coloring
-  const graphSources = [...new Set(states.filter(s => s.graphSource).map(s => s.graphSource))];
+  const graphSources = [...new Set(statesArray.filter(s => s.graphSource).map(s => s.graphSource))];
   
   // Generate a color for each graph source (without displaying the name)
   const getGraphColor = (graphSource) => {
@@ -75,7 +78,7 @@ const StatePanel = ({
     const trimmedName = newStateName.trim();
     if (trimmedName) {
       // Check if state name already exists (case-insensitive)
-      const stateExists = states.some(
+      const stateExists = statesArray.some(
         state => state.name.toLowerCase() === trimmedName.toLowerCase()
       );
 
@@ -114,7 +117,7 @@ const StatePanel = ({
     }
 
     // Check if the new state name already exists (case-insensitive) among other states
-    const stateExists = states.some(
+    const stateExists = statesArray.some(
       state => state.id !== editingStateId && 
               state.name.toLowerCase() === trimmedName.toLowerCase()
     );
@@ -306,7 +309,7 @@ const StatePanel = ({
 
       {/* States List Section */}
       <div className="states-list space-y-1.5">
-        {states.map(state => (
+        {statesArray.map(state => (
           <div key={state.id} className="flex flex-col gap-1">
             {/* State Item - Edit Mode or View Mode */}
             {editingStateId === state.id ? (
