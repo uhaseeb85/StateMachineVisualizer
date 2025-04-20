@@ -423,6 +423,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         
         // Decode the chunk and process it
         const chunk = decoder.decode(value, { stream: true });
+        console.log('Raw chunk:', chunk); // Debug log
         buffer += chunk;
         
         // Process the SSE data - handle multi-line and partial chunks
@@ -432,6 +433,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const content = line.substring(6); // Remove 'data: ' prefix
+            console.log('Parsed content:', content); // Debug log
             
             if (content.includes('[DONE]')) {
               continue; // Skip the [DONE] message
@@ -439,11 +441,13 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
             
             try {
               const jsonData = JSON.parse(content);
+              console.log('Parsed JSON:', jsonData); // Debug log
               
               // Handle OpenAI/LM Studio format
               if ((apiProvider === 'LM_STUDIO' || apiProvider === 'CUSTOM') && 
                   jsonData.choices && jsonData.choices[0].delta) {
                 const delta = jsonData.choices[0].delta;
+                console.log('Delta object:', delta); // Debug log
                 
                 if (delta.content) {
                   // If this is the first chunk, log it
