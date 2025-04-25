@@ -396,9 +396,9 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'added':
-        return <Badge className="bg-green-500">Added</Badge>;
+        return <Badge className="bg-red-500">Removed in Current State Machine</Badge>;
       case 'removed':
-        return <Badge className="bg-red-500">Removed</Badge>;
+        return <Badge className="bg-green-500">Present only in Current State Machine</Badge>;
       case 'modified':
         return <Badge className="bg-yellow-500">Modified</Badge>;
       default:
@@ -443,10 +443,10 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           
           switch (row.status) {
             case 'added':
-              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
+              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
               break;
             case 'removed':
-              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
+              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
               break;
             case 'modified':
               fillColor = { fgColor: { rgb: "FFF3CD" } }; // Light yellow
@@ -491,10 +491,10 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           
           switch (row.status) {
             case 'added':
-              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
+              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
               break;
             case 'removed':
-              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
+              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
               break;
             case 'modified':
               fillColor = { fgColor: { rgb: "FFF3CD" } }; // Light yellow
@@ -646,6 +646,25 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                 </Button>
               </div>
               
+              {/* Status legend */}
+              <div className="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                <h4 className="text-sm font-medium mb-2">Understanding Comparison Results</h4>
+                <ul className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                  <li className="flex items-center gap-2">
+                    <Badge className="bg-red-500">Removed in Current State Machine</Badge>
+                    <span>Element exists in comparison state machine but has been removed from current state machine</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Badge className="bg-green-500">Present only in Current State Machine</Badge>
+                    <span>Element exists only in the current state machine but not in the comparison</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Badge className="bg-yellow-500">Modified</Badge>
+                    <span>Element exists in both but has different properties</span>
+                  </li>
+                </ul>
+              </div>
+              
               {/* Summary section */}
               {(results.summary.addedStates > 0 || 
                 results.summary.removedStates > 0 || 
@@ -658,13 +677,13 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                     <div className="p-4 border rounded-lg">
                       <h4 className="text-lg font-medium mb-2">State Changes</h4>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
-                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedStates}</span>
-                          <span className="text-xs text-green-600 dark:text-green-400">Added</span>
-                        </div>
                         <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
-                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedStates}</span>
-                          <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
+                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.addedStates}</span>
+                          <span className="text-xs text-red-600 dark:text-red-400">Removed in Current</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.removedStates}</span>
+                          <span className="text-xs text-green-600 dark:text-green-400">Only in Current</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
                           <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedStates}</span>
@@ -676,13 +695,13 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                     <div className="p-4 border rounded-lg">
                       <h4 className="text-lg font-medium mb-2">Rule Changes</h4>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
-                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedRules}</span>
-                          <span className="text-xs text-green-600 dark:text-green-400">Added</span>
-                        </div>
                         <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
-                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedRules}</span>
-                          <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
+                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.addedRules}</span>
+                          <span className="text-xs text-red-600 dark:text-red-400">Removed in Current</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.removedRules}</span>
+                          <span className="text-xs text-green-600 dark:text-green-400">Only in Current</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
                           <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedRules}</span>
@@ -720,8 +739,8 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                             .filter(state => state.status !== 'unchanged')
                             .map((state, index) => (
                             <TableRow key={index} className={
-                              state.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
-                              state.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
+                              state.status === 'added' ? 'bg-red-50 dark:bg-red-900/20' :
+                              state.status === 'removed' ? 'bg-green-50 dark:bg-green-900/20' :
                               state.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
                             }>
                               <TableCell>{state.name}</TableCell>
@@ -757,8 +776,8 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                             .filter(rule => rule.status !== 'unchanged')
                             .map((rule, index) => (
                             <TableRow key={index} className={
-                              rule.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
-                              rule.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
+                              rule.status === 'added' ? 'bg-red-50 dark:bg-red-900/20' :
+                              rule.status === 'removed' ? 'bg-green-50 dark:bg-green-900/20' :
                               rule.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
                             }>
                               <TableCell>{rule.stateName}</TableCell>
