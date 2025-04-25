@@ -179,7 +179,20 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
         summary
       });
 
-      toast.success('Comparison completed successfully');
+      // Check if there are any actual differences
+      const hasDifferences = 
+        summary.addedStates > 0 || 
+        summary.removedStates > 0 || 
+        summary.modifiedStates > 0 || 
+        summary.addedRules > 0 || 
+        summary.removedRules > 0 || 
+        summary.modifiedRules > 0;
+
+      if (!hasDifferences) {
+        toast.success('State machines are identical - no differences found');
+      } else {
+        toast.success('Comparison completed successfully');
+      }
     } catch (error) {
       console.error('Error comparing state machines:', error);
       toast.error('Failed to compare state machines');
@@ -198,8 +211,51 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
       const compareState = compare.find(s => s.name === baseState.name);
       
       if (compareState) {
-        // Check if the state is modified
-        const isModified = baseState.rules.length !== compareState.rules.length;
+        // Check if the state is modified by comparing rules more thoroughly
+        let isModified = false;
+        
+        // First quick check - different number of rules
+        if (baseState.rules.length !== compareState.rules.length) {
+          isModified = true;
+        } else {
+          // Same number of rules, but need to check if they actually match
+          // Sort rules by condition to ensure consistent comparison
+          const sortedBaseRules = [...baseState.rules].sort((a, b) => a.condition.localeCompare(b.condition));
+          const sortedCompareRules = [...compareState.rules].sort((a, b) => a.condition.localeCompare(b.condition));
+          
+          // Compare rules one by one
+          for (let i = 0; i < sortedBaseRules.length; i++) {
+            const baseRule = sortedBaseRules[i];
+            const compareRule = sortedCompareRules[i];
+            
+            // If conditions don't match, it's modified
+            if (baseRule.condition !== compareRule.condition) {
+              isModified = true;
+              break;
+            }
+            
+            // Check if the rules point to different target states
+            const baseNextState = base.find(s => s.id === baseRule.nextState)?.name || 'unknown';
+            const compareNextState = compare.find(s => s.id === compareRule.nextState)?.name || 'unknown';
+            
+            if (baseNextState !== compareNextState) {
+              isModified = true;
+              break;
+            }
+            
+            // Check if priorities are different
+            if (baseRule.priority !== compareRule.priority) {
+              isModified = true;
+              break;
+            }
+            
+            // Check if operations are different
+            if (baseRule.operation !== compareRule.operation) {
+              isModified = true;
+              break;
+            }
+          }
+        }
         
         result.push({
           name: baseState.name,
@@ -255,7 +311,12 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             const baseNextState = base.find(s => s.id === baseRule.nextState)?.name || 'unknown';
             const compareNextState = compare.find(s => s.id === matchingRule.nextState)?.name || 'unknown';
             
-            const isModified = baseNextState !== compareNextState;
+            // Compare other properties too
+            const prioritiesDifferent = baseRule.priority !== matchingRule.priority;
+            const operationsDifferent = baseRule.operation !== matchingRule.operation;
+            const nextStatesDifferent = baseNextState !== compareNextState;
+            
+            const isModified = nextStatesDifferent || prioritiesDifferent || operationsDifferent;
             
             result.push({
               stateName: baseState.name,
@@ -586,113 +647,152 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
               </div>
               
               {/* Summary section */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-4 border rounded-lg">
-                  <h4 className="text-lg font-medium mb-2">State Changes</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
-                      <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedStates}</span>
-                      <span className="text-xs text-green-600 dark:text-green-400">Added</span>
+              {(results.summary.addedStates > 0 || 
+                results.summary.removedStates > 0 || 
+                results.summary.modifiedStates > 0 || 
+                results.summary.addedRules > 0 || 
+                results.summary.removedRules > 0 || 
+                results.summary.modifiedRules > 0) ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="text-lg font-medium mb-2">State Changes</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedStates}</span>
+                          <span className="text-xs text-green-600 dark:text-green-400">Added</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
+                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedStates}</span>
+                          <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
+                          <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedStates}</span>
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400">Modified</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
-                      <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedStates}</span>
-                      <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
-                    </div>
-                    <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
-                      <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedStates}</span>
-                      <span className="text-xs text-yellow-600 dark:text-yellow-400">Modified</span>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="text-lg font-medium mb-2">Rule Changes</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedRules}</span>
+                          <span className="text-xs text-green-600 dark:text-green-400">Added</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
+                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedRules}</span>
+                          <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
+                          <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedRules}</span>
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400">Modified</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="p-4 border rounded-lg">
-                  <h4 className="text-lg font-medium mb-2">Rule Changes</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
-                      <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedRules}</span>
-                      <span className="text-xs text-green-600 dark:text-green-400">Added</span>
-                    </div>
-                    <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
-                      <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedRules}</span>
-                      <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
-                    </div>
-                    <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
-                      <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedRules}</span>
-                      <span className="text-xs text-yellow-600 dark:text-yellow-400">Modified</span>
-                    </div>
+                  
+                  {/* Tabs for detailed comparison */}
+                  <Tabs defaultValue="structure" value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="w-full grid grid-cols-2">
+                      <TabsTrigger value="structure" className="flex gap-2 items-center">
+                        <BarChart className="w-4 h-4" />
+                        State Structure
+                      </TabsTrigger>
+                      <TabsTrigger value="rules" className="flex gap-2 items-center">
+                        <List className="w-4 h-4" />
+                        Rule Transitions
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="structure" className="mt-4 max-h-[400px] overflow-y-auto">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
+                          <TableRow>
+                            <TableHead>State Name</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Rules in Baseline</TableHead>
+                            <TableHead>Rules in Comparison</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {results.stateComparison
+                            .filter(state => state.status !== 'unchanged')
+                            .map((state, index) => (
+                            <TableRow key={index} className={
+                              state.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
+                              state.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
+                              state.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
+                            }>
+                              <TableCell>{state.name}</TableCell>
+                              <TableCell>{getStatusBadge(state.status)}</TableCell>
+                              <TableCell>{state.baseRules}</TableCell>
+                              <TableCell>{state.compareRules}</TableCell>
+                            </TableRow>
+                          ))}
+                          {results.stateComparison.filter(state => state.status !== 'unchanged').length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                                No state differences found
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TabsContent>
+                    
+                    <TabsContent value="rules" className="mt-4 max-h-[400px] overflow-y-auto">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
+                          <TableRow>
+                            <TableHead>State</TableHead>
+                            <TableHead>Rule Condition</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Baseline Next</TableHead>
+                            <TableHead>Comparison Next</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {results.ruleComparison
+                            .filter(rule => rule.status !== 'unchanged')
+                            .map((rule, index) => (
+                            <TableRow key={index} className={
+                              rule.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
+                              rule.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
+                              rule.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
+                            }>
+                              <TableCell>{rule.stateName}</TableCell>
+                              <TableCell>{rule.condition}</TableCell>
+                              <TableCell>{getStatusBadge(rule.status)}</TableCell>
+                              <TableCell>{rule.baseNextState}</TableCell>
+                              <TableCell>{rule.compareNextState}</TableCell>
+                            </TableRow>
+                          ))}
+                          {results.ruleComparison.filter(rule => rule.status !== 'unchanged').length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                                No rule differences found
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TabsContent>
+                  </Tabs>
+                </>
+              ) : (
+                <div className="p-6 mb-6 text-center bg-gray-50 dark:bg-gray-800 border rounded-lg">
+                  <div className="flex justify-center mb-3">
+                    <Check className="w-8 h-8 text-green-500" />
                   </div>
+                  <h4 className="text-lg font-medium text-green-600 dark:text-green-400 mb-1">
+                    State Machines Are Identical
+                  </h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No differences were found between the baseline and comparison state machines.
+                  </p>
                 </div>
-              </div>
-              
-              {/* Tabs for detailed comparison */}
-              <Tabs defaultValue="structure" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="w-full grid grid-cols-2">
-                  <TabsTrigger value="structure" className="flex gap-2 items-center">
-                    <BarChart className="w-4 h-4" />
-                    State Structure
-                  </TabsTrigger>
-                  <TabsTrigger value="rules" className="flex gap-2 items-center">
-                    <List className="w-4 h-4" />
-                    Rule Transitions
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="structure" className="mt-4 max-h-[400px] overflow-y-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
-                      <TableRow>
-                        <TableHead>State Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Rules in Baseline</TableHead>
-                        <TableHead>Rules in Comparison</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {results.stateComparison.map((state, index) => (
-                        <TableRow key={index} className={
-                          state.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
-                          state.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
-                          state.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
-                        }>
-                          <TableCell>{state.name}</TableCell>
-                          <TableCell>{getStatusBadge(state.status)}</TableCell>
-                          <TableCell>{state.baseRules}</TableCell>
-                          <TableCell>{state.compareRules}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-                
-                <TabsContent value="rules" className="mt-4 max-h-[400px] overflow-y-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
-                      <TableRow>
-                        <TableHead>State</TableHead>
-                        <TableHead>Rule Condition</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Baseline Next</TableHead>
-                        <TableHead>Comparison Next</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {results.ruleComparison.map((rule, index) => (
-                        <TableRow key={index} className={
-                          rule.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
-                          rule.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
-                          rule.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
-                        }>
-                          <TableCell>{rule.stateName}</TableCell>
-                          <TableCell>{rule.condition}</TableCell>
-                          <TableCell>{getStatusBadge(rule.status)}</TableCell>
-                          <TableCell>{rule.baseNextState}</TableCell>
-                          <TableCell>{rule.compareNextState}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-              </Tabs>
+              )}
             </div>
           )}
           
