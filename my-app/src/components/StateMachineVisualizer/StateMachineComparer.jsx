@@ -21,8 +21,6 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
   const [baseStateMachine, setBaseStateMachine] = useState(null);
   // State for the second state machine to compare
   const [compareStateMachine, setCompareStateMachine] = useState(null);
-  // Active tab
-  const [activeTab, setActiveTab] = useState('structure');
   // Whether comparison is in progress
   const [isComparing, setIsComparing] = useState(false);
   // File input ref for CSV import
@@ -318,12 +316,31 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             
             const isModified = nextStatesDifferent || prioritiesDifferent || operationsDifferent;
             
+            // Store more detailed information for display
+            const changes = [];
+            if (nextStatesDifferent) {
+              changes.push(`Next state: ${baseNextState} → ${compareNextState}`);
+            }
+            if (prioritiesDifferent) {
+              changes.push(`Priority: ${baseRule.priority} → ${matchingRule.priority}`);
+            }
+            if (operationsDifferent) {
+              const baseOp = baseRule.operation || 'none';
+              const compareOp = matchingRule.operation || 'none';
+              changes.push(`Operation: ${baseOp} → ${compareOp}`);
+            }
+            
             result.push({
               stateName: baseState.name,
               condition: baseRule.condition,
               status: isModified ? 'modified' : 'unchanged',
               baseNextState: baseNextState,
-              compareNextState: compareNextState
+              compareNextState: compareNextState,
+              basePriority: baseRule.priority,
+              comparePriority: matchingRule.priority,
+              baseOperation: baseRule.operation || '',
+              compareOperation: matchingRule.operation || '',
+              changes: changes
             });
           } else {
             // Rule in base but not in compare (removed in compare)
@@ -333,7 +350,12 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
               condition: baseRule.condition,
               status: 'removed',
               baseNextState: baseNextState,
-              compareNextState: '-'
+              compareNextState: '-',
+              basePriority: baseRule.priority,
+              comparePriority: null,
+              baseOperation: baseRule.operation || '',
+              compareOperation: '',
+              changes: []
             });
           }
         });
@@ -351,7 +373,12 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
               condition: compareRule.condition,
               status: 'added',
               baseNextState: '-',
-              compareNextState: compareNextState
+              compareNextState: compareNextState,
+              basePriority: null,
+              comparePriority: compareRule.priority,
+              baseOperation: '',
+              compareOperation: compareRule.operation || '',
+              changes: []
             });
           }
         });
@@ -364,7 +391,12 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             condition: baseRule.condition,
             status: 'removed',
             baseNextState: baseNextState,
-            compareNextState: '-'
+            compareNextState: '-',
+            basePriority: baseRule.priority,
+            comparePriority: null,
+            baseOperation: baseRule.operation || '',
+            compareOperation: '',
+            changes: []
           });
         });
       }
@@ -383,7 +415,12 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             condition: compareRule.condition,
             status: 'added',
             baseNextState: '-',
-            compareNextState: compareNextState
+            compareNextState: compareNextState,
+            basePriority: null,
+            comparePriority: compareRule.priority,
+            baseOperation: '',
+            compareOperation: compareRule.operation || '',
+            changes: []
           });
         });
       }
@@ -417,31 +454,74 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
       // Create a new workbook
       const wb = XLSX.utils.book_new();
       
-      // Create a worksheet for state comparison
-      const stateData = [
-        ['State Name', 'Status', 'Rules in Baseline', 'Rules in Comparison']
+      // Create a unified comparison worksheet
+      const unifiedData = [
+        ['Type', 'Name', 'Status', 'Details']
       ];
       
-      results.stateComparison.forEach(state => {
-        stateData.push([
-          state.name,
-          state.status,
-          state.baseRules,
-          state.compareRules
-        ]);
-      });
+      // Add state differences
+      results.stateComparison
+        .filter(state => state.status !== 'unchanged')
+        .forEach(state => {
+          let details = '';
+          if (state.status === 'modified') {
+            details = `Rules: ${state.baseRules} → ${state.compareRules}`;
+          } else if (state.status === 'added') {
+            details = `Contains ${state.compareRules} rules`;
+          } else {
+            details = `Contains ${state.baseRules} rules`;
+          }
+          
+          unifiedData.push([
+            'State',
+            state.name,
+            state.status,
+            details
+          ]);
+        });
       
-      const stateWs = XLSX.utils.aoa_to_sheet(stateData);
+      // Add rule differences
+      results.ruleComparison
+        .filter(rule => rule.status !== 'unchanged')
+        .forEach(rule => {
+          let details = '';
+          
+          if (rule.status === 'modified') {
+            details = rule.changes.join('; ');
+          } else if (rule.status === 'added') {
+            const parts = [];
+            parts.push(`Target state: ${rule.compareNextState}`);
+            if (rule.comparePriority) parts.push(`Priority: ${rule.comparePriority}`);
+            if (rule.compareOperation) parts.push(`Operation: ${rule.compareOperation}`);
+            details = parts.join('; ');
+          } else if (rule.status === 'removed') {
+            const parts = [];
+            parts.push(`Target state: ${rule.baseNextState}`);
+            if (rule.basePriority) parts.push(`Priority: ${rule.basePriority}`);
+            if (rule.baseOperation) parts.push(`Operation: ${rule.baseOperation}`);
+            details = parts.join('; ');
+          }
+          
+          unifiedData.push([
+            'Rule',
+            `${rule.condition} (in state "${rule.stateName}")`,
+            rule.status,
+            details
+          ]);
+        });
       
-      // Apply styles to the state comparison worksheet
-      stateData.forEach((_, index) => {
+      const unifiedWs = XLSX.utils.aoa_to_sheet(unifiedData);
+      
+      // Apply styles to the worksheet
+      unifiedData.forEach((_, index) => {
         const rowIndex = index + 1; // Excel is 1-indexed
-        const row = results.stateComparison[index - 1]; // Skip header row
         
-        if (index > 0 && row) { // Skip header row
+        if (index > 0) { // Skip header row
+          const type = unifiedData[index][0];
+          const status = unifiedData[index][2];
           let fillColor = null;
           
-          switch (row.status) {
+          switch (status) {
             case 'added':
               fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
               break;
@@ -458,56 +538,8 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
           // Apply fill to each cell in the row
           ['A', 'B', 'C', 'D'].forEach(col => {
             const cellRef = `${col}${rowIndex}`;
-            if (!stateWs[cellRef]) stateWs[cellRef] = {};
-            stateWs[cellRef].s = { fill: fillColor };
-          });
-        }
-      });
-      
-      // Create a worksheet for rule comparison
-      const ruleData = [
-        ['State', 'Rule Condition', 'Status', 'Baseline Next State', 'Comparison Next State']
-      ];
-      
-      results.ruleComparison.forEach(rule => {
-        ruleData.push([
-          rule.stateName,
-          rule.condition,
-          rule.status,
-          rule.baseNextState,
-          rule.compareNextState
-        ]);
-      });
-      
-      const ruleWs = XLSX.utils.aoa_to_sheet(ruleData);
-      
-      // Apply styles to the rule comparison worksheet
-      ruleData.forEach((_, index) => {
-        const rowIndex = index + 1; // Excel is 1-indexed
-        const row = results.ruleComparison[index - 1]; // Skip header row
-        
-        if (index > 0 && row) { // Skip header row
-          let fillColor = null;
-          
-          switch (row.status) {
-            case 'added':
-              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
-              break;
-            case 'removed':
-              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
-              break;
-            case 'modified':
-              fillColor = { fgColor: { rgb: "FFF3CD" } }; // Light yellow
-              break;
-            default:
-              fillColor = { fgColor: { rgb: "E9ECEF" } }; // Light gray
-          }
-          
-          // Apply fill to each cell in the row
-          ['A', 'B', 'C', 'D', 'E'].forEach(col => {
-            const cellRef = `${col}${rowIndex}`;
-            if (!ruleWs[cellRef]) ruleWs[cellRef] = {};
-            ruleWs[cellRef].s = { fill: fillColor };
+            if (!unifiedWs[cellRef]) unifiedWs[cellRef] = {};
+            unifiedWs[cellRef].s = { fill: fillColor };
           });
         }
       });
@@ -535,8 +567,7 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
       
       // Add worksheets to workbook
       XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
-      XLSX.utils.book_append_sheet(wb, stateWs, 'State Comparison');
-      XLSX.utils.book_append_sheet(wb, ruleWs, 'Rule Comparison');
+      XLSX.utils.book_append_sheet(wb, unifiedWs, 'Differences');
       
       // Generate a filename based on the comparison
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -712,92 +743,99 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
                   </div>
                   
                   {/* Tabs for detailed comparison */}
-                  <Tabs defaultValue="structure" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="w-full grid grid-cols-2">
-                      <TabsTrigger value="structure" className="flex gap-2 items-center">
-                        <BarChart className="w-4 h-4" />
-                        State Structure
-                      </TabsTrigger>
-                      <TabsTrigger value="rules" className="flex gap-2 items-center">
-                        <List className="w-4 h-4" />
-                        Rule Transitions
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="structure" className="mt-4 max-h-[400px] overflow-y-auto">
+                  <div className="mt-4 border rounded-lg overflow-hidden">
+                    <div className="p-4 border-b bg-gray-50 dark:bg-gray-800">
+                      <h4 className="text-md font-medium">Unified State Machine Comparison</h4>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
                       <Table>
                         <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                           <TableRow>
-                            <TableHead>State Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Name</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Rules in Baseline</TableHead>
-                            <TableHead>Rules in Comparison</TableHead>
+                            <TableHead>Details</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
+                          {/* State differences */}
                           {results.stateComparison
                             .filter(state => state.status !== 'unchanged')
                             .map((state, index) => (
-                            <TableRow key={index} className={
+                            <TableRow key={`state-${index}`} className={
                               state.status === 'added' ? 'bg-red-50 dark:bg-red-900/20' :
                               state.status === 'removed' ? 'bg-green-50 dark:bg-green-900/20' :
                               state.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
                             }>
+                              <TableCell>State</TableCell>
                               <TableCell>{state.name}</TableCell>
                               <TableCell>{getStatusBadge(state.status)}</TableCell>
-                              <TableCell>{state.baseRules}</TableCell>
-                              <TableCell>{state.compareRules}</TableCell>
-                            </TableRow>
-                          ))}
-                          {results.stateComparison.filter(state => state.status !== 'unchanged').length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                                No state differences found
+                              <TableCell>
+                                <div className="text-xs text-gray-700 dark:text-gray-300">
+                                  {state.status === 'modified' ? (
+                                    <span>Rules: {state.baseRules} → {state.compareRules}</span>
+                                  ) : state.status === 'added' ? (
+                                    <span>Contains {state.compareRules} rules</span>
+                                  ) : (
+                                    <span>Contains {state.baseRules} rules</span>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TabsContent>
-                    
-                    <TabsContent value="rules" className="mt-4 max-h-[400px] overflow-y-auto">
-                      <Table>
-                        <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
-                          <TableRow>
-                            <TableHead>State</TableHead>
-                            <TableHead>Rule Condition</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Baseline Next</TableHead>
-                            <TableHead>Comparison Next</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                          ))}
+                          
+                          {/* Rule differences */}
                           {results.ruleComparison
                             .filter(rule => rule.status !== 'unchanged')
                             .map((rule, index) => (
-                            <TableRow key={index} className={
+                            <TableRow key={`rule-${index}`} className={
                               rule.status === 'added' ? 'bg-red-50 dark:bg-red-900/20' :
                               rule.status === 'removed' ? 'bg-green-50 dark:bg-green-900/20' :
                               rule.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
                             }>
-                              <TableCell>{rule.stateName}</TableCell>
-                              <TableCell>{rule.condition}</TableCell>
+                              <TableCell>Rule</TableCell>
+                              <TableCell>
+                                <div className="font-mono text-xs">{rule.condition}</div>
+                                <div className="text-xs text-gray-500">in state "{rule.stateName}"</div>
+                              </TableCell>
                               <TableCell>{getStatusBadge(rule.status)}</TableCell>
-                              <TableCell>{rule.baseNextState}</TableCell>
-                              <TableCell>{rule.compareNextState}</TableCell>
+                              <TableCell>
+                                {rule.status === 'modified' ? (
+                                  <ul className="text-xs space-y-1 list-disc list-inside">
+                                    {rule.changes.map((change, i) => (
+                                      <li key={i} className="text-gray-700 dark:text-gray-300">{change}</li>
+                                    ))}
+                                  </ul>
+                                ) : rule.status === 'added' ? (
+                                  <div className="text-xs text-gray-700 dark:text-gray-300">
+                                    <p>Target state: {rule.compareNextState}</p>
+                                    {rule.comparePriority && <p>Priority: {rule.comparePriority}</p>}
+                                    {rule.compareOperation && <p>Operation: {rule.compareOperation}</p>}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-700 dark:text-gray-300">
+                                    <p>Target state: {rule.baseNextState}</p>
+                                    {rule.basePriority && <p>Priority: {rule.basePriority}</p>}
+                                    {rule.baseOperation && <p>Operation: {rule.baseOperation}</p>}
+                                  </div>
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
-                          {results.ruleComparison.filter(rule => rule.status !== 'unchanged').length === 0 && (
+                          
+                          {/* No differences message */}
+                          {results.stateComparison.filter(state => state.status !== 'unchanged').length === 0 && 
+                           results.ruleComparison.filter(rule => rule.status !== 'unchanged').length === 0 && (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                                No rule differences found
+                              <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                                No differences found
                               </TableCell>
                             </TableRow>
                           )}
                         </TableBody>
                       </Table>
-                    </TabsContent>
-                  </Tabs>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="p-6 mb-6 text-center bg-gray-50 dark:bg-gray-800 border rounded-lg">
