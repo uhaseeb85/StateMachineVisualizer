@@ -39,7 +39,17 @@ import { toast } from 'sonner';
  */
 export default function useStateMachine() {
   // Core state management
-  const [states, setStates] = useState([]);
+  const [states, setStates] = useState(() => {
+    try {
+      const savedFlow = localStorage.getItem('ivrFlow');
+      if (!savedFlow) return [];
+      const parsedFlow = JSON.parse(savedFlow);
+      return Array.isArray(parsedFlow) ? parsedFlow : [];
+    } catch (error) {
+      console.error('Error initializing states:', error);
+      return [];
+    }
+  });
   const [selectedState, setSelectedState] = useState(null);
   
   // Theme management
@@ -99,9 +109,17 @@ export default function useStateMachine() {
    * Load saved states and theme preference on initialization
    */
   useEffect(() => {
-    const savedFlow = localStorage.getItem('ivrFlow');
-    if (savedFlow) {
-      setStates(JSON.parse(savedFlow));
+    try {
+      const savedFlow = localStorage.getItem('ivrFlow');
+      if (savedFlow) {
+        const parsedFlow = JSON.parse(savedFlow);
+        setStates(Array.isArray(parsedFlow) ? parsedFlow : []);
+      } else {
+        setStates([]);
+      }
+    } catch (error) {
+      console.error('Error loading saved states:', error);
+      setStates([]);
     }
 
     const darkModePreference = localStorage.getItem('darkMode');

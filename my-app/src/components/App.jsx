@@ -5,6 +5,7 @@ import LogAnalyzer from './LogAnalyzer';
 import AiLogAnalysis from './AiLogAnalysis';
 import LandingPage from './LandingPage';
 import { ThemeProvider } from './ThemeProvider';
+import ErrorBoundary from './ErrorBoundary';
 
 const AppContent = () => {
   const [showLanding, setShowLanding] = useState(true);
@@ -26,7 +27,11 @@ const AppContent = () => {
     }
 
     if (mode === 'stateMachine') {
-      return <StateMachineVisualizer onChangeMode={handleChangeModeClick} />;
+      return (
+        <ErrorBoundary>
+          <StateMachineVisualizer onChangeMode={handleChangeModeClick} />
+        </ErrorBoundary>
+      );
     }
 
     if (mode === 'logAnalyzer') {
