@@ -94,24 +94,56 @@ ${dictionaryInfo ? 'You have been provided with a log patterns dictionary that c
 
 /**
  * Prepare request messages for the API
- * @param {Array} chatHistory Chat history array
- * @param {string} currentQuery User's current query
- * @param {string} combinedLogs Combined log content
- * @param {string} dictionaryInfo Dictionary information
- * @param {string} systemPrompt System prompt
+ * @param {Object} params Object containing query, logContents, logDictionary, contextSize, and chatHistory
  * @returns {Array} Formatted messages for API request
  */
-export const prepareApiMessages = (chatHistory, currentQuery, combinedLogs, dictionaryInfo, systemPrompt) => {
-  // Filter out any messages with empty content fields
-  const validChatHistory = chatHistory.filter(msg => msg.content && msg.content.trim() !== '');
-  
-  return [
-    { role: 'system', content: systemPrompt },
-    // Add previous relevant messages from chat history (limit to last 10)
-    ...validChatHistory.slice(-10),
-    { 
-      role: 'user', 
-      content: `${currentQuery}\n\nHere are the log files to analyze:${combinedLogs}${dictionaryInfo}` 
+export const prepareApiMessages = ({ query, logContents, logDictionary, contextSize, chatHistory }) => {
+  // Create system prompt with dictionary info if available
+  const dictionaryInfo = logDictionary ? formatLogDictionary(logDictionary) : '';
+  const systemPrompt = createSystemPrompt(dictionaryInfo);
+
+  // Process and combine logs
+  const combinedLogs = Object.entries(logContents)
+    .map(([filename, content]) => `File: ${filename}\n${content}`)
+    .join('\n\n');
+
+  // Calculate approximate token count (chars/4)
+  const systemTokens = Math.ceil(systemPrompt.length / 4);
+  const queryTokens = Math.ceil(query.length / 4);
+  const availableTokens = contextSize - systemTokens - queryTokens - 100; // 100 tokens buffer
+
+  // Truncate logs if they exceed available tokens
+  let processedLogs = combinedLogs;
+  if (Math.ceil(combinedLogs.length / 4) > availableTokens) {
+    // If logs are too large, take content from the start and end
+    const charsPerToken = 4;
+    const availableChars = availableTokens * charsPerToken;
+    const halfChars = Math.floor(availableChars / 2);
+    
+    const start = combinedLogs.substring(0, halfChars);
+    const end = combinedLogs.substring(combinedLogs.length - halfChars);
+    
+    processedLogs = `${start}\n\n[...TRUNCATED...]\n\n${end}`;
+  }
+
+  // Prepare messages array
+  const messages = [
+    {
+      role: 'system',
+      content: systemPrompt
+    },
+    {
+      role: 'user',
+      content: `Here are the log files to analyze:\n\n${processedLogs}\n\nQuery: ${query}`
     }
   ];
+
+  // Add relevant chat history if available
+  if (chatHistory && chatHistory.length > 0) {
+    // Only include the last few messages to stay within context
+    const recentHistory = chatHistory.slice(-4); // Keep last 4 messages
+    messages.splice(1, 0, ...recentHistory);
+  }
+
+  return messages;
 };

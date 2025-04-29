@@ -18,12 +18,14 @@ import { Server } from 'lucide-react';
 import { ChatContainer } from './components/ChatUI';
 import { ApiSettings, ApiWarning, DemoNotice } from './components/ApiSettings';
 import StatusLog from './components/StatusLog/StatusLog';
+import LogSizeManager from './components/LogSizeManager';
 
 // Import constants and utilities from their new locations
 import { DEFAULT_ENDPOINTS, DEMO_RESPONSES } from './constants/apiConstants';
 import { addStatusLog as addLog, checkApiConnection as checkApi, getDemoResponse } from './utils/aiHelpers';
 import { processCombinedLogs, formatLogDictionary, createSystemPrompt, prepareApiMessages } from './utils/apiUtils';
 import useAiStreaming from './hooks/useAiStreaming';
+import { processLogsWithChunking } from './utils/logChunking';
 
 const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   // Debug log for component initialization
@@ -39,6 +41,11 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [apiAvailable, setApiAvailable] = useState(null);
   const [demoMode, setDemoMode] = useState(true); // Enable demo mode by default
+  const [contextSize, setContextSize] = useState(4000);
+  const [combinedLogContent, setCombinedLogContent] = useState('');
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
+  const [processedChunks, setProcessedChunks] = useState([]);
+  const [chunkMetadata, setChunkMetadata] = useState(null);
   
   // Get streaming functionality from custom hook
   const { 
@@ -73,8 +80,15 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       readLogFiles();
     } else {
       setLogContents({});
+      setCombinedLogContent('');
     }
   }, [logFiles]);
+
+  // Update combined log content when individual logs change
+  useEffect(() => {
+    const combined = Object.values(logContents).join('\n\n');
+    setCombinedLogContent(combined);
+  }, [logContents]);
 
   // Add log dictionary info to status log if available
   useEffect(() => {
@@ -216,6 +230,8 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   const readLogFiles = async () => {
     try {
       setLogContents({});
+      setProcessedChunks([]);
+      setChunkMetadata(null);
       
       if (logFiles.length === 0) {
         addStatusLog("No log files to read");
@@ -229,7 +245,6 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       
       for (const file of logFiles) {
         try {
-          // Read file in smaller chunks to prevent UI from blocking
           const fileSize = file.size;
           const fileChunkSize = 1024 * 1024; // 1MB chunks
           let offset = 0;
@@ -243,13 +258,11 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
             text += chunkText;
             offset += fileChunkSize;
             
-            // Report progress periodically
             const percentRead = Math.round((offset / fileSize) * 100);
-            if (percentRead % 20 === 0) { // Report every 20%
+            if (percentRead % 20 === 0) {
               addStatusLog(`Reading ${file.name}: ${percentRead}% complete`);
             }
             
-            // Yield to the UI thread to prevent browser from showing unresponsive warning
             await new Promise(resolve => setTimeout(resolve, 10));
           }
           
@@ -263,7 +276,13 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       }
       
       setLogContents(fileContents);
-      addStatusLog(`All log files loaded. Total size: ${Math.round(totalSize / 1024)} KB`);
+      
+      // Process chunks after loading files
+      const { processedChunks, metadata } = processLogsWithChunking(fileContents, contextSize);
+      setProcessedChunks(processedChunks);
+      setChunkMetadata(metadata);
+      
+      addStatusLog(`All log files processed. Found ${metadata.totalErrors} errors and ${metadata.totalWarnings} warnings across ${metadata.totalChunks} chunks.`);
       
     } catch (error) {
       console.error("Error reading log files:", error);
@@ -277,246 +296,207 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     stopStreaming(setChatHistory);
   };
 
-  // Submit query to LLM API or demo mode
+  const handleContextSizeChange = (newSize) => {
+    setContextSize(newSize);
+    addStatusLog(`Context window size updated to ${newSize} tokens`);
+  };
+
+  // Modify handleQuerySubmit to handle chunks
   const handleQuerySubmit = async () => {
-    if (!query.trim()) return;
-    
-    // In demo mode, we can proceed even without log files
-    if (!demoMode && Object.keys(logContents).length === 0) {
-      toast.warning("Please upload at least one log file for analysis.");
+    if (!query.trim()) {
+      toast.error("Please enter a query");
       return;
     }
+
+    if (loading) {
+      toast.error("Please wait for the current analysis to complete");
+      return;
+    }
+
+    // Only check for log files if not in demo mode
+    if (!demoMode && processedChunks.length === 0) {
+      toast.warning("Please upload log files to analyze");
+      return;
+    }
+
+    setLoading(true);
+    setIsStreaming(true);
+    setStreamedResponse('');
+
+    const timestamp = new Date().toISOString();
+    const userMessage = { role: 'user', content: query, timestamp };
     
+    // Add user message to chat history
+    setChatHistory(prev => [...prev, userMessage]);
+    setQuery('');
+
     try {
-      setLoading(true);
-      setStreamedResponse('');
-      addStatusLog(`Submitting query: ${query}`);
-      
-      // Add user message to chat history immediately
-      const userMessage = {
-        role: 'user',
-        content: query.trim(), // Ensure content is trimmed and not empty
-        timestamp: new Date().toISOString()
-      };
-      
-      setChatHistory(prev => [...prev, userMessage]);
-      
-      const currentQuery = query; // Store the current query before clearing
-      setQuery(''); // Clear input after sending
-      
-      // Use demo mode if enabled or if API is not available
-      if (demoMode || apiAvailable === false) {
-        addStatusLog("Using demo mode for response");
+      if (demoMode) {
+        // Get demo response
+        const demoResponse = getDemoResponse(query);
         
-        // Get appropriate demo response based on query
-        const responseText = getDemoResponse(currentQuery);
-        
+        // Add placeholder for assistant response
+        setChatHistory(prev => [...prev, {
+          role: 'assistant',
+          content: '',
+          timestamp: new Date().toISOString(),
+          streaming: true
+        }]);
+
         // Simulate streaming for demo mode
-        await simulateStreamingResponse(responseText, setChatHistory);
-        return;
-      }
-      
-      // Continue with real API call if not in demo mode
-      // Process log files with progress tracking
-      addStatusLog("Processing log files...");
-      const combinedLogs = await processCombinedLogs(logContents, (progress) => {
-        // Update status log with progress every 25%
-        if (progress % 25 === 0) {
-          addStatusLog(`Processing logs: ${progress}% complete`);
-        }
-      });
-      addStatusLog("Log processing complete");
-      
-      // Format the dictionary information for the AI if available
-      const dictionaryInfo = formatLogDictionary(logDictionary);
-      
-      // Create system prompt
-      const systemPrompt = createSystemPrompt(dictionaryInfo);
-      
-      // Prepare messages for API
-      addStatusLog("Preparing message for AI...");
-      const messages = prepareApiMessages(
-        chatHistory,
-        currentQuery,
-        combinedLogs,
-        dictionaryInfo,
-        systemPrompt
-      );
-      
-      // Validate that all messages have non-empty content
-      const invalidMessage = messages.find(msg => !msg.content || msg.content.trim() === '');
-      if (invalidMessage) {
-        throw new Error('Message with empty content detected. Please try again.');
-      }
-      
-      // Prepare request body based on API provider
-      let requestBody;
-      if (apiProvider === 'LM_STUDIO' || apiProvider === 'CUSTOM') {
-        requestBody = JSON.stringify({
-          messages: messages,
-          stream: true
-        });
-      } else if (apiProvider === 'OLLAMA') {
-        requestBody = JSON.stringify({
-          model: modelName || "llama3",
-          messages: messages,
-          stream: true
-        });
-      }
-      
-      addStatusLog("Sending request to AI API...");
-      // Call LLM API with streaming enabled
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      addStatusLog("Response received, streaming content...");
-      // Add placeholder for assistant response
-      setChatHistory(prev => [...prev, {
-        role: 'assistant',
-        content: ' ', // Initialize with a space to avoid empty content error
-        timestamp: new Date().toISOString(),
-        streaming: true
-      }]);
-      
-      // Handle streaming response
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      setIsStreaming(true);
-      
-      let isFirst = true;
-      let buffer = '';
-      let currentResponse = '';
-      
-      while (true) {
-        const { value, done } = await reader.read();
+        let streamedContent = '';
+        const words = demoResponse.split(' ');
         
-        if (done) {
-          setIsStreaming(false);
-          setLoading(false);
+        for (const word of words) {
+          await new Promise(resolve => setTimeout(resolve, 50)); // Simulate typing delay
+          streamedContent += word + ' ';
           
-          // Update the final message in chat history
+          // Update the streaming message in chat history
           setChatHistory(prev => {
             const updated = [...prev];
             const lastIndex = updated.length - 1;
-            if (lastIndex >= 0 && updated[lastIndex].role === 'assistant') {
+            if (lastIndex >= 0) {
               updated[lastIndex] = {
                 ...updated[lastIndex],
-                content: currentResponse,
-                streaming: false
+                content: streamedContent.trim(),
+                streaming: true
               };
             }
             return updated;
           });
-          
-          addStatusLog('Completed streaming response from AI API');
-          break;
         }
+
+        // Update final message in chat history
+        setChatHistory(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (lastIndex >= 0) {
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              content: streamedContent.trim(),
+              streaming: false
+            };
+          }
+          return updated;
+        });
+
+      } else {
+        // Process each chunk sequentially
+        let combinedResponse = '';
         
-        // Decode the chunk and process it
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-        
-        // Process the SSE data - handle multi-line and partial chunks
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep the last potentially incomplete line in the buffer
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const content = line.substring(6); // Remove 'data: ' prefix
-            
-            if (content.includes('[DONE]')) {
-              continue; // Skip the [DONE] message
-            }
-            
-            try {
-              const jsonData = JSON.parse(content);
-              
-              // Handle OpenAI/LM Studio format
-              if ((apiProvider === 'LM_STUDIO' || apiProvider === 'CUSTOM') && 
-                  jsonData.choices && jsonData.choices[0].delta) {
-                const delta = jsonData.choices[0].delta;
-                
-                if (delta.content) {
-                  // If this is the first chunk, log it
-                  if (isFirst) {
-                    addStatusLog('Started receiving streaming response');
-                    isFirst = false;
+        for (const chunk of processedChunks) {
+          const chunkQuery = `Analyzing chunk ${chunk.chunkIndex}/${chunk.totalChunks} from ${chunk.filename}:\n\n${query}`;
+          
+          const messages = prepareApiMessages({
+            query: chunkQuery,
+            logContents: { [chunk.filename]: chunk.chunk },
+            logDictionary,
+            contextSize,
+            chatHistory: [] // Don't include chat history for chunk analysis
+          });
+
+          // Add placeholder for assistant response
+          setChatHistory(prev => [...prev, {
+            role: 'assistant',
+            content: `Analyzing chunk ${chunk.chunkIndex}/${chunk.totalChunks}...\n`,
+            timestamp: new Date().toISOString(),
+            streaming: true
+          }]);
+
+          // Prepare request body
+          const requestBody = JSON.stringify({
+            messages,
+            stream: true
+          });
+
+          addStatusLog(`Analyzing chunk ${chunk.chunkIndex}/${chunk.totalChunks} from ${chunk.filename}...`);
+          
+          const response = await fetch(apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: requestBody
+          });
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+
+          // Handle streaming response for this chunk
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let currentChunkResponse = '';
+
+          while (true) {
+            const { value, done } = await reader.read();
+
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const content = line.substring(6);
+                if (content.includes('[DONE]')) continue;
+
+                try {
+                  const jsonData = JSON.parse(content);
+                  if (jsonData.choices?.[0]?.delta?.content) {
+                    const newContent = jsonData.choices[0].delta.content;
+                    currentChunkResponse += newContent;
+                    combinedResponse = currentChunkResponse;
+                    
+                    // Update the streaming message
+                    setChatHistory(prev => {
+                      const updated = [...prev];
+                      const lastIndex = updated.length - 1;
+                      if (lastIndex >= 0) {
+                        updated[lastIndex] = {
+                          ...updated[lastIndex],
+                          content: combinedResponse,
+                          streaming: true
+                        };
+                      }
+                      return updated;
+                    });
                   }
-                  
-                  // Update the streamed response and chat history
-                  currentResponse += delta.content;
-                  setStreamedResponse(currentResponse);
-                  
-                  // Update the streaming message in chat history
-                  setChatHistory(prev => {
-                    const updated = [...prev];
-                    const lastIndex = updated.length - 1;
-                    if (lastIndex >= 0 && updated[lastIndex].role === 'assistant') {
-                      updated[lastIndex] = {
-                        ...updated[lastIndex],
-                        content: currentResponse,
-                        streaming: true
-                      };
-                    }
-                    return updated;
-                  });
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e);
                 }
               }
-              // Handle Ollama format
-              else if (apiProvider === 'OLLAMA' && jsonData.message && jsonData.message.content) {
-                // If this is the first chunk, log it
-                if (isFirst) {
-                  addStatusLog('Started receiving streaming response');
-                  isFirst = false;
-                }
-                
-                // Update the streamed response and chat history
-                currentResponse += jsonData.message.content;
-                setStreamedResponse(currentResponse);
-                
-                // Update the streaming message in chat history
-                setChatHistory(prev => {
-                  const updated = [...prev];
-                  const lastIndex = updated.length - 1;
-                  if (lastIndex >= 0 && updated[lastIndex].role === 'assistant') {
-                    updated[lastIndex] = {
-                      ...updated[lastIndex],
-                      content: currentResponse,
-                      streaming: true
-                    };
-                  }
-                  return updated;
-                });
-              }
-            } catch (e) {
-              console.error('Error parsing SSE data:', e, line);
             }
           }
         }
+
+        // Update final response in chat history
+        setChatHistory(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (lastIndex >= 0) {
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              content: combinedResponse,
+              streaming: false
+            };
+          }
+          return updated;
+        });
+
+        addStatusLog('Completed analysis of all chunks');
       }
     } catch (error) {
-      console.error('Error analyzing query:', error);
-      toast.error('Error analyzing query: ' + error.message);
-      addStatusLog('Error analyzing query: ' + error.message, true);
-      setLoading(false);
-      setIsStreaming(false);
+      console.error('Error in handleQuerySubmit:', error);
+      addStatusLog(`Error during analysis: ${error.message}`, true);
+      toast.error("Error during analysis");
       
-      // Add error message to chat history
       setChatHistory(prev => {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
-        
-        // If there's a placeholder assistant message, update it with the error
-        if (lastIndex >= 0 && updated[lastIndex].role === 'assistant' && updated[lastIndex].streaming) {
+        if (lastIndex >= 0 && updated[lastIndex].streaming) {
           updated[lastIndex] = {
             ...updated[lastIndex],
             content: `Error: ${error.message}`,
@@ -525,8 +505,6 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
           };
           return updated;
         }
-        
-        // Otherwise add a new error message
         return [...prev, {
           role: 'assistant',
           content: `Error: ${error.message}`,
@@ -535,6 +513,9 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
           isError: true
         }];
       });
+    } finally {
+      setLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -555,100 +536,118 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
 
   // Main component UI
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          
-        </h2>
-        <div className="flex gap-3 self-end sm:self-auto">
-          <Button 
-            variant="primary" 
-            onClick={() => setShowSettings(!showSettings)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
-          >
-            AI Settings
-          </Button>
-          {chatHistory.length > 0 && (
+    <div className="flex flex-col gap-4 p-4">
+      {/* Add LogSizeManager at the top */}
+      <LogSizeManager 
+        logContent={combinedLogContent}
+        onContextSizeChange={handleContextSizeChange}
+      />
+      
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            
+          </h2>
+          <div className="flex gap-3 self-end sm:self-auto">
             <Button 
-              variant="outline" 
-              onClick={clearChatHistory}
-              className="text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+              variant="primary" 
+              onClick={() => setShowSettings(!showSettings)}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
             >
-              Clear History
+              AI Settings
             </Button>
-          )}
+            {chatHistory.length > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={clearChatHistory}
+                className="text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                Clear History
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-      
-      {/* Demo mode notice */}
-      {demoMode && <DemoNotice />}
-      
-      {/* API Settings */}
-      {showSettings && (
-        <ApiSettings
-          apiProvider={apiProvider}
-          setApiProvider={setApiProvider}
-          apiEndpoint={apiEndpoint}
-          setApiEndpoint={setApiEndpoint}
-          modelName={modelName}
-          setModelName={setModelName}
-          apiAvailable={apiAvailable}
-          demoMode={demoMode}
-          toggleDemoMode={toggleDemoMode}
-          checkApiConnection={checkApiConnection}
-        />
-      )}
-      
-      {/* API Connection Warning */}
-      {apiAvailable === false && !demoMode && (
-        <ApiWarning
-          checkApiConnection={checkApiConnection}
-          toggleDemoMode={toggleDemoMode}
-        />
-      )}
-      
-      {/* Empty log files warning */}
-      {!logFiles || logFiles.length === 0 && !demoMode ? (
-        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
-          <div className="flex items-start">
-            <div>
-              <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
-                Log File Required
-              </h3>
-              <div className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                <p>Please upload log files to use the LLM analysis feature.</p>
+        
+        {/* Demo mode notice */}
+        {demoMode && <DemoNotice />}
+        
+        {/* API Settings */}
+        {showSettings && (
+          <ApiSettings
+            apiProvider={apiProvider}
+            setApiProvider={setApiProvider}
+            apiEndpoint={apiEndpoint}
+            setApiEndpoint={setApiEndpoint}
+            modelName={modelName}
+            setModelName={setModelName}
+            apiAvailable={apiAvailable}
+            demoMode={demoMode}
+            toggleDemoMode={toggleDemoMode}
+            checkApiConnection={checkApiConnection}
+          />
+        )}
+        
+        {/* API Connection Warning */}
+        {apiAvailable === false && !demoMode && (
+          <ApiWarning
+            checkApiConnection={checkApiConnection}
+            toggleDemoMode={toggleDemoMode}
+          />
+        )}
+        
+        {/* Empty log files warning */}
+        {!logFiles || logFiles.length === 0 && !demoMode ? (
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
+            <div className="flex items-start">
+              <div>
+                <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                  Log File Required
+                </h3>
+                <div className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                  <p>Please upload log files to use the LLM analysis feature.</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : null}
-      
-      {/* Chat Container */}
-      <ChatContainer
-        chatHistory={chatHistory}
-        query={query}
-        setQuery={setQuery}
-        handleQuerySubmit={handleQuerySubmit}
-        clearResponse={clearResponse}
-        loading={loading}
-        isStreaming={isStreaming}
-        stopStreaming={handleStopStreaming}
-        demoMode={demoMode}
-      />
-      
-      {/* Status Log */}
-      <StatusLog statusLog={statusLog} />
-      
-      {logDictionary && (
-        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700 flex items-center">
-          <div className="flex-shrink-0 mr-2">
-            <Server className="h-5 w-5 text-green-500" />
+        ) : null}
+        
+        {/* Chat Container */}
+        <ChatContainer
+          chatHistory={chatHistory}
+          query={query}
+          setQuery={setQuery}
+          handleQuerySubmit={handleQuerySubmit}
+          clearResponse={clearResponse}
+          loading={loading}
+          isStreaming={isStreaming}
+          stopStreaming={handleStopStreaming}
+          demoMode={demoMode}
+        />
+        
+        {/* Status Log */}
+        <StatusLog statusLog={statusLog} />
+        
+        {logDictionary && (
+          <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700 flex items-center">
+            <div className="flex-shrink-0 mr-2">
+              <Server className="h-5 w-5 text-green-500" />
+            </div>
+            <p className="text-xs text-green-800 dark:text-green-300">
+              Using log dictionary with {logDictionary.length} patterns to enhance AI analysis
+            </p>
           </div>
-          <p className="text-xs text-green-800 dark:text-green-300">
-            Using log dictionary with {logDictionary.length} patterns to enhance AI analysis
-          </p>
-        </div>
-      )}
+        )}
+
+        {chunkMetadata && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">Log Analysis Summary</h3>
+            <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+              <p>Found {chunkMetadata.totalErrors} errors and {chunkMetadata.totalWarnings} warnings</p>
+              <p>Split into {chunkMetadata.totalChunks} chunks for analysis</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
