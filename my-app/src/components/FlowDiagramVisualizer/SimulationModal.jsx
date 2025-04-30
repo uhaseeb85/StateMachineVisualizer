@@ -356,75 +356,65 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     }
 
     // Update current step in path to show success/failure
-    setSimulationPath((prev) =>
-      prev.map((item) =>
-        item.step.id === currentStep.id
-          ? { ...item, status: type }
-          : item
-      )
-    );
+    const updatedPath = [...simulationPath];
+    const currentStepIndex = updatedPath.findIndex(item => item.step.id === currentStep.id);
+    if (currentStepIndex !== -1) {
+      updatedPath[currentStepIndex] = {
+        ...updatedPath[currentStepIndex],
+        status: type
+      };
+    }
 
     const nextStep = steps.find((s) => s.id === targetStepId);
-    if (nextStep) {
-      // Find all sub-steps associated with the next step
-      const subSteps = steps.filter(s => s.parentId === nextStep.id);
+    if (!nextStep) {
+      toast.error('Target step not found');
+      return;
+    }
+    
+    // If the next step is a sub-step, ensure its parent is in the path
+    if (nextStep.parentId) {
+      const parentStep = steps.find(s => s.id === nextStep.parentId);
+      const parentInPath = updatedPath.some(item => item.step.id === nextStep.parentId);
       
-      setCurrentStep(nextStep);
-      setSimulationPath((prev) => {
-        // Add the next step
-        let newPath = [...prev, { step: nextStep, status: 'current' }];
-        
-        // Add any sub-steps if they exist
-        if (subSteps.length > 0) {
-          subSteps.forEach(subStep => {
-            newPath.push({ step: subStep, status: 'current' });
-          });
-        }
-        
-        return newPath;
-      });
-
-      // Check if the next step or any of its sub-steps have outgoing connections
-      const hasOutgoingConnections = connections.some(
-        conn => conn.fromStepId === nextStep.id || 
-                subSteps.some(sub => conn.fromStepId === sub.id)
-      );
-
-      // If no outgoing connections, mark as complete and add END element
-      if (!hasOutgoingConnections) {
-        setCurrentStep(null);
-        setIsComplete(true);
-        setNextSteps({ success: [], failure: [] });
-        setSimulationPath(prev => [
-          ...prev,
-          { 
-            step: { 
-              id: 'end', 
-              name: 'END',
-              description: 'Simulation complete'
-            }, 
-            status: 'end' 
-          }
-        ]);
-      } else {
-        // Update preview of next steps
-        updateNextSteps(nextStep);
+      // If parent exists but is not in the path, add it first
+      if (parentStep && !parentInPath) {
+        updatedPath.push({
+          step: parentStep,
+          status: 'success' // Parent is implicitly successful if we're navigating to its child
+        });
       }
-    } else {
+    }
+    
+    // Add the next step to the path
+    updatedPath.push({ step: nextStep, status: 'current' });
+
+    // Check if the next step has any outgoing connections
+    const hasOutgoingConnections = connections.some(
+      conn => conn.fromStepId === nextStep.id
+    );
+
+    if (!hasOutgoingConnections) {
+      // If no outgoing connections, mark as complete
+      updatedPath.push({ 
+        step: { 
+          id: 'end', 
+          name: 'END',
+          description: 'Simulation complete'
+        }, 
+        status: 'end' 
+      });
+      
+      setSimulationPath(updatedPath);
       setCurrentStep(null);
       setIsComplete(true);
       setNextSteps({ success: [], failure: [] });
-      setSimulationPath(prev => [
-        ...prev,
-        { 
-          step: { 
-            id: 'end', 
-            name: 'END',
-            description: 'Simulation complete'
-          }, 
-          status: 'end' 
-        }
-      ]);
+    } else {
+      // Normal path progression
+      setSimulationPath(updatedPath);
+      setCurrentStep(nextStep);
+      
+      // Update preview of next steps
+      updateNextSteps(nextStep);
     }
   };
 
