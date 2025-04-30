@@ -482,26 +482,28 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       // Show loading toast
       toast.loading('Preparing export...');
 
-      // Store original styles
-      const originalStyles = {
-        height: element.style.height,
-        width: element.style.width,
-        position: element.style.position,
-        overflow: element.style.overflow,
-        maxHeight: element.style.maxHeight,
-        maxWidth: element.style.maxWidth,
-        padding: element.style.padding,
-        background: element.style.background
-      };
+      // Create a clone of the element to avoid modifying the actual DOM
+      const clone = element.cloneNode(true);
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '-9999px';
+      container.appendChild(clone);
+      document.body.appendChild(container);
 
-      // Temporarily modify the container for better capture
-      element.style.height = 'auto';
-      element.style.maxHeight = 'none';
-      element.style.overflow = 'visible';
-      element.style.padding = '50px';
-      element.style.background = '#ffffff';
+      // Prepare the clone for export
+      clone.style.width = 'auto';
+      clone.style.height = 'auto';
+      clone.style.maxHeight = 'none';
+      clone.style.maxWidth = 'none';
+      clone.style.position = 'relative';
+      clone.style.overflow = 'visible';
+      clone.style.padding = '50px';
+      clone.style.background = '#ffffff';
+      clone.style.transform = 'none';
+      clone.style.boxShadow = 'none';
 
-      // If in stair view, adjust the container width to ensure all steps are visible
+      // If in stair view, ensure all content is visible
       if (stairView) {
         // Find the maximum step level to calculate required width
         let maxStepLevel = 0;
@@ -511,18 +513,18 @@ const SimulationModal = ({ steps, connections, onClose }) => {
         });
         
         // Set minimum width to accommodate the most indented step
-        const minWidth = (maxStepLevel * 30) + 500; // 500px base width + indentation
-        element.style.minWidth = `${minWidth}px`;
+        const minWidth = (maxStepLevel * 30) + 1000; // Increased base width for larger diagrams
+        clone.style.minWidth = `${minWidth}px`;
         
         // Ensure all step cards are fully visible
-        element.querySelectorAll('.stair-step').forEach(stepEl => {
+        clone.querySelectorAll('.stair-step').forEach(stepEl => {
           const isSubStep = stepEl.classList.contains('sub-step-container');
           stepEl.style.width = isSubStep ? '37.5%' : '50%';
           stepEl.style.marginLeft = stepEl.style.getPropertyValue('--step-level') * 30 + 'px';
         });
         
         // Ensure all arrows are visible
-        element.querySelectorAll('.stair-arrow').forEach(arrowEl => {
+        clone.querySelectorAll('.stair-arrow').forEach(arrowEl => {
           arrowEl.style.width = '50%';
           arrowEl.style.marginLeft = arrowEl.style.getPropertyValue('--step-level') * 30 + 'px';
         });
@@ -538,57 +540,44 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       `;
       document.head.appendChild(animationStyles);
 
-      // Set up html2canvas options
+      // Remove dark mode classes in clone
+      clone.querySelectorAll('[class*="dark:"]').forEach(el => {
+        el.className = el.className.split(' ').filter(c => !c.startsWith('dark:')).join(' ');
+      });
+
+      // Make all SVGs visible
+      clone.querySelectorAll('svg').forEach(svg => {
+        svg.style.overflow = 'visible';
+        svg.style.visibility = 'visible';
+      });
+
+      // Make all step cards visible
+      clone.querySelectorAll('.step-card').forEach(card => {
+        card.style.opacity = '1';
+        card.style.visibility = 'visible';
+        card.style.transform = 'none';
+        card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+      });
+
+      // Set up html2canvas options with bigger canvas dimensions
       const options = {
         backgroundColor: '#ffffff',
         scale: 2, // Higher resolution
         useCORS: true,
         allowTaint: true,
         logging: false,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: document.documentElement.offsetWidth * 2,
-        windowHeight: document.documentElement.offsetHeight * 2,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.querySelector('.simulation-content');
-          
-          // Remove dark mode classes in cloned element
-          clonedElement.querySelectorAll('[class*="dark:"]').forEach(el => {
-            el.className = el.className.split(' ').filter(c => !c.startsWith('dark:')).join(' ');
-          });
-
-          // Make all SVGs visible
-          clonedElement.querySelectorAll('svg').forEach(svg => {
-            svg.style.overflow = 'visible';
-            svg.style.visibility = 'visible';
-          });
-
-          // Make all step cards visible
-          clonedElement.querySelectorAll('.step-card').forEach(card => {
-            card.style.opacity = '1';
-            card.style.visibility = 'visible';
-            card.style.transform = 'none';
-            card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-          });
-        }
+        width: clone.scrollWidth + 100, // Add extra width padding
+        height: clone.scrollHeight + 100, // Add extra height padding
+        windowWidth: clone.scrollWidth + 100,
+        windowHeight: clone.scrollHeight + 100,
       };
 
       // Create canvas and download
-      const canvas = await html2canvas(element, options);
+      const canvas = await html2canvas(clone, options);
       
-      // Restore original styles
-      Object.assign(element.style, originalStyles);
-      
-      // Remove temporary animation styles
+      // Clean up the temporary DOM elements
+      document.body.removeChild(container);
       document.head.removeChild(animationStyles);
-      
-      // If in stair view, restore original styles for step elements
-      if (stairView) {
-        element.querySelectorAll('.stair-step, .stair-arrow').forEach(el => {
-          el.style.width = '';
-          el.style.marginLeft = '';
-        });
-      }
 
       // Create and trigger download
       const link = document.createElement('a');
