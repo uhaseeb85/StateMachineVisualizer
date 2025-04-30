@@ -176,9 +176,16 @@ const StepNode = ({ data, isConnectable }) => {
         />
         
         {/* Node content container */}
-        <div className="p-2 flex-1 flex flex-col">
+        <div className="p-3 flex-1 flex flex-col">
           {/* Node label (step name) */}
-          <div className="font-medium text-center mb-1">{label}</div>
+          <div className="font-medium text-center mb-1 overflow-hidden" style={{ 
+            wordWrap: 'break-word', 
+            hyphens: 'auto',
+            maxHeight: '60px',  // Allow for more vertical space
+            overflowY: 'auto'   // Add scrolling for very long names
+          }}>
+            {label}
+          </div>
           
           {/* Image display section */}
           {hasImages && (
@@ -188,7 +195,7 @@ const StepNode = ({ data, isConnectable }) => {
                 src={images[currentImageIndex]} 
                 alt={currentCaption || `${label} - Screenshot ${currentImageIndex + 1}`} 
                 className="w-full h-full object-cover cursor-pointer"
-                style={{ maxHeight: '100px' }}
+                style={{ maxHeight: '120px' }}
                 onClick={openZoomModal}
               />
               

@@ -366,15 +366,28 @@ const SimulationModal = ({ steps, connections, onClose }) => {
 
     const nextStep = steps.find((s) => s.id === targetStepId);
     if (nextStep) {
+      // Find all sub-steps associated with the next step
+      const subSteps = steps.filter(s => s.parentId === nextStep.id);
+      
       setCurrentStep(nextStep);
-      setSimulationPath((prev) => [
-        ...prev,
-        { step: nextStep, status: 'current' }
-      ]);
+      setSimulationPath((prev) => {
+        // Add the next step
+        let newPath = [...prev, { step: nextStep, status: 'current' }];
+        
+        // Add any sub-steps if they exist
+        if (subSteps.length > 0) {
+          subSteps.forEach(subStep => {
+            newPath.push({ step: subStep, status: 'current' });
+          });
+        }
+        
+        return newPath;
+      });
 
-      // Check if the next step has any outgoing connections
+      // Check if the next step or any of its sub-steps have outgoing connections
       const hasOutgoingConnections = connections.some(
-        conn => conn.fromStepId === nextStep.id
+        conn => conn.fromStepId === nextStep.id || 
+                subSteps.some(sub => conn.fromStepId === sub.id)
       );
 
       // If no outgoing connections, mark as complete and add END element
