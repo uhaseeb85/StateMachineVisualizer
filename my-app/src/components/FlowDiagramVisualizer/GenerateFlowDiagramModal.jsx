@@ -297,17 +297,18 @@ const FlowDiagramContent = ({
     
     // First fit the view properly
     fitView({
-      padding: 0.2,
+      padding: 0.5, // Increased padding for better visibility
       includeHiddenNodes: false,
-      duration: 800
+      duration: 1000
     });
     
     // Create a function to perform the actual export after view is fitted
     const performExport = () => {
       // Get the react-flow container
       const reactFlowContainer = document.querySelector('.react-flow');
+      const reactFlowInstance = document.querySelector('.react-flow__renderer');
       
-      if (!reactFlowContainer) {
+      if (!reactFlowContainer || !reactFlowInstance) {
         console.error('React flow container not found');
         setIsExporting(false);
         return;
@@ -321,98 +322,146 @@ const FlowDiagramContent = ({
         ...reactFlowContainer.querySelectorAll('.export-button-container')
       ];
       
+      // Store original styles
+      const originalStyles = {};
+      
+      // Store original container styles
+      originalStyles.container = {
+        width: reactFlowContainer.style.width,
+        height: reactFlowContainer.style.height,
+        overflow: reactFlowContainer.style.overflow,
+        position: reactFlowContainer.style.position
+      };
+      
+      // Store original instance styles
+      originalStyles.instance = {
+        width: reactFlowInstance.style.width,
+        height: reactFlowInstance.style.height,
+        transform: reactFlowInstance.style.transform
+      };
+      
       // Store original visibility
-      const originalVisibility = elementsToHide.map(el => el.style.display);
+      originalStyles.visibility = elementsToHide.map(el => el.style.display);
+      
+      // Store original viewport
+      const currentViewport = getViewport();
       
       // Hide elements
       elementsToHide.forEach(el => {
         el.style.display = 'none';
       });
-
-      // Get the current viewport transform and save it
-      const currentViewport = getViewport();
       
       try {
-        // Calculate the rect that encompasses all nodes
+        // Calculate the rect that encompasses all nodes with extra padding
         const nodesBounds = getRectOfNodes(nodes);
+        const padding = 100; // Increased padding
         
-        // Add padding to ensure all edges are visible
-        const padding = 50;
+        // Apply padding to bounds
         nodesBounds.x -= padding;
         nodesBounds.y -= padding;
         nodesBounds.width += padding * 2;
         nodesBounds.height += padding * 2;
         
+        // Make sure container is large enough
+        reactFlowContainer.style.overflow = 'visible';
+        
+        // Calculate dimensions that will fit all nodes
+        const exportWidth = Math.max(reactFlowContainer.offsetWidth, nodesBounds.width + 200);
+        const exportHeight = Math.max(reactFlowContainer.offsetHeight, nodesBounds.height + 200);
+        
+        // Set temporary styles for export
+        reactFlowContainer.style.width = `${exportWidth}px`;
+        reactFlowContainer.style.height = `${exportHeight}px`;
+        
         // Calculate the transform needed to fit all content
-        const viewport = getViewport();
         const transform = getTransformForBounds(
           nodesBounds,
-          reactFlowContainer.offsetWidth,
-          reactFlowContainer.offsetHeight,
-          0.9, // Use 0.9 instead of 1 to add some margin
-          viewport.zoom // Keep the current zoom level
+          exportWidth,
+          exportHeight,
+          0.85, // More margin
+          Math.min(1, currentViewport.zoom) // Ensure we don't zoom in too much
         );
         
-        // Temporarily set the transform to capture all nodes
+        // Set viewport to ensure all nodes are visible
         setViewport({ x: transform[0], y: transform[1], zoom: transform[2] });
         
-        // Use the html-to-image library with the right options for this specific case
+        // Add a delay to ensure the viewport change has been applied
         setTimeout(() => {
-          toPng(reactFlowContainer, {
+          const exportOptions = {
             backgroundColor: '#ffffff',
             quality: 1,
             pixelRatio: 2,
             cacheBust: true,
             style: {
-              overflow: 'visible' // Ensure nothing is cut off
+              overflow: 'visible'
             },
-          })
-          .then(dataUrl => {
-            // Restore original viewport
-            setViewport(currentViewport);
-            
-            // Restore visibility of elements
-            elementsToHide.forEach((el, i) => {
-              el.style.display = originalVisibility[i] || '';
+          };
+          
+          // Try PNG export first
+          toPng(reactFlowContainer, exportOptions)
+            .then(dataUrl => {
+              // Restore original styles and viewport
+              restoreOriginalState();
+              
+              // Download the image
+              downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+              setIsExporting(false);
+            })
+            .catch(error => {
+              console.error('PNG export failed, trying SVG:', error);
+              
+              // Fallback to SVG export
+              toSvg(reactFlowContainer, exportOptions)
+                .then(svgDataUrl => {
+                  // Restore original styles and viewport
+                  restoreOriginalState();
+                  
+                  // Download the SVG
+                  downloadImage(svgDataUrl, `flow-diagram-${rootElement?.name || 'export'}.svg`);
+                  setIsExporting(false);
+                })
+                .catch(svgError => {
+                  console.error('SVG export also failed:', svgError);
+                  restoreOriginalState();
+                  setIsExporting(false);
+                  window.alert('Failed to export the diagram. Please try again with fewer nodes or a simpler layout.');
+                });
             });
-            
-            // Download the image
-            downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
-            setIsExporting(false);
-          })
-          .catch(error => {
-            console.error('Export failed:', error);
-            
-            // Restore original viewport
-            setViewport(currentViewport);
-            
-            // Restore visibility even on error
-            elementsToHide.forEach((el, i) => {
-              el.style.display = originalVisibility[i] || '';
-            });
-            
-            setIsExporting(false);
-            window.alert('Failed to export the diagram. Please try again.');
-          });
-        }, 100); // Small delay to apply transform
+        }, 500); // Increased delay for transform to apply
       } catch (error) {
         console.error('Error during export preparation:', error);
-        
-        // Restore original viewport
-        setViewport(currentViewport);
-        
-        // Restore visibility even on error
+        restoreOriginalState();
+        setIsExporting(false);
+        window.alert('Failed to prepare the diagram for export. Please try again.');
+      }
+      
+      // Function to restore original state
+      function restoreOriginalState() {
+        // Restore visibility
         elementsToHide.forEach((el, i) => {
-          el.style.display = originalVisibility[i] || '';
+          el.style.display = originalStyles.visibility[i] || '';
         });
         
-        setIsExporting(false);
-        window.alert('Failed to export the diagram. Please try again.');
+        // Restore container styles
+        reactFlowContainer.style.width = originalStyles.container.width;
+        reactFlowContainer.style.height = originalStyles.container.height;
+        reactFlowContainer.style.overflow = originalStyles.container.overflow;
+        reactFlowContainer.style.position = originalStyles.container.position;
+        
+        // Restore instance styles
+        if (reactFlowInstance) {
+          reactFlowInstance.style.width = originalStyles.instance.width;
+          reactFlowInstance.style.height = originalStyles.instance.height;
+          reactFlowInstance.style.transform = originalStyles.instance.transform;
+        }
+        
+        // Restore viewport
+        setViewport(currentViewport);
       }
     };
     
-    // Wait for fitView to complete
-    setTimeout(performExport, 1000); // Increased timeout to ensure fit is complete
+    // Wait longer for fitView to complete
+    setTimeout(performExport, 1200);
   }, [getNodes, rootElement?.name, fitView, getViewport, setViewport]);
 
   // Show loading indicator while generating the diagram
