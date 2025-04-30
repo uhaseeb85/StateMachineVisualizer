@@ -130,21 +130,6 @@ function downloadImage(dataUrl, name) {
   a.click();
 }
 
-/**
- * Helper function to download HTML content
- * @param {string} htmlContent - The HTML content to download
- * @param {string} name - The desired filename for the download
- */
-function downloadHTML(htmlContent, name) {
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.setAttribute('download', name);
-  a.setAttribute('href', url);
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // Define image dimensions and padding for export
 const imageWidth = 1920;
 const imageHeight = 1080;
@@ -299,7 +284,7 @@ const FlowDiagramContent = ({
   }, [rootElement, steps, connections, setNodes, setEdges]);
 
   /**
-   * Handles exporting the current flow diagram as an HTML file
+   * Handles exporting the current flow diagram as a PNG image
    */
   const onExport = useCallback(() => {
     const nodes = getNodes();
@@ -314,7 +299,7 @@ const FlowDiagramContent = ({
     fitView({
       padding: 0.2,
       includeHiddenNodes: false,
-      duration: 500
+      duration: 800
     });
     
     // Create a function to perform the actual export after view is fitted
@@ -343,90 +328,78 @@ const FlowDiagramContent = ({
       elementsToHide.forEach(el => {
         el.style.display = 'none';
       });
+
+      // Get the current viewport transform and save it
+      const currentViewport = getViewport();
       
       try {
-        // Use toSvg to get the diagram as SVG
-        toSvg(reactFlowContainer, {
-          backgroundColor: '#ffffff',
-          width: reactFlowContainer.offsetWidth,
-          height: reactFlowContainer.offsetHeight,
-          style: {
-            width: `${reactFlowContainer.offsetWidth}px`,
-            height: `${reactFlowContainer.offsetHeight}px`,
-          },
-          pixelRatio: 2,
-          quality: 1,
-          cacheBust: true,
-        })
-        .then(svgDataUrl => {
-          // Restore visibility of elements
-          elementsToHide.forEach((el, i) => {
-            el.style.display = originalVisibility[i] || '';
+        // Calculate the rect that encompasses all nodes
+        const nodesBounds = getRectOfNodes(nodes);
+        
+        // Add padding to ensure all edges are visible
+        const padding = 50;
+        nodesBounds.x -= padding;
+        nodesBounds.y -= padding;
+        nodesBounds.width += padding * 2;
+        nodesBounds.height += padding * 2;
+        
+        // Calculate the transform needed to fit all content
+        const viewport = getViewport();
+        const transform = getTransformForBounds(
+          nodesBounds,
+          reactFlowContainer.offsetWidth,
+          reactFlowContainer.offsetHeight,
+          0.9, // Use 0.9 instead of 1 to add some margin
+          viewport.zoom // Keep the current zoom level
+        );
+        
+        // Temporarily set the transform to capture all nodes
+        setViewport({ x: transform[0], y: transform[1], zoom: transform[2] });
+        
+        // Use the html-to-image library with the right options for this specific case
+        setTimeout(() => {
+          toPng(reactFlowContainer, {
+            backgroundColor: '#ffffff',
+            quality: 1,
+            pixelRatio: 2,
+            cacheBust: true,
+            style: {
+              overflow: 'visible' // Ensure nothing is cut off
+            },
+          })
+          .then(dataUrl => {
+            // Restore original viewport
+            setViewport(currentViewport);
+            
+            // Restore visibility of elements
+            elementsToHide.forEach((el, i) => {
+              el.style.display = originalVisibility[i] || '';
+            });
+            
+            // Download the image
+            downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+            setIsExporting(false);
+          })
+          .catch(error => {
+            console.error('Export failed:', error);
+            
+            // Restore original viewport
+            setViewport(currentViewport);
+            
+            // Restore visibility even on error
+            elementsToHide.forEach((el, i) => {
+              el.style.display = originalVisibility[i] || '';
+            });
+            
+            setIsExporting(false);
+            window.alert('Failed to export the diagram. Please try again.');
           });
-          
-          // Create HTML document that includes the SVG
-          const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flow Diagram: ${rootElement?.name || 'Export'}</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #f9fafb;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    }
-    .diagram-container {
-      max-width: 100%;
-      overflow: auto;
-      background-color: white;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      padding: 20px;
-      border-radius: 8px;
-    }
-    h1 {
-      color: #1f2937;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    img {
-      max-width: none; /* Allow the image to display at full size */
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <div class="diagram-container">
-    <h1>Flow Diagram: ${rootElement?.name || 'Export'}</h1>
-    <img src="${svgDataUrl}" alt="Flow Diagram" />
-  </div>
-</body>
-</html>
-          `;
-          
-          // Download the HTML file
-          downloadHTML(htmlContent, `flow-diagram-${rootElement?.name || 'export'}.html`);
-          setIsExporting(false);
-        })
-        .catch(error => {
-          console.error('Export failed:', error);
-          
-          // Restore visibility even on error
-          elementsToHide.forEach((el, i) => {
-            el.style.display = originalVisibility[i] || '';
-          });
-          
-          setIsExporting(false);
-          window.alert('Failed to export the diagram. Please try again.');
-        });
+        }, 100); // Small delay to apply transform
       } catch (error) {
         console.error('Error during export preparation:', error);
+        
+        // Restore original viewport
+        setViewport(currentViewport);
         
         // Restore visibility even on error
         elementsToHide.forEach((el, i) => {
@@ -439,8 +412,8 @@ const FlowDiagramContent = ({
     };
     
     // Wait for fitView to complete
-    setTimeout(performExport, 600);
-  }, [getNodes, rootElement?.name, fitView]);
+    setTimeout(performExport, 1000); // Increased timeout to ensure fit is complete
+  }, [getNodes, rootElement?.name, fitView, getViewport, setViewport]);
 
   // Show loading indicator while generating the diagram
   if (isGenerating) {
@@ -491,7 +464,7 @@ const FlowDiagramContent = ({
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                Export as HTML
+                Export PNG
               </>
             )}
           </Button>
