@@ -684,6 +684,28 @@ const StepPanel = ({
     });
   };
 
+  // Add a new function to move a step to root level
+  const moveToRootLevel = (e, stepId) => {
+    e.stopPropagation();
+    
+    // Get the step
+    const step = steps.find(s => s.id === stepId);
+    if (!step || !step.parentId) return; // Exit if step doesn't exist or is already at root level
+    
+    const originalParentId = step.parentId;
+    
+    // Update the step to have no parent
+    handleUpdateStep(stepId, { parentId: null });
+    
+    // Add to move history for undo
+    addToMoveHistory(stepId, originalParentId, null);
+    
+    // Close the actions menu
+    setOpenActionsMenuId(null);
+    
+    toast.success('Moved to root level');
+  };
+
   const renderStep = (step, level = 0) => {
     const childSteps = getChildSteps(step.id);
     const hasChildren = childSteps.length > 0;
@@ -930,10 +952,7 @@ const StepPanel = ({
                       <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
                       <button
                         className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleParentSelection(null);
-                        }}
+                        onClick={(e) => moveToRootLevel(e, step.id)}
                       >
                         <ArrowUpToLine className="h-4 w-4 mr-2" />
                         Move to Root Level
