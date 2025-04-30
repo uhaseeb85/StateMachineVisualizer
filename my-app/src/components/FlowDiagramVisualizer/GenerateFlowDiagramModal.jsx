@@ -32,8 +32,8 @@ import { toPng } from 'html-to-image';
 import { toSvg } from 'html-to-image';
 
 // Define dimensions for nodes in the flow diagram
-const nodeWidth = 180;
-const nodeHeight = 60; // Set a fixed height, removing the need for image accommodation
+const nodeWidth = 405;
+const nodeHeight = 90;
 
 // Initialize the dagre graph for layout calculations
 const dagreGraph = new dagre.graphlib.Graph();
@@ -56,9 +56,9 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
   // Configure graph layout settings
   dagreGraph.setGraph({ 
     rankdir: direction,
-    nodesep: 80, // Increase spacing between nodes horizontally
-    ranksep: 100, // Increase spacing between nodes vertically
-    edgesep: 40, // Increase spacing between edges
+    nodesep: 180, // Increased for wider nodes
+    ranksep: 150, // Keep the same vertical spacing
+    edgesep: 80, // Increased for better edge routing with wider nodes
   });
 
   // Add nodes to the dagre graph with their dimensions
