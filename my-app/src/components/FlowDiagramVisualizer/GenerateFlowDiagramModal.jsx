@@ -130,6 +130,21 @@ function downloadImage(dataUrl, name) {
   a.click();
 }
 
+/**
+ * Helper function to download HTML content
+ * @param {string} htmlContent - The HTML content to download
+ * @param {string} name - The desired filename for the download
+ */
+function downloadHTML(htmlContent, name) {
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('download', name);
+  a.setAttribute('href', url);
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Define image dimensions and padding for export
 const imageWidth = 1920;
 const imageHeight = 1080;
@@ -284,7 +299,7 @@ const FlowDiagramContent = ({
   }, [rootElement, steps, connections, setNodes, setEdges]);
 
   /**
-   * Handles exporting the current flow diagram as a PNG image
+   * Handles exporting the current flow diagram as an HTML file
    */
   const onExport = useCallback(() => {
     const nodes = getNodes();
@@ -330,8 +345,8 @@ const FlowDiagramContent = ({
       });
       
       try {
-        // Use the html-to-image library with the right options for this specific case
-        toPng(reactFlowContainer, {
+        // Use toSvg to get the diagram as SVG
+        toSvg(reactFlowContainer, {
           backgroundColor: '#ffffff',
           width: reactFlowContainer.offsetWidth,
           height: reactFlowContainer.offsetHeight,
@@ -343,14 +358,60 @@ const FlowDiagramContent = ({
           quality: 1,
           cacheBust: true,
         })
-        .then(dataUrl => {
+        .then(svgDataUrl => {
           // Restore visibility of elements
           elementsToHide.forEach((el, i) => {
             el.style.display = originalVisibility[i] || '';
           });
           
-          // Download the image
-          downloadImage(dataUrl, `flow-diagram-${rootElement?.name || 'export'}.png`);
+          // Create HTML document that includes the SVG
+          const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Diagram: ${rootElement?.name || 'Export'}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f9fafb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .diagram-container {
+      max-width: 100%;
+      overflow: auto;
+      background-color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      padding: 20px;
+      border-radius: 8px;
+    }
+    h1 {
+      color: #1f2937;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    img {
+      max-width: none; /* Allow the image to display at full size */
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="diagram-container">
+    <h1>Flow Diagram: ${rootElement?.name || 'Export'}</h1>
+    <img src="${svgDataUrl}" alt="Flow Diagram" />
+  </div>
+</body>
+</html>
+          `;
+          
+          // Download the HTML file
+          downloadHTML(htmlContent, `flow-diagram-${rootElement?.name || 'export'}.html`);
           setIsExporting(false);
         })
         .catch(error => {
@@ -430,7 +491,7 @@ const FlowDiagramContent = ({
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                Export PNG
+                Export as HTML
               </>
             )}
           </Button>
