@@ -133,6 +133,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             onRemoveStep={removeStep}
             onAddConnection={addConnection}
             onRemoveConnection={removeConnection}
+            onSave={saveFlow}
           />
         </div>
 

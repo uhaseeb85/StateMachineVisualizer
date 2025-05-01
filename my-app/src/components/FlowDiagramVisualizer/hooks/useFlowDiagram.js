@@ -71,11 +71,23 @@ const useFlowDiagram = (storageKey) => {
       position: stepData.position || { x: 0, y: 0 },
     };
     console.log('Created step with ID:', newStep.id);
+    
+    let newStepId;
     setSteps((prev) => {
       const newSteps = [...prev, newStep];
       console.log('Updated steps array:', newSteps);
+      
+      // Save to localStorage after adding a step
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ steps: newSteps, connections }));
+        console.log('Successfully saved to localStorage after adding step');
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+      
       return newSteps;
     });
+    
     return newStep.id;
   };
 
@@ -126,12 +138,33 @@ const useFlowDiagram = (storageKey) => {
    */
   const removeStep = (id) => {
     console.log('Removing step:', id);
-    setSteps((prev) => prev.filter((step) => step.id !== id));
-    setConnections((prev) =>
-      prev.filter(
+    
+    setSteps((prevSteps) => {
+      const newSteps = prevSteps.filter((step) => step.id !== id);
+      
+      // First update connections (remove any that reference this step)
+      const newConnections = connections.filter(
         (conn) => conn.fromStepId !== id && conn.toStepId !== id
-      )
-    );
+      );
+      
+      // Update connections state in the next tick
+      setTimeout(() => {
+        setConnections(newConnections);
+      }, 0);
+      
+      // Save to localStorage after removing a step and its connections
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ 
+          steps: newSteps, 
+          connections: newConnections 
+        }));
+        console.log('Successfully saved to localStorage after removing step and connections');
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+      
+      return newSteps;
+    });
   };
 
   // Track last connection to prevent duplicates
@@ -200,6 +233,15 @@ const useFlowDiagram = (storageKey) => {
       console.log('Previous connections count:', prev.length);
       const newConnections = [...prev, newConnection];
       console.log('New connections count:', newConnections.length);
+      
+      // Save to localStorage after adding a connection
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ steps, connections: newConnections }));
+        console.log('Successfully saved to localStorage after adding connection');
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+      
       return newConnections;
     });
     
@@ -216,16 +258,26 @@ const useFlowDiagram = (storageKey) => {
    */
   const removeConnection = (fromStepId, toStepId, type) => {
     console.log('Removing connection:', { fromStepId, toStepId, type });
-    setConnections((prev) =>
-      prev.filter(
+    setConnections((prev) => {
+      const newConnections = prev.filter(
         (conn) =>
           !(
             conn.fromStepId === fromStepId &&
             conn.toStepId === toStepId &&
             conn.type === type
           )
-      )
-    );
+      );
+      
+      // Save to localStorage after removing a connection
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ steps, connections: newConnections }));
+        console.log('Successfully saved to localStorage after removing connection');
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+      
+      return newConnections;
+    });
   };
 
   /**

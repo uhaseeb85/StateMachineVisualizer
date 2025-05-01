@@ -27,6 +27,7 @@ import {
   Pencil,
   Check,
   Download,
+  Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,6 +39,7 @@ const StepPanel = ({
   onRemoveStep,
   onAddConnection,
   onRemoveConnection,
+  onSave,
 }) => {
   const [newStepName, setNewStepName] = useState('');
   const [selectedStep, setSelectedStep] = useState(null);
@@ -55,10 +57,12 @@ const StepPanel = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(33); // as percentage
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
   const containerRef = useRef(null);
-  // Add state for undo history
-  const [moveHistory, setMoveHistory] = useState([]);
+  // Replace simple move history with unified history that can track different operations
+  const [operationHistory, setOperationHistory] = useState([]);
   // Add state for parent selection mode
   const [selectingParentFor, setSelectingParentFor] = useState(null);
+  // Add state for clone step mode
+  const [cloningStepId, setCloningStepId] = useState(null);
   const fileInputRef = useRef(null);
   // Add state for editing captions
   const [editingCaptionIndex, setEditingCaptionIndex] = useState(null);
@@ -70,26 +74,75 @@ const StepPanel = ({
   
   // Add a step move to history
   const addToMoveHistory = (stepId, oldParentId, newParentId) => {
-    setMoveHistory(prev => [...prev, { stepId, oldParentId, newParentId, timestamp: Date.now() }]);
+    setOperationHistory(prev => [...prev, { 
+      type: 'move',
+      stepId, 
+      oldParentId, 
+      newParentId, 
+      timestamp: Date.now() 
+    }]);
   };
   
-  // Undo the last step move
-  const undoLastMove = () => {
-    if (moveHistory.length === 0) {
+  // Add a clone operation to history
+  const addToCloneHistory = (clonedStepIds, sourceStepId) => {
+    setOperationHistory(prev => [...prev, {
+      type: 'clone',
+      clonedStepIds, // Array of all new step IDs created in the clone operation
+      sourceStepId,  // Original step that was cloned
+      timestamp: Date.now()
+    }]);
+  };
+  
+  // Undo the last operation (move or clone)
+  const undoLastOperation = () => {
+    if (operationHistory.length === 0) {
       toast.info('Nothing to undo');
       return;
     }
     
-    const lastMove = moveHistory[moveHistory.length - 1];
-    const { stepId, oldParentId } = lastMove;
+    const lastOperation = operationHistory[operationHistory.length - 1];
     
-    // Restore the step to its previous parent
-    handleUpdateStep(stepId, { parentId: oldParentId });
+    if (lastOperation.type === 'move') {
+      // Handle move undo
+      const { stepId, oldParentId } = lastOperation;
+      
+      // Restore the step to its previous parent
+      handleUpdateStep(stepId, { parentId: oldParentId });
+      
+      toast.success('Move undone');
+    } 
+    else if (lastOperation.type === 'clone') {
+      // Handle clone undo
+      const { clonedStepIds } = lastOperation;
+      
+      // Remove all cloned steps in reverse order (children first, then parents)
+      // This ensures we don't have orphaned steps
+      const sortedIds = [...clonedStepIds].sort((a, b) => {
+        // Get the steps
+        const stepA = steps.find(s => s.id === a);
+        const stepB = steps.find(s => s.id === b);
+        
+        // If a is a child of b, a should be removed first
+        if (stepA && stepA.parentId === b) return -1;
+        // If b is a child of a, b should be removed first
+        if (stepB && stepB.parentId === a) return 1;
+        
+        return 0;
+      });
+      
+      // Remove all the cloned steps
+      sortedIds.forEach(id => {
+        if (selectedStep?.id === id) {
+          setSelectedStep(null);
+        }
+        onRemoveStep(id);
+      });
+      
+      toast.success('Clone operation undone');
+    }
     
-    // Remove the last move from history
-    setMoveHistory(prev => prev.slice(0, prev.length - 1));
-    
-    toast.success('Move undone');
+    // Remove the last operation from history
+    setOperationHistory(prev => prev.slice(0, prev.length - 1));
   };
   
   // Handle mouse down on divider
@@ -706,6 +759,99 @@ const StepPanel = ({
     toast.success('Moved to root level');
   };
 
+  // Start clone step mode
+  const startCloningStep = (stepId) => {
+    setCloningStepId(stepId);
+    toast.info("Select a target step to place the clone under, or click anywhere to make it a root step", {
+      duration: 4000,
+    });
+    // Close the actions menu
+    setOpenActionsMenuId(null);
+  };
+  
+  // Cancel clone mode
+  const cancelCloningStep = () => {
+    setCloningStepId(null);
+  };
+  
+  // Recursive function to clone a step and all its children
+  const cloneStepRecursive = async (sourceStepId, newParentId = null, allClonedIds = []) => {
+    // Find the source step
+    const sourceStep = steps.find(s => s.id === sourceStepId);
+    if (!sourceStep) return { newStepId: null, clonedIds: allClonedIds };
+    
+    // Create a new step with properties from the source step
+    const newStepData = {
+      name: sourceStep.name, // Use original name without adding "(Clone)"
+      description: sourceStep.description || '',
+      expectedResponse: sourceStep.expectedResponse || '',
+      parentId: newParentId,
+      // Copy any other properties except for the id
+      imageUrls: sourceStep.imageUrls ? [...sourceStep.imageUrls] : [],
+      imageCaptions: sourceStep.imageCaptions ? [...sourceStep.imageCaptions] : []
+    };
+    
+    // Add the new step
+    const newStepId = onAddStep(newStepData);
+    
+    // Add this ID to our list of all cloned steps
+    allClonedIds.push(newStepId);
+    
+    // Find children of source step
+    const childSteps = steps.filter(s => s.parentId === sourceStepId);
+    
+    // Recursively clone all child steps (sequentially to avoid race conditions)
+    for (const childStep of childSteps) {
+      await cloneStepRecursive(childStep.id, newStepId, allClonedIds);
+    }
+    
+    return { newStepId, clonedIds: allClonedIds };
+  };
+  
+  // Handle clone target selection
+  const handleCloneTargetSelection = async (targetStepId = null) => {
+    if (!cloningStepId) return;
+    
+    const sourceStepId = cloningStepId;
+    
+    // Don't allow cloning under itself or its descendants
+    if (targetStepId && (targetStepId === sourceStepId || isDescendant(targetStepId, sourceStepId))) {
+      toast.error("Cannot clone a step under itself or its descendants");
+      return;
+    }
+    
+    // Clone the step and all its children
+    const { newStepId, clonedIds } = await cloneStepRecursive(sourceStepId, targetStepId, []);
+    
+    if (newStepId) {
+      // Auto-expand the target parent if one was specified
+      if (targetStepId) {
+        setExpandedSteps(prev => ({
+          ...prev,
+          [targetStepId]: true
+        }));
+      }
+      
+      // Add to clone history for undo
+      addToCloneHistory(clonedIds, sourceStepId);
+      
+      toast.success(targetStepId 
+        ? `Step cloned under "${steps.find(s => s.id === targetStepId)?.name}"` 
+        : 'Step cloned to root level');
+        
+      // Select the newly created step
+      const newStep = steps.find(s => s.id === newStepId);
+      if (newStep) {
+        setSelectedStep(newStep);
+      }
+      
+      // Removed automatic saving - user will save manually
+    }
+    
+    // Exit clone mode
+    setCloningStepId(null);
+  };
+
   const renderStep = (step, level = 0) => {
     const childSteps = getChildSteps(step.id);
     const hasChildren = childSteps.length > 0;
@@ -720,6 +866,11 @@ const StepPanel = ({
     const isParentSelectionMode = selectingParentFor !== null;
     const isParentSelectionSource = selectingParentFor === step.id;
     const isSelectableParent = isParentSelectionMode && !isParentSelectionSource && !isDescendant(step.id, selectingParentFor);
+    
+    // Check if we're in clone mode
+    const isCloneMode = cloningStepId !== null;
+    const isCloneSource = cloningStepId === step.id;
+    const isSelectableCloneTarget = isCloneMode && !isCloneSource && !isDescendant(step.id, cloningStepId);
     
     // Classes for steps in connection mode
     let connectionModeClasses = '';
@@ -749,6 +900,21 @@ const StepPanel = ({
       } else {
         // Unselectable parent (descendant)
         parentSelectionClasses = 'opacity-50';
+      }
+    }
+    
+    // Classes for steps in clone mode
+    let cloneModeClasses = '';
+    if (isCloneMode) {
+      if (isCloneSource) {
+        // Source step styling
+        cloneModeClasses = 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20';
+      } else if (isSelectableCloneTarget) {
+        // Potential target styling
+        cloneModeClasses = 'hover:ring-2 hover:ring-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer';
+      } else {
+        // Unselectable target (descendants of source)
+        cloneModeClasses = 'opacity-50';
       }
     }
 
@@ -803,6 +969,10 @@ const StepPanel = ({
         if (!isParentSelectionSource && isSelectableParent) {
           handleParentSelection(step.id);
         }
+      } else if (cloningStepId) {
+        if (cloningStepId !== step.id) {
+          handleCloneTargetSelection(step.id);
+        }
       } else if (isConnectionMode) {
         handleStepClick(step);
       } else {
@@ -815,9 +985,10 @@ const StepPanel = ({
         <div
           className={`
             group flex items-center gap-2 p-2 rounded-md transition-all
-            ${selectedStep?.id === step.id && !isConnectionMode && !isParentSelectionMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+            ${selectedStep?.id === step.id && !isConnectionMode && !isParentSelectionMode && !isCloneMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
             ${connectionModeClasses}
             ${parentSelectionClasses}
+            ${cloneModeClasses}
             border border-gray-200 dark:border-gray-700 mb-1
           `}
           style={{ marginLeft: `${level * 20}px` }}
@@ -933,6 +1104,18 @@ const StepPanel = ({
                     Edit Name
                   </button>
                   
+                  {/* Clone Step Option */}
+                  <button
+                    className="flex w-full items-center px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startCloningStep(step.id);
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Clone
+                  </button>
+                  
                   {/* Change Parent Option */}
                   <div className="h-px bg-gray-200 dark:bg-gray-700 mx-3 my-1"></div>
                   <button
@@ -1044,6 +1227,12 @@ const StepPanel = ({
     <div 
       ref={containerRef}
       className="flex h-[calc(100vh-16rem)] p-6 bg-gray-50 dark:bg-gray-900 rounded-lg relative"
+      onClick={() => {
+        // When in clone mode, clicking outside steps makes it a root-level clone
+        if (cloningStepId) {
+          handleCloneTargetSelection(null);
+        }
+      }}
     >
       {/* Left Panel - Steps List */}
       <div className="border rounded-xl p-6 bg-background overflow-y-auto" style={{ width: `${leftPanelWidth}%` }}>
@@ -1066,11 +1255,11 @@ const StepPanel = ({
               Add Step
             </Button>
             <Button
-              onClick={undoLastMove}
-              disabled={moveHistory.length === 0}
+              onClick={undoLastOperation}
+              disabled={operationHistory.length === 0}
               variant="outline"
               className="h-10"
-              title="Undo last move"
+              title="Undo last operation"
             >
               <Undo2 className="h-4 w-4" />
             </Button>
@@ -1549,6 +1738,7 @@ StepPanel.propTypes = {
   onRemoveStep: PropTypes.func.isRequired,
   onAddConnection: PropTypes.func.isRequired,
   onRemoveConnection: PropTypes.func.isRequired,
+  onSave: PropTypes.func,
 };
 
 export default StepPanel;
