@@ -155,9 +155,28 @@ const FlowDiagramContent = ({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isGenerating, setIsGenerating] = useState(true);
-  const [isExporting, setIsExporting] = useState(false); // New state for export loading
-  const { getNodes, fitView, setViewport, screenToFlowPosition, getViewport } = useReactFlow(); // Get getNodes from useReactFlow
+  const [isExporting, setIsExporting] = useState(false); // State for export loading
+  const [selectedNode, setSelectedNode] = useState(null); // New state for tracking selected node
+  const { getNodes, fitView, setViewport, screenToFlowPosition, getViewport } = useReactFlow();
   const componentRef = useRef();
+
+  /**
+   * Handles node click events to show description
+   * @param {Object} event - Click event
+   * @param {Object} node - The clicked node data
+   */
+  const onNodeClick = useCallback((event, node) => {
+    // Find the full step data for the clicked node
+    const stepData = steps.find(step => step.id === node.id);
+    setSelectedNode(stepData);
+  }, [steps]);
+
+  /**
+   * Closes the description panel
+   */
+  const closeDescriptionPanel = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
 
   /**
    * Determines the styling for a node based on its type
@@ -226,10 +245,13 @@ const FlowDiagramContent = ({
             data: { 
               label: step.name,
               type,
+              description: step.description || "No description available",
+              stepData: step, // Pass the full step data
             },
             style: {
               width: nodeWidth,
               height: nodeHeight, // Use fixed nodeHeight
+              cursor: 'pointer', // Add pointer cursor to indicate clickability
             },
             position: { x: 0, y: 0 }, // Initial position, will be set by dagre layout
           };
@@ -319,7 +341,8 @@ const FlowDiagramContent = ({
         ...reactFlowContainer.querySelectorAll('.react-flow__controls'),
         ...reactFlowContainer.querySelectorAll('.react-flow__minimap'),
         ...reactFlowContainer.querySelectorAll('.react-flow__attribution'),
-        ...reactFlowContainer.querySelectorAll('.export-button-container')
+        ...reactFlowContainer.querySelectorAll('.export-button-container'),
+        ...reactFlowContainer.querySelectorAll('.description-panel') // Hide description panel in exports
       ];
       
       // Store original styles
@@ -476,13 +499,14 @@ const FlowDiagramContent = ({
 
   // Render the ReactFlow diagram
   return (
-    <div style={{ width: '100%', height: '100%' }} ref={componentRef}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }} ref={componentRef}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
+        onNodeClick={onNodeClick} // Add node click handler
         fitView
         attributionPosition="bottom-right"
       >
@@ -518,6 +542,53 @@ const FlowDiagramContent = ({
             )}
           </Button>
         </div>
+
+        {/* Description Panel */}
+        {selectedNode && (
+          <div className="description-panel absolute top-4 right-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-50 max-w-sm w-80 border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold text-lg">{selectedNode.name}</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={closeDescriptionPanel}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            
+            <div className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              <h4 className="font-semibold mb-1">Description:</h4>
+              <p className="mb-2">{selectedNode.description || "No description available"}</p>
+              
+              {selectedNode.inputs && (
+                <>
+                  <h4 className="font-semibold mb-1 mt-3">Inputs:</h4>
+                  <p>{selectedNode.inputs}</p>
+                </>
+              )}
+              
+              {selectedNode.outputs && (
+                <>
+                  <h4 className="font-semibold mb-1 mt-3">Outputs:</h4>
+                  <p>{selectedNode.outputs}</p>
+                </>
+              )}
+              
+              {selectedNode.metadata && Object.keys(selectedNode.metadata).length > 0 && (
+                <>
+                  <h4 className="font-semibold mb-1 mt-3">Additional Information:</h4>
+                  <ul className="list-disc list-inside">
+                    {Object.entries(selectedNode.metadata).map(([key, value]) => (
+                      <li key={key}><span className="font-medium">{key}:</span> {value}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </ReactFlow>
     </div>
   );
@@ -552,6 +623,9 @@ const GenerateFlowDiagramModal = ({
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Flow Diagram: Starting from {rootElement?.name}
           </h2>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Click on any step to view its details
+          </div>
           <Button 
             variant="ghost" 
             className="h-8 w-8 p-0" 
