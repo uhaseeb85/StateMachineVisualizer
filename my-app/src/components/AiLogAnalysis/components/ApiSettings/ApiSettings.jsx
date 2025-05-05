@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Sparkles } from 'lucide-react';
 import { DEFAULT_ENDPOINTS } from '../../constants/apiConstants';
+import LogSizeManager from '../LogSizeManager';
 
 /**
  * API Settings component for configuring AI connections
@@ -18,7 +19,9 @@ const ApiSettings = ({
   apiAvailable,
   demoMode,
   toggleDemoMode,
-  checkApiConnection
+  checkApiConnection,
+  logContent,
+  onContextSizeChange
 }) => {
   return (
     <div className="p-5 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
@@ -27,26 +30,42 @@ const ApiSettings = ({
       </h3>
 
       <div className="space-y-4">
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center justify-between">
-          <div className="flex items-center">
-            <Sparkles className="w-5 h-5 text-amber-500 mr-2" />
-            <div>
-              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                Demo Mode
-              </h3>
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Simulate AI responses for demonstration purposes
-              </p>
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 p-4">
+            <LogSizeManager 
+              logContent={logContent}
+              onContextSizeChange={onContextSizeChange}
+            />
+          </div>
+          
+          <div className="flex-1 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="flex flex-col h-full justify-center gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Sparkles className="w-5 h-5 text-amber-500 mr-2" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200">
+                      Demo Mode
+                    </h3>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      Simulate AI responses for demonstration purposes
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-2">
+                <Button
+                  onClick={toggleDemoMode}
+                  variant={demoMode ? "default" : "outline"}
+                  size="sm"
+                  className={demoMode ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
+                >
+                  {demoMode ? "Enabled" : "Disabled"}
+                </Button>
+              </div>
             </div>
           </div>
-          <Button
-            onClick={toggleDemoMode}
-            variant={demoMode ? "default" : "outline"}
-            size="sm"
-            className={demoMode ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
-          >
-            {demoMode ? "Enabled" : "Disabled"}
-          </Button>
         </div>
 
         <div>
@@ -154,7 +173,9 @@ ApiSettings.propTypes = {
   apiAvailable: PropTypes.bool,
   demoMode: PropTypes.bool.isRequired,
   toggleDemoMode: PropTypes.func.isRequired,
-  checkApiConnection: PropTypes.func.isRequired
+  checkApiConnection: PropTypes.func.isRequired,
+  logContent: PropTypes.string.isRequired,
+  onContextSizeChange: PropTypes.func.isRequired
 };
 
 export default ApiSettings; 

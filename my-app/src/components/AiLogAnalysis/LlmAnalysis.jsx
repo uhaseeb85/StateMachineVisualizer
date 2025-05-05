@@ -537,12 +537,6 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   // Main component UI
   return (
     <div className="flex flex-col gap-4 p-4">
-      {/* Add LogSizeManager at the top */}
-      <LogSizeManager 
-        logContent={combinedLogContent}
-        onContextSizeChange={handleContextSizeChange}
-      />
-      
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -584,6 +578,8 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
             demoMode={demoMode}
             toggleDemoMode={toggleDemoMode}
             checkApiConnection={checkApiConnection}
+            logContent={combinedLogContent}
+            onContextSizeChange={handleContextSizeChange}
           />
         )}
         
