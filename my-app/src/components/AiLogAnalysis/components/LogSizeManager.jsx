@@ -41,7 +41,15 @@ const LogSizeManager = ({ logContent, onContextSizeChange }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Log Size Management</h3>
-          <InfoIcon className="h-4 w-4 text-muted-foreground" />
+          <div className="relative group">
+            <InfoIcon 
+              className="h-4 w-4 text-muted-foreground cursor-help"
+              title="Manage token context window size. Larger context allows for more log analysis but requires more processing power." 
+            />
+            <div className="absolute hidden group-hover:block bg-black text-white p-2 rounded shadow-lg w-64 text-xs -right-2 top-6 z-10">
+              Adjust the token context window size to handle larger logs. Larger context windows allow for more comprehensive analysis but may require more processing power and time.
+            </div>
+          </div>
         </div>
         <Select
           value={selectedContextSize.toString()}

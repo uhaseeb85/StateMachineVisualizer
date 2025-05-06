@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import PropTypes from 'prop-types';
 import { Server } from 'lucide-react';
+import { Dialog, DialogContent, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 
 // Import components from their new locations
 import { ChatContainer } from './components/ChatUI';
@@ -566,22 +567,27 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         {demoMode && <DemoNotice />}
         
         {/* API Settings */}
-        {showSettings && (
-          <ApiSettings
-            apiProvider={apiProvider}
-            setApiProvider={setApiProvider}
-            apiEndpoint={apiEndpoint}
-            setApiEndpoint={setApiEndpoint}
-            modelName={modelName}
-            setModelName={setModelName}
-            apiAvailable={apiAvailable}
-            demoMode={demoMode}
-            toggleDemoMode={toggleDemoMode}
-            checkApiConnection={checkApiConnection}
-            logContent={combinedLogContent}
-            onContextSizeChange={handleContextSizeChange}
-          />
-        )}
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogPortal>
+            <DialogOverlay className="!bg-black" />
+            <DialogContent className="w-[125%] max-w-5xl p-0 border-0 bg-white dark:bg-gray-900 shadow-lg">
+              <ApiSettings
+                apiProvider={apiProvider}
+                setApiProvider={setApiProvider}
+                apiEndpoint={apiEndpoint}
+                setApiEndpoint={setApiEndpoint}
+                modelName={modelName}
+                setModelName={setModelName}
+                apiAvailable={apiAvailable}
+                demoMode={demoMode}
+                toggleDemoMode={toggleDemoMode}
+                checkApiConnection={checkApiConnection}
+                logContent={combinedLogContent}
+                onContextSizeChange={handleContextSizeChange}
+              />
+            </DialogContent>
+          </DialogPortal>
+        </Dialog>
         
         {/* API Connection Warning */}
         {apiAvailable === false && !demoMode && (
