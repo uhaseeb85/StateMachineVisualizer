@@ -171,14 +171,6 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             const cycleCount = newPath.filter(step => step.id === nextStep.id).length;
             if (cycleCount >= 2) continue; // Allow revisiting a step once but prevent infinite loops
 
-            // If the next step is a sub-step, make sure we're coming from its parent
-            if (nextStep.parentId && nextStep.parentId !== currentStep.id) {
-              const parent = steps.find(s => s.id === nextStep.parentId);
-              if (parent && !newPath.some(step => step.id === parent.id)) {
-                continue; // Skip if we haven't visited the parent step
-              }
-            }
-
             await dfs(
               nextStep,
               newPath,
