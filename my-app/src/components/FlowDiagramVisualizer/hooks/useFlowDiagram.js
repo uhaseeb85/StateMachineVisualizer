@@ -19,6 +19,11 @@ const useFlowDiagram = (storageKey) => {
   const [steps, setSteps] = useState([]);
   const [connections, setConnections] = useState([]);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+  
+  // State for managing file history
+  const [currentFileName, setCurrentFileName] = useState('Untitled');
+  const [fileHistory, setFileHistory] = useState([]);
+  const MAX_HISTORY_SIZE = 10;
 
   /**
    * Effect hook to load saved diagram data from localStorage on component mount
@@ -41,18 +46,121 @@ const useFlowDiagram = (storageKey) => {
         setConnections([]);
       }
     }
+
+    // Load file history from localStorage
+    const savedHistory = localStorage.getItem('flowDiagramFileHistory');
+    if (savedHistory) {
+      try {
+        setFileHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error('Error loading file history:', error);
+        setFileHistory([]);
+      }
+    }
   }, [storageKey]);
+
+  /**
+   * Updates the file history with a new filename
+   * @param {string} fileName - Name of the file to add to history
+   */
+  const updateFileHistory = (fileName) => {
+    if (!fileName) return;
+    
+    setFileHistory(prev => {
+      // Remove the fileName if it already exists
+      const filtered = prev.filter(name => name !== fileName);
+      
+      // Add the new fileName at the beginning
+      const updated = [fileName, ...filtered].slice(0, MAX_HISTORY_SIZE);
+      
+      // Save to localStorage
+      localStorage.setItem('flowDiagramFileHistory', JSON.stringify(updated));
+      
+      return updated;
+    });
+    
+    setCurrentFileName(fileName);
+  };
+
+  /**
+   * Removes a file from history if it's missing or deleted
+   * @param {string} fileName - Name of the file to remove from history
+   */
+  const removeFileFromHistory = (fileName) => {
+    setFileHistory(prev => {
+      const updated = prev.filter(name => name !== fileName);
+      localStorage.setItem('flowDiagramFileHistory', JSON.stringify(updated));
+      return updated;
+    });
+    
+    toast.error(`File "${fileName}" is no longer available.`);
+  };
+
+  /**
+   * Checks if a file exists in localStorage
+   * @param {string} fileName - Name of the file to check
+   * @returns {boolean} True if the file exists, false otherwise
+   */
+  const checkFileExists = (fileName) => {
+    const fileKey = `flowDiagram_${fileName}`;
+    return localStorage.getItem(fileKey) !== null;
+  };
+
+  /**
+   * Loads a file from history
+   * @param {string} fileName - Name of the file to load
+   * @returns {boolean} True if the file was loaded successfully, false otherwise
+   */
+  const loadFileFromHistory = (fileName) => {
+    // First check if the file exists
+    if (!checkFileExists(fileName)) {
+      removeFileFromHistory(fileName);
+      return false;
+    }
+    
+    const fileKey = `flowDiagram_${fileName}`;
+    const savedData = localStorage.getItem(fileKey);
+    
+    if (savedData) {
+      try {
+        const { steps: savedSteps, connections: savedConnections } = JSON.parse(savedData);
+        setSteps(savedSteps);
+        setConnections(savedConnections);
+        setCurrentFileName(fileName);
+        updateFileHistory(fileName);
+        toast.success(`Loaded "${fileName}"`);
+        return true;
+      } catch (error) {
+        console.error('Error loading file:', error);
+        toast.error(`Error loading file: ${error.message}`);
+        return false;
+      }
+    }
+    
+    return false;
+  };
 
   /**
    * Saves the current flow diagram state to localStorage
    * Shows a success notification upon completion
+   * @param {string} [fileName] - Optional file name for saving
    */
-  const saveFlow = () => {
-    console.log('Saving flow diagram data');
+  const saveFlow = (fileName = currentFileName) => {
+    console.log('Saving flow diagram data as:', fileName);
+    
+    if (fileName !== currentFileName) {
+      setCurrentFileName(fileName);
+    }
+    
+    updateFileHistory(fileName);
+    
+    const fileKey = `flowDiagram_${fileName}`;
+    localStorage.setItem(fileKey, JSON.stringify({ steps, connections }));
     localStorage.setItem(storageKey, JSON.stringify({ steps, connections }));
+    
     setShowSaveNotification(true);
     setTimeout(() => setShowSaveNotification(false), 2000);
-    toast.success('Flow diagram saved successfully');
+    toast.success(`Flow diagram saved as "${fileName}"`);
   };
 
   /**
@@ -425,9 +533,18 @@ const useFlowDiagram = (storageKey) => {
         throw new Error('Please upload a ZIP or CSV file.');
       }
       
+      // Get the file name without extension for history
+      const fileName = file.name.split('.')[0] || 'Imported Flow';
+      
       // Handle legacy CSV import
       if (file.name.endsWith('.csv')) {
-        return importLegacyCsvData(file);
+        const result = await importLegacyCsvData(file);
+        if (result) {
+          updateFileHistory(fileName);
+          setCurrentFileName(fileName);
+          saveFlow(fileName);
+        }
+        return result;
       }
       
       // Extract the zip file
@@ -491,6 +608,11 @@ const useFlowDiagram = (storageKey) => {
       // Update the flow diagram
       setSteps(processedSteps);
       setConnections(flowData.connections || []);
+      
+      // Update file history and current file name
+      updateFileHistory(fileName);
+      setCurrentFileName(fileName);
+      saveFlow(fileName);
       
       toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections`);
     } catch (error) {
@@ -664,7 +786,13 @@ const useFlowDiagram = (storageKey) => {
     importData,
     exportData,
     saveFlow,
-    showSaveNotification
+    showSaveNotification,
+    // New file history functionality
+    currentFileName,
+    fileHistory,
+    loadFileFromHistory,
+    checkFileExists,
+    removeFileFromHistory
   };
 };
 

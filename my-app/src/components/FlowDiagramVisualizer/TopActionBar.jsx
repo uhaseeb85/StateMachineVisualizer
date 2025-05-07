@@ -10,7 +10,6 @@ import {
   Moon,
   Sun,
   Save,
-  HelpCircle,
   GitBranch,
   Settings
 } from 'lucide-react';
@@ -19,6 +18,7 @@ import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
 import FlowDiagramToolsModal from './FlowDiagramToolsModal';
+import FileHistoryDropdown from './FileHistoryDropdown';
 
 const TopActionBar = ({
   onChangeMode,
@@ -28,9 +28,14 @@ const TopActionBar = ({
   onImport,
   onExport,
   onSave,
-  startTour,
   steps,
-  connections
+  connections,
+  // New props for file history
+  currentFileName,
+  fileHistory,
+  onSelectFile,
+  onFileExists,
+  onRemoveFile
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -137,22 +142,14 @@ const TopActionBar = ({
             )}
           </Button>
 
-          {/* Getting Started Button */}
-          <Button
-            onClick={startTour}
-            title="Get a guided tour of all features and how to use them"
-            className="getting-started-button bg-gray-900 text-white text-sm
-                     dark:bg-gray-800 dark:text-gray-100
-                     hover:bg-blue-600 hover:scale-105
-                     dark:hover:bg-blue-600
-                     transform transition-all duration-200 ease-in-out
-                     border border-gray-800 dark:border-gray-700
-                     hover:border-blue-500 dark:hover:border-blue-500
-                     flex items-center gap-2 px-3 py-1.5 rounded-md"
-          >
-            <HelpCircle className="w-4 h-4" />
-            Getting Started
-          </Button>
+          {/* File History Dropdown */}
+          <FileHistoryDropdown
+            currentFileName={currentFileName}
+            fileHistory={fileHistory}
+            onSelectFile={onSelectFile}
+            onFileExists={onFileExists}
+            onRemoveFile={onRemoveFile}
+          />
 
           {/* Visual Separator */}
           <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
@@ -161,16 +158,16 @@ const TopActionBar = ({
           <div className="flex flex-wrap gap-4">
             {/* Save Button */}
             <Button 
-              onClick={onSave}
+              onClick={() => onSave()}
               title="Save your current flow diagram"
               className="save-action-button bg-gray-900 text-white text-sm
-                       dark:bg-gray-800 dark:text-gray-100
-                       hover:bg-blue-600 hover:scale-105
-                       dark:hover:bg-blue-600
-                       transform transition-all duration-200 ease-in-out
-                       border border-gray-800 dark:border-gray-700
-                       hover:border-blue-500 dark:hover:border-blue-500
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+                      dark:bg-gray-800 dark:text-gray-100
+                      hover:bg-blue-600 hover:scale-105
+                      dark:hover:bg-blue-600
+                      transform transition-all duration-200 ease-in-out
+                      border border-gray-800 dark:border-gray-700
+                      hover:border-blue-500 dark:hover:border-blue-500
+                      flex items-center gap-2 px-3 py-1.5 rounded-md"
             >
               <Save className="w-4 h-4" />
               Save
@@ -307,7 +304,7 @@ const TopActionBar = ({
               )}
             </div>
 
-            {/* NEW Analysis Tools Button */}
+            {/* Analysis Tools Button */}
             <Button
               onClick={handleOpenAnalysisTools}
               title="Access analysis tools like Simulation and Pathfinder"
@@ -366,9 +363,14 @@ TopActionBar.propTypes = {
   onImport: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
-  startTour: PropTypes.func.isRequired,
   steps: PropTypes.array,
-  connections: PropTypes.array
+  connections: PropTypes.array,
+  // New props for file history
+  currentFileName: PropTypes.string,
+  fileHistory: PropTypes.array,
+  onSelectFile: PropTypes.func,
+  onFileExists: PropTypes.func,
+  onRemoveFile: PropTypes.func
 };
 
 export default TopActionBar; 
