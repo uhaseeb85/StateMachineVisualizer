@@ -18,7 +18,7 @@ import SimulationModal from './SimulationModal';
 import PathFinderModal from './PathFinderModal';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
-import { TourProvider, useTour } from './TourProvider';
+import { TourProvider } from './TourProvider';
 
 /** Key used for localStorage persistence of flow diagram data */
 const STORAGE_KEY = 'flowDiagramData';
@@ -37,9 +37,6 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   const [showSimulation, setShowSimulation] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
   
-  // Tour functionality
-  const { startTour } = useTour();
-  
   // Initialize flow diagram hook with storage key
   const {
     steps,
@@ -53,7 +50,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     importData,
     exportData,
     saveFlow,
-    showSaveNotification
+    showSaveNotification,
+    // File history functionality
+    currentFileName,
+    fileHistory,
+    loadFileFromHistory,
+    checkFileExists,
+    removeFileFromHistory
   } = useFlowDiagram(STORAGE_KEY);
 
   /**
@@ -74,6 +77,14 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     const stepId = addStep(stepData);
     console.log('Added step with ID:', stepId);
     return stepId;
+  };
+
+  /**
+   * Handles selection of a file from history
+   * @param {string} fileName - Name of the file to load
+   */
+  const handleSelectFile = (fileName) => {
+    loadFileFromHistory(fileName);
   };
 
   return (
@@ -118,9 +129,14 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onImport={importData}
           onExport={exportData}
           onSave={saveFlow}
-          startTour={startTour}
           steps={steps}
           connections={connections}
+          // Pass file history props
+          currentFileName={currentFileName}
+          fileHistory={fileHistory}
+          onSelectFile={handleSelectFile}
+          onFileExists={checkFileExists}
+          onRemoveFile={removeFileFromHistory}
         />
         
         {/* Main step panel for diagram editing */}
