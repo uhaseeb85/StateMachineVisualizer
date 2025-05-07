@@ -63,17 +63,18 @@ const FileHistoryDropdown = ({
     <div className="relative inline-block text-left" ref={dropdownRef}>
       {/* Current file display and dropdown trigger */}
       <div 
-        className="flex items-center p-2 border border-blue-600 rounded-md bg-blue-600 
-                   shadow-sm cursor-pointer hover:bg-blue-700
+        className="flex items-center p-2 border border-gray-800 rounded-md bg-gray-900 
+                   dark:bg-gray-800 dark:border-gray-700
+                   shadow-sm cursor-pointer hover:bg-gray-800 dark:hover:bg-gray-700
                    transition duration-150 min-w-[200px]"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <div className="flex-1 overflow-hidden truncate mr-2 text-white">
-          <span className="text-blue-100 text-sm mr-1">File:</span>
+        <div className="flex-1 overflow-hidden truncate mr-2 text-white dark:text-gray-100">
+          <span className="text-gray-300 dark:text-gray-400 text-sm mr-1">File:</span>
           <span className="font-medium">{currentFileName}</span>
         </div>
         <svg 
-          className="w-4 h-4 text-white"
+          className="w-4 h-4 text-white dark:text-gray-300"
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -89,15 +90,15 @@ const FileHistoryDropdown = ({
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute left-0 mt-1 w-64 origin-top-left rounded-md bg-blue-600
-                        shadow-lg ring-1 ring-blue-700 z-50">
+        <div className="absolute left-0 mt-1 w-64 origin-top-left rounded-md bg-gray-900 dark:bg-gray-800
+                        shadow-lg ring-1 ring-gray-700 dark:ring-gray-600 z-50">
           <div className="py-1 max-h-60 overflow-auto" role="menu">
-            <div className="px-3 py-2 text-xs font-semibold text-white border-b border-blue-500">
+            <div className="px-3 py-2 text-xs font-semibold text-white dark:text-gray-200 border-b border-gray-700 dark:border-gray-600">
               Recent Files
             </div>
             
             {fileHistory.length === 0 ? (
-              <div className="px-4 py-2 text-sm text-blue-100 italic">
+              <div className="px-4 py-2 text-sm text-gray-300 dark:text-gray-400 italic">
                 No recent files
               </div>
             ) : (
@@ -105,14 +106,14 @@ const FileHistoryDropdown = ({
                 <button
                   key={fileName}
                   className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between
-                            hover:bg-blue-700 text-white
-                            ${fileName === currentFileName ? 'bg-blue-800 text-white' : ''}`}
+                            hover:bg-gray-800 dark:hover:bg-gray-700 text-white dark:text-gray-100
+                            ${fileName === currentFileName ? 'bg-gray-700 dark:bg-gray-600 text-white dark:text-gray-200' : ''}`}
                   onClick={() => handleSelect(fileName)}
                   role="menuitem"
                 >
                   <span className="truncate">{fileName}</span>
                   {fileName === currentFileName && (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-white dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
