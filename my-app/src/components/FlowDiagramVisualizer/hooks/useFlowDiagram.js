@@ -21,9 +21,13 @@ const useFlowDiagram = (storageKey) => {
   const [showSaveNotification, setShowSaveNotification] = useState(false);
   
   // State for managing file history
-  const [currentFileName, setCurrentFileName] = useState('Untitled');
+  const [currentFileName, setCurrentFileName] = useState(() => {
+    // Initialize from localStorage if available, otherwise use "Untitled"
+    const savedFileName = localStorage.getItem('flowDiagramCurrentFileName');
+    return savedFileName || 'Untitled';
+  });
   const [fileHistory, setFileHistory] = useState([]);
-  const MAX_HISTORY_SIZE = 10;
+  const MAX_HISTORY_SIZE = 15;
 
   /**
    * Effect hook to load saved diagram data from localStorage on component mount
@@ -57,7 +61,30 @@ const useFlowDiagram = (storageKey) => {
         setFileHistory([]);
       }
     }
+    
+    // Try to load the last used file if it exists
+    const lastFileName = localStorage.getItem('flowDiagramCurrentFileName');
+    if (lastFileName && lastFileName !== 'Untitled') {
+      const fileKey = `flowDiagram_${lastFileName}`;
+      const fileData = localStorage.getItem(fileKey);
+      
+      if (fileData) {
+        try {
+          const { steps: savedSteps, connections: savedConnections } = JSON.parse(fileData);
+          setSteps(savedSteps);
+          setConnections(savedConnections);
+          console.log(`Restored last used file: ${lastFileName}`);
+        } catch (error) {
+          console.error(`Error loading last used file ${lastFileName}:`, error);
+        }
+      }
+    }
   }, [storageKey]);
+
+  // Effect to update localStorage when currentFileName changes
+  useEffect(() => {
+    localStorage.setItem('flowDiagramCurrentFileName', currentFileName);
+  }, [currentFileName]);
 
   /**
    * Updates the file history with a new filename
@@ -80,6 +107,7 @@ const useFlowDiagram = (storageKey) => {
     });
     
     setCurrentFileName(fileName);
+    localStorage.setItem('flowDiagramCurrentFileName', fileName);
   };
 
   /**
@@ -94,6 +122,12 @@ const useFlowDiagram = (storageKey) => {
     });
     
     toast.error(`File "${fileName}" is no longer available.`);
+    
+    // If the current file is being removed, reset to "Untitled"
+    if (currentFileName === fileName) {
+      setCurrentFileName('Untitled');
+      localStorage.setItem('flowDiagramCurrentFileName', 'Untitled');
+    }
   };
 
   /**
@@ -127,6 +161,7 @@ const useFlowDiagram = (storageKey) => {
         setSteps(savedSteps);
         setConnections(savedConnections);
         setCurrentFileName(fileName);
+        localStorage.setItem('flowDiagramCurrentFileName', fileName);
         updateFileHistory(fileName);
         toast.success(`Loaded "${fileName}"`);
         return true;
@@ -150,6 +185,7 @@ const useFlowDiagram = (storageKey) => {
     
     if (fileName !== currentFileName) {
       setCurrentFileName(fileName);
+      localStorage.setItem('flowDiagramCurrentFileName', fileName);
     }
     
     updateFileHistory(fileName);
