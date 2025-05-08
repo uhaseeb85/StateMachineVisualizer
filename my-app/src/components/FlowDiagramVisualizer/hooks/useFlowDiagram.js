@@ -111,6 +111,15 @@ const useFlowDiagram = (storageKey) => {
   };
 
   /**
+   * Clears all file history
+   */
+  const clearFileHistory = () => {
+    setFileHistory([]);
+    localStorage.removeItem('flowDiagramFileHistory');
+    toast.success('File history cleared');
+  };
+
+  /**
    * Removes a file from history if it's missing or deleted
    * @param {string} fileName - Name of the file to remove from history
    */
@@ -823,12 +832,13 @@ const useFlowDiagram = (storageKey) => {
     exportData,
     saveFlow,
     showSaveNotification,
-    // New file history functionality
+    // File history functionality
     currentFileName,
     fileHistory,
     loadFileFromHistory,
     checkFileExists,
-    removeFileFromHistory
+    removeFileFromHistory,
+    clearFileHistory
   };
 };
 
