@@ -10,6 +10,7 @@ import PropTypes from 'prop-types';
  * @param {Function} props.onSelectFile - Function called when a file is selected from history
  * @param {Function} props.onFileExists - Function to check if a file exists
  * @param {Function} props.onRemoveFile - Function to remove a file from history
+ * @param {Function} props.onClearHistory - Function to clear all file history
  * @returns {JSX.Element} - Rendered component
  */
 const FileHistoryDropdown = ({
@@ -17,7 +18,8 @@ const FileHistoryDropdown = ({
   fileHistory,
   onSelectFile,
   onFileExists,
-  onRemoveFile
+  onRemoveFile,
+  onClearHistory
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -57,6 +59,17 @@ const FileHistoryDropdown = ({
     
     // Load the selected file
     onSelectFile(fileName);
+  };
+
+  /**
+   * Handles clearing the file history
+   */
+  const handleClearHistory = () => {
+    // Confirm before clearing
+    if (window.confirm('Are you sure you want to clear all file history?')) {
+      onClearHistory();
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -120,6 +133,25 @@ const FileHistoryDropdown = ({
                 </button>
               ))
             )}
+            
+            {/* Clear history button */}
+            <div className="border-t border-gray-700 dark:border-gray-600 mt-1">
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800 dark:hover:bg-gray-700 hover:text-red-300 flex items-center"
+                onClick={handleClearHistory}
+                role="menuitem"
+              >
+                <svg 
+                  className="w-4 h-4 mr-2" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear File History
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -132,7 +164,8 @@ FileHistoryDropdown.propTypes = {
   fileHistory: PropTypes.arrayOf(PropTypes.string).isRequired,
   onSelectFile: PropTypes.func.isRequired,
   onFileExists: PropTypes.func.isRequired,
-  onRemoveFile: PropTypes.func.isRequired
+  onRemoveFile: PropTypes.func.isRequired,
+  onClearHistory: PropTypes.func.isRequired
 };
 
 export default FileHistoryDropdown; 

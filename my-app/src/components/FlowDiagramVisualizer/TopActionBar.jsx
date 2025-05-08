@@ -30,12 +30,13 @@ const TopActionBar = ({
   onSave,
   steps,
   connections,
-  // New props for file history
+  // File history props
   currentFileName,
   fileHistory,
   onSelectFile,
   onFileExists,
-  onRemoveFile
+  onRemoveFile,
+  onClearHistory
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -149,6 +150,7 @@ const TopActionBar = ({
             onSelectFile={onSelectFile}
             onFileExists={onFileExists}
             onRemoveFile={onRemoveFile}
+            onClearHistory={onClearHistory}
           />
 
           {/* Visual Separator */}
@@ -365,12 +367,13 @@ TopActionBar.propTypes = {
   onSave: PropTypes.func.isRequired,
   steps: PropTypes.array,
   connections: PropTypes.array,
-  // New props for file history
+  // File history props
   currentFileName: PropTypes.string,
   fileHistory: PropTypes.array,
   onSelectFile: PropTypes.func,
   onFileExists: PropTypes.func,
-  onRemoveFile: PropTypes.func
+  onRemoveFile: PropTypes.func,
+  onClearHistory: PropTypes.func
 };
 
 export default TopActionBar; 

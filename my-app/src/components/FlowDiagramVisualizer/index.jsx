@@ -56,7 +56,8 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     fileHistory,
     loadFileFromHistory,
     checkFileExists,
-    removeFileFromHistory
+    removeFileFromHistory,
+    clearFileHistory
   } = useFlowDiagram(STORAGE_KEY);
 
   /**
@@ -131,12 +132,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onSave={saveFlow}
           steps={steps}
           connections={connections}
-          // Pass file history props
+          // File history props
           currentFileName={currentFileName}
           fileHistory={fileHistory}
           onSelectFile={handleSelectFile}
           onFileExists={checkFileExists}
           onRemoveFile={removeFileFromHistory}
+          onClearHistory={clearFileHistory}
         />
         
         {/* Main step panel for diagram editing */}
