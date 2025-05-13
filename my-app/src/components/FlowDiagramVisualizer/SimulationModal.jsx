@@ -728,11 +728,36 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                          bg-white dark:bg-gray-800 px-3 text-sm"
               >
                 <option value="">Select a step...</option>
-                {steps.map(step => (
-                  <option key={step.id} value={step.id}>
-                    {step.name}
-                  </option>
-                ))}
+                
+                {/* Group 1: Root-level steps (no parentId) */}
+                <optgroup label="Root Steps">
+                  {steps
+                    .filter(step => !step.parentId)
+                    .map(step => (
+                      <option key={step.id} value={step.id}>
+                        {step.name}
+                      </option>
+                    ))}
+                </optgroup>
+                
+                {/* Group 2: Sub-steps (with parentId) - only show if there are any */}
+                {steps.some(step => step.parentId) && (
+                  <optgroup label="Sub Steps">
+                    {steps
+                      .filter(step => step.parentId)
+                      .map(step => {
+                        // Find the parent step to add its name for context
+                        const parentStep = steps.find(s => s.id === step.parentId);
+                        const parentName = parentStep ? parentStep.name : 'Unknown parent';
+                        
+                        return (
+                          <option key={step.id} value={step.id}>
+                            {step.name} (in {parentName})
+                          </option>
+                        );
+                      })}
+                  </optgroup>
+                )}
               </select>
             </div>
           </div>
