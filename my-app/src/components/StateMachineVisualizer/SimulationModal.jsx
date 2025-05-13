@@ -158,7 +158,7 @@ const SimulationModal = ({
                          rounded-full bg-green-500 hover:bg-green-600 
                          text-white text-xs"
               >
-                Success
+                True
               </Button>
               <Button
                 onClick={() => onOutcome('failure')}
@@ -166,7 +166,7 @@ const SimulationModal = ({
                          rounded-full bg-red-500 hover:bg-red-600 
                          text-white text-xs"
               >
-                Failure
+                False
               </Button>
             </div>
           )}
