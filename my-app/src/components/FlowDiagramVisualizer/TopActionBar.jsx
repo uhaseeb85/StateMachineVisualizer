@@ -241,75 +241,24 @@ const TopActionBar = ({
         <div className="flex items-center gap-4">
           {/* Tools Group */}
           <div className="flex gap-4">
-            {/* Generate Flow Diagram Button with Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <Button
-                onClick={() => setShowGenerateDropdown(!showGenerateDropdown)}
-                title="Generate Flow Diagram"
-                className="generate-diagram-button bg-purple-600 text-white text-sm
-                       hover:bg-purple-500 hover:scale-105
-                       dark:bg-purple-700 dark:hover:bg-purple-600
+            {/* Simulation Button */}
+            <Button
+              onClick={onSimulate}
+              title="Run simulation of the flow diagram"
+              className="simulation-button bg-green-600 text-white text-sm
+                       hover:bg-green-500 hover:scale-105
+                       dark:bg-green-700 dark:hover:bg-green-600
                        transform transition-all duration-200
                        flex items-center gap-2 px-3 py-1.5 rounded-md"
-              >
-                <GitBranch className="w-4 h-4" />
-                Generate Flow Diagram
-              </Button>
-              
-              {showGenerateDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700">
-                  <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Select Root Element</h3>
-                  </div>
-                  
-                  <div className="max-h-60 overflow-y-auto">
-                    {rootElements.length > 0 ? (
-                      <div className="p-2">
-                        {rootElements.map(element => (
-                          <div 
-                            key={element.id} 
-                            className={`p-2 cursor-pointer rounded-md transition-colors ${
-                              selectedRootElement?.id === element.id 
-                                ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
-                            }`}
-                            onClick={() => setSelectedRootElement(element)}
-                          >
-                            {element.name}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-                        No root elements found. Add a root step first.
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
-                    <Button
-                      onClick={() => setShowGenerateDropdown(false)}
-                      variant="outline"
-                      className="text-sm py-1 h-8"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleGenerateFlowDiagram}
-                      disabled={!selectedRootElement}
-                      className="text-sm py-1 h-8 bg-blue-600 hover:bg-blue-500 text-white"
-                    >
-                      Generate
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+            >
+              <Play className="w-4 h-4" />
+              Simulation
+            </Button>
 
             {/* Analysis Tools Button */}
             <Button
               onClick={handleOpenAnalysisTools}
-              title="Access analysis tools like Simulation and Pathfinder"
+              title="Access analysis tools like Pathfinder and Generate Flow Diagram"
               className="analysis-tools-button bg-indigo-600 text-white text-sm
                        hover:bg-indigo-500 hover:scale-105
                        dark:bg-indigo-700 dark:hover:bg-indigo-600
@@ -350,8 +299,12 @@ const TopActionBar = ({
       <FlowDiagramToolsModal 
         isOpen={showAnalysisToolsModal}
         onClose={handleCloseAnalysisTools}
-        onSimulate={onSimulate}
         onFindPath={onFindPath}
+        // Pass needed props for Generate Flow Diagram
+        rootElements={rootElements}
+        selectedRootElement={selectedRootElement}
+        setSelectedRootElement={setSelectedRootElement}
+        onGenerateFlowDiagram={handleGenerateFlowDiagram}
       />
     </div>
   );
