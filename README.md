@@ -137,25 +137,42 @@ my-app/
 │   ├── api/               # API integration (Splunk, etc.)
 │   ├── assets/            # Images, fonts, etc.
 │   ├── components/
-│   │   ├── FlowDiagramVisualizer/  # Flow diagram mode components
-│   │   │   ├── hooks/              # Custom hooks for flow diagram
+│   │   ├── AiLogAnalysis/     # AI Log Analysis mode components
+│   │   │   ├── components/    # Sub-components (ApiSettings, ChatUI, StatusLog)
+│   │   │   ├── constants/     # Constants for AI features
+│   │   │   ├── hooks/         # Custom hooks (useAiStreaming)
+│   │   │   └── utils/         # Utility functions for AI features
+│   │   ├── FlowDiagramVisualizer/  # Flow Diagram mode components
+│   │   │   ├── CustomNodes/   # Custom node types (StepNode)
+│   │   │   └── hooks/         # Custom hooks (useFlowDiagram)
+│   │   │   └── (other specific components like StepPanel, Modals, etc.)
+│   │   ├── LogAnalyzer/       # Log Analyzer mode components
+│   │   │   ├── utils/         # Utility functions for Log Analyzer
+│   │   │   └── (other specific components like FileAnalysis, SplunkAnalysis, etc.)
 │   │   ├── StateMachineVisualizer/ # State machine mode components
-│   │   │   ├── hooks/              # Custom hooks for state machine
-│   │   │   ├── utils/              # Utility functions
-│   │   ├── ui/                     # Shared UI components
-│   ├── lib/                # Third-party integrations
-│   ├── styles/             # Global and custom styles
-│   ├── utils/              # Global utility functions
+│   │   │   ├── hooks/         # Custom hooks (useStateMachine, useSimulation)
+│   │   │   └── utils/         # Utility functions for State Machine
+│   │   │   └── (other specific components like StatePanel, RulesPanel, Modals, etc.)
+│   │   ├── ui/                # Shared UI components (Button, Dialog, Card, etc.)
+│   │   ├── App.jsx            # Main application component
+│   │   ├── ErrorBoundary.jsx  # Error handling component
+│   │   ├── LandingPage.jsx    # Initial mode selection page
+│   │   ├── ModeCard.jsx       # Card component for mode selection
+│   │   ├── ModeSelector.jsx   # Logic for mode selection
+│   │   └── ThemeProvider.jsx  # Theme management
+│   ├── lib/                   # Third-party integrations (if any, beyond node_modules)
+│   ├── styles/                # Global and custom styles
+│   ├── utils/                 # Global utility functions
 │   ├── App.css
 │   ├── index.css
-│   └── main.jsx           # Application entry point
+│   └── main.jsx               # Application entry point
 ├── .gitignore
 ├── eslint.config.js
-├── index.html             # HTML template
-├── package.json           # Dependencies and scripts
-├── postcss.config.js      # PostCSS configuration
-├── tailwind.config.js     # Tailwind CSS configuration
-└── vite.config.js         # Vite configuration
+├── index.html                 # HTML template
+├── package.json               # Dependencies and scripts
+├── postcss.config.js          # PostCSS configuration
+├── tailwind.config.js         # Tailwind CSS configuration
+└── vite.config.js             # Vite configuration
 ```
 
 ## Architecture
