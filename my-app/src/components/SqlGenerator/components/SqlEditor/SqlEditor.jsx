@@ -191,25 +191,25 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
             </div>
           )}
           
-          <form onSubmit={handlePromptSubmit} className="flex gap-2">
+          <form onSubmit={handlePromptSubmit} className="space-y-3">
             <Textarea
               value={prompt}
               onChange={handlePromptChange}
               placeholder="Describe your query in natural language..."
-              className="flex-grow min-h-[100px]"
+              className="w-full min-h-[100px]"
               disabled={isGenerating}
             />
             <Button 
               type="submit" 
               disabled={!prompt.trim() || isGenerating}
-              className="bg-indigo-600 hover:bg-indigo-700 self-start"
+              className="bg-indigo-600 hover:bg-indigo-700 w-full"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Send className="h-4 w-4 mr-2" />
               )}
-              Generate
+              Generate SQL Query
             </Button>
           </form>
         </div>
