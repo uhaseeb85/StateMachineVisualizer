@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Database } from 'lucide-react';
+import { ArrowLeft, Database, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
 import SchemaUploader from './components/SchemaUploader';
 import SqlEditor from './components/SqlEditor';
 import SqlHistory from './components/SqlHistory';
@@ -54,6 +55,7 @@ const loadFromStorage = (key) => {
 };
 
 const SqlGenerator = ({ onChangeMode }) => {
+  const { theme, setTheme } = useTheme();
   const [schema, setSchema] = useState('');
   const [apiSettings, setApiSettings] = useState({
     endpoint: DEFAULT_ENDPOINTS.LM_STUDIO,
@@ -392,10 +394,24 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
             <h1 className="text-xl font-bold">SQL Generator</h1>
           </div>
           
-          <ApiSettings 
-            settings={apiSettings}
-            onSettingsChange={handleApiSettingsChange}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="theme-toggle w-10 h-10 p-0"
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5 text-yellow-500" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+            <ApiSettings 
+              settings={apiSettings}
+              onSettingsChange={handleApiSettingsChange}
+            />
+          </div>
         </div>
       </header>
       
