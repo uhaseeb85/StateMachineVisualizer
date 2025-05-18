@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,9 +29,9 @@ const highlightSql = (sql) => {
   const patterns = [
     // Keywords
     { pattern: new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi'), className: 'text-blue-600 dark:text-blue-400 font-semibold' },
-    // Functions - make sure to highlight the function names properly
+    // Functions
     { pattern: new RegExp(`\\b(${functions.join('|')})\\b`, 'gi'), className: 'text-purple-600 dark:text-purple-400 font-medium' },
-    // Function calls with parenthesis - fallback for other functions not in our list
+    // Function calls with parenthesis
     { pattern: /\b\w+\s*\(/g, className: 'text-purple-600 dark:text-purple-400' },
     // Strings
     { pattern: /'[^']*'|"[^"]*"/g, className: 'text-green-600 dark:text-green-400' },
@@ -75,8 +75,6 @@ const highlightSql = (sql) => {
 const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) => {
   const [prompt, setPrompt] = useState('');
   const [highlightedSql, setHighlightedSql] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const textareaRef = useRef(null);
   
   // Update highlighted SQL when sql changes
   useEffect(() => {
@@ -93,22 +91,6 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
     
     onGenerateSql(prompt);
     // Don't clear prompt so user can see what they asked for
-  };
-  
-  const handleSqlChange = (e) => {
-    onSqlChange(e.target.value);
-  };
-  
-  const toggleEditMode = () => {
-    setIsEditing(!isEditing);
-    if (!isEditing) {
-      // Focus textarea when switching to edit mode
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-        }
-      }, 0);
-    }
   };
   
   const copyToClipboard = () => {
@@ -170,104 +152,82 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
       <CardHeader className="bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-200 dark:border-indigo-800 pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
-            <Code className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-            SQL Editor
+            <Sparkles className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+            Natural Language to SQL
           </CardTitle>
           
-          <div className="flex gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={toggleEditMode}
-              className={isEditing ? "bg-indigo-100 dark:bg-indigo-900/30" : ""}
-            >
-              {isEditing ? "View Mode" : "Edit Mode"}
-            </Button>
-            
+          {sql && (
             <Button 
               variant="ghost" 
               size="icon"
               onClick={copyToClipboard}
-              disabled={!sql}
             >
               <Copy className="h-4 w-4" />
             </Button>
-          </div>
+          )}
         </div>
         <CardDescription>
-          Write SQL queries or generate them using AI
+          Describe what you want to query in plain English
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="p-0 flex-grow overflow-hidden flex flex-col">
-        {/* SQL Editor Area */}
-        <div className="flex-grow overflow-hidden">
-          {isEditing ? (
-            <Textarea
-              ref={textareaRef}
-              value={sql}
-              onChange={handleSqlChange}
-              placeholder="SELECT * FROM users WHERE..."
-              className="h-full rounded-none border-0 font-mono text-sm resize-none p-4"
-            />
-          ) : (
-            <div className="h-full overflow-y-auto">
-              <div 
-                className="font-mono text-sm p-4 whitespace-pre-wrap min-h-[200px]"
-                dangerouslySetInnerHTML={{ __html: highlightedSql || '<span class="text-gray-400">-- Write or generate SQL query --</span>' }}
-                onClick={toggleEditMode}
-              />
+      <CardContent className="p-4 flex-grow flex flex-col gap-4">
+        {/* Natural Language Input */}
+        <div className="space-y-4">
+          {examplePrompts.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {examplePrompts.map((example, index) => (
+                <Button
+                  key={index}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setPrompt(example)}
+                >
+                  {example}
+                </Button>
+              ))}
             </div>
           )}
+          
+          <form onSubmit={handlePromptSubmit} className="flex gap-2">
+            <Textarea
+              value={prompt}
+              onChange={handlePromptChange}
+              placeholder="Describe your query in natural language..."
+              className="flex-grow min-h-[100px]"
+              disabled={isGenerating}
+            />
+            <Button 
+              type="submit" 
+              disabled={!prompt.trim() || isGenerating}
+              className="bg-indigo-600 hover:bg-indigo-700 self-start"
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Generate
+            </Button>
+          </form>
         </div>
         
-        {/* AI Prompt Input */}
-        <div className="border-t border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-900/50">
-          <form onSubmit={handlePromptSubmit} className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-500" />
-              <h3 className="text-sm font-medium">Generate SQL with AI</h3>
-            </div>
-            
-            {examplePrompts.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {examplePrompts.map((example, index) => (
-                  <Button
-                    key={index}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => setPrompt(example)}
-                  >
-                    {example}
-                  </Button>
-                ))}
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Input
-                value={prompt}
-                onChange={handlePromptChange}
-                placeholder="Describe the query you want to generate..."
-                className="flex-grow"
-                disabled={isGenerating}
-              />
-              <Button 
-                type="submit" 
-                disabled={!prompt.trim() || isGenerating}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Generate
-              </Button>
-            </div>
-          </form>
+        {/* Generated SQL Display */}
+        <div className="flex-grow">
+          <div className="flex items-center gap-2 mb-2">
+            <Code className="w-4 h-4 text-gray-500" />
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Generated SQL</h3>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800 h-[calc(100%-2rem)] overflow-y-auto">
+            <div 
+              className="font-mono text-sm p-4 whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ 
+                __html: highlightedSql || '<span class="text-gray-400">-- Generated SQL will appear here --</span>' 
+              }}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
