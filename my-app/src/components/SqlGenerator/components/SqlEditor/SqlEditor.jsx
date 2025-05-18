@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Code, Play, Sparkles, Send, Copy, Save, Loader2 } from 'lucide-react';
+import { Code, Sparkles, Send, Copy, Loader2 } from 'lucide-react';
 
 // Simple syntax highlighting function
 const highlightSql = (sql) => {
@@ -16,21 +16,29 @@ const highlightSql = (sql) => {
     'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'INSERT', 'UPDATE', 'DELETE',
     'CREATE', 'ALTER', 'DROP', 'TABLE', 'VIEW', 'INDEX', 'TRIGGER', 'PROCEDURE',
     'AND', 'OR', 'NOT', 'NULL', 'IS', 'IN', 'BETWEEN', 'LIKE', 'AS', 'DISTINCT',
-    'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX'
+    'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+  ];
+  
+  // Define SQL functions for separate highlighting
+  const functions = [
+    'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'ROUND', 'FLOOR', 'CEILING', 'ABS',
+    'CONCAT', 'SUBSTRING', 'TRIM', 'UPPER', 'LOWER', 'DATE', 'NOW', 'CURRENT_TIMESTAMP'
   ];
   
   // Define regex patterns
   const patterns = [
     // Keywords
     { pattern: new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi'), className: 'text-blue-600 dark:text-blue-400 font-semibold' },
+    // Functions - make sure to highlight the function names properly
+    { pattern: new RegExp(`\\b(${functions.join('|')})\\b`, 'gi'), className: 'text-purple-600 dark:text-purple-400 font-medium' },
+    // Function calls with parenthesis - fallback for other functions not in our list
+    { pattern: /\b\w+\s*\(/g, className: 'text-purple-600 dark:text-purple-400' },
     // Strings
     { pattern: /'[^']*'|"[^"]*"/g, className: 'text-green-600 dark:text-green-400' },
     // Numbers
     { pattern: /\b\d+\b/g, className: 'text-amber-600 dark:text-amber-400' },
     // Comments
     { pattern: /--.*$/gm, className: 'text-gray-500 dark:text-gray-400 italic' },
-    // Functions
-    { pattern: /\b\w+\(/g, className: 'text-purple-600 dark:text-purple-400' },
     // Parentheses
     { pattern: /[()]/g, className: 'text-gray-600 dark:text-gray-400' },
     // Operators
@@ -64,7 +72,7 @@ const highlightSql = (sql) => {
   return highlightedSql;
 };
 
-const SqlEditor = ({ sql, onSqlChange, onGenerateSql, onExecuteSql, isGenerating, schema }) => {
+const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) => {
   const [prompt, setPrompt] = useState('');
   const [highlightedSql, setHighlightedSql] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -262,21 +270,6 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, onExecuteSql, isGenerating
           </form>
         </div>
       </CardContent>
-      
-      <CardFooter className="border-t border-gray-200 dark:border-gray-800 p-3">
-        <Button 
-          onClick={onExecuteSql}
-          disabled={!sql.trim() || isGenerating}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          {isGenerating ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Play className="h-4 w-4 mr-2" />
-          )}
-          Execute Query
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
@@ -285,7 +278,6 @@ SqlEditor.propTypes = {
   sql: PropTypes.string.isRequired,
   onSqlChange: PropTypes.func.isRequired,
   onGenerateSql: PropTypes.func.isRequired,
-  onExecuteSql: PropTypes.func.isRequired,
   isGenerating: PropTypes.bool.isRequired,
   schema: PropTypes.string
 };
