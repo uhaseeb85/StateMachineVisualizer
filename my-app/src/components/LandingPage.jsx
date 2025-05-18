@@ -12,7 +12,8 @@ import {
   Sparkles,
   Search,
   FileText,
-  Brain
+  Brain,
+  Database
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
@@ -233,6 +234,40 @@ const LandingPage = ({ onGetStarted }) => {
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
+          
+          {/* SQL Generator Mode */}
+          <motion.div 
+            className="group relative rounded-3xl bg-gradient-to-b from-amber-500/10 to-transparent p-10 hover:from-amber-500/20 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
+            onClick={() => handleModeSelect('sqlGenerator')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-amber-500/20">
+                  <Database className="w-8 h-8 text-amber-400" />
+                </div>
+                <h3 className="text-2xl font-semibold">SQL Generator</h3>
+              </div>
+              <p className="text-gray-400 mb-8 text-lg">
+                Generate SQL queries from natural language using AI.
+                Upload your database schema and get instant SQL solutions.
+              </p>
+              <div className="h-[280px] relative">
+                <AnimatedDemo mode="sqlGenerator" />
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 py-6
+                       group-hover:bg-amber-500 group-hover:text-white transition-all duration-300"
+            >
+              Start Generating SQL
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </motion.div>
         </div>
       </div>
 
@@ -298,4 +333,4 @@ const LandingPage = ({ onGetStarted }) => {
   );
 };
 
-export default LandingPage; 
+export default LandingPage;

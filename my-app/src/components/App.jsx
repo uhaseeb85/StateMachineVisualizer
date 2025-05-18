@@ -3,6 +3,7 @@ import StateMachineVisualizer from './StateMachineVisualizer';
 import FlowDiagramVisualizer from './FlowDiagramVisualizer';
 import LogAnalyzer from './LogAnalyzer';
 import AiLogAnalysis from './AiLogAnalysis';
+import SqlGenerator from './SqlGenerator';
 import LandingPage from './LandingPage';
 import { ThemeProvider } from './ThemeProvider';
 import ErrorBoundary from './ErrorBoundary';
@@ -40,6 +41,10 @@ const AppContent = () => {
     
     if (mode === 'aiLogAnalysis') {
       return <AiLogAnalysis onChangeMode={handleChangeModeClick} />;
+    }
+    
+    if (mode === 'sqlGenerator') {
+      return <SqlGenerator onChangeMode={handleChangeModeClick} />;
     }
 
     return <FlowDiagramVisualizer onChangeMode={handleChangeModeClick} />;

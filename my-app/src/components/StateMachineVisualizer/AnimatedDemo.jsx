@@ -20,6 +20,8 @@ const AnimatedDemo = ({ mode }) => {
       baseUrl = '/assets/ai-log-analysis-demo.gif';
     } else if (mode === 'logAnalyzer') {
       baseUrl = '/assets/log-analyzer-demo.gif';
+    } else if (mode === 'sqlGenerator') {
+      baseUrl = '/assets/flow-diagram-demo.gif'; // Temporarily using flow diagram as placeholder
     } else {
       // Default fallback
       baseUrl = '/assets/flow-diagram-demo.gif';
@@ -143,7 +145,9 @@ const AnimatedDemo = ({ mode }) => {
                   ? 'Flow Diagram' 
                   : mode === 'aiLogAnalysis'
                     ? 'AI Log Analysis'
-                    : 'Log Analyzer'} Demo`}
+                    : mode === 'sqlGenerator'
+                      ? 'SQL Generator'
+                      : 'Log Analyzer'} Demo`}
               className="rounded-lg shadow-2xl slow-gif"
               style={{
                 maxWidth: '90vw',
@@ -176,6 +180,8 @@ const AnimatedDemo = ({ mode }) => {
               ? '/assets/flow-diagram-demo.gif'
             : mode === 'aiLogAnalysis'
               ? '/assets/ai-log-analysis-demo.gif'
+            : mode === 'sqlGenerator'
+              ? '/assets/flow-diagram-demo.gif' // Temporarily using flow diagram as placeholder
               : '/assets/log-analyzer-demo.gif'}
           alt={`${mode === 'stateMachine' 
             ? 'State Machine' 
@@ -183,6 +189,8 @@ const AnimatedDemo = ({ mode }) => {
               ? 'Flow Diagram' 
               : mode === 'aiLogAnalysis'
                 ? 'AI Log Analysis'
+              : mode === 'sqlGenerator'
+                ? 'SQL Generator'
                 : 'Log Analyzer'} Demo`}
           className="w-full h-full object-cover object-center slow-gif"
         />
@@ -222,4 +230,4 @@ const AnimatedDemo = ({ mode }) => {
   );
 };
 
-export default AnimatedDemo; 
+export default AnimatedDemo;
