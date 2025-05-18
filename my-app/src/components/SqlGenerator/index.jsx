@@ -144,7 +144,7 @@ const SqlGenerator = ({ onChangeMode }) => {
     }
     
     if (tables.length === 0) {
-      return "SELECT 1;";
+      return "SELECT 1 FROM DUAL;";
     }
     
     // Basic text matching for common query types
@@ -152,30 +152,45 @@ const SqlGenerator = ({ onChangeMode }) => {
     
     // Count query
     if (promptLower.includes('count') || promptLower.includes('how many')) {
-      return `SELECT COUNT(*) FROM ${tables[0]};`;
+      return `SELECT COUNT(*) AS total_count
+FROM ${tables[0]};`;
     }
     
     // Join query
     if (promptLower.includes('join') && tables.length > 1) {
-      return `SELECT ${tables[0]}.*, ${tables[1]}.* 
-FROM ${tables[0]}
-JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id;`;
+      return `SELECT a.*, b.*
+FROM ${tables[0]} a
+INNER JOIN ${tables[1]} b ON a.id = b.${tables[0].toLowerCase()}_id;`;
     }
     
-    // Top/limit query
+    // Top/limit query (using ROWNUM for Oracle)
     if (promptLower.includes('top') || promptLower.includes('expensive') || promptLower.includes('highest') || promptLower.includes('most')) {
       const limit = promptLower.match(/\d+/) ? promptLower.match(/\d+/)[0] : '5';
-      return `SELECT * FROM ${tables[0]} ORDER BY id DESC LIMIT ${limit};`;
+      return `SELECT *
+FROM (
+  SELECT a.*, ROWNUM rnum
+  FROM (
+    SELECT *
+    FROM ${tables[0]}
+    ORDER BY id DESC
+  ) a
+  WHERE ROWNUM <= ${limit}
+)
+WHERE rnum >= 1;`;
     }
     
     // Search/filter query
     if (promptLower.includes('find') || promptLower.includes('where') || promptLower.includes('search')) {
       const searchTerm = prompt.split(' ').pop().replace(/[^a-zA-Z0-9]/g, '');
-      return `SELECT * FROM ${tables[0]} WHERE name LIKE '%${searchTerm}%';`;
+      return `SELECT *
+FROM ${tables[0]}
+WHERE UPPER(name) LIKE UPPER('%${searchTerm}%');`;
     }
     
-    // Default to a simple SELECT query
-    return `SELECT * FROM ${tables[0]} LIMIT 10;`;
+    // Default to a simple SELECT query with ROWNUM
+    return `SELECT *
+FROM ${tables[0]}
+WHERE ROWNUM <= 10;`;
   };
 
   const callLlmApi = async (prompt) => {
@@ -197,8 +212,43 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
       case 'LM_STUDIO':
         payload = {
           messages: [
-            { role: "system", content: "You are an SQL expert assistant. Use the provided database schema to generate accurate SQL queries based on user requests." },
-            { role: "user", content: `Database Schema:\n${schema}\n\nGenerate SQL for: ${prompt}` }
+            { 
+              role: "system", 
+              content: `You are an Oracle SQL expert assistant. Follow these rules strictly:
+
+1. ALWAYS respond in this exact format:
+\`\`\`sql
+-- Your SQL query here, using Oracle syntax
+\`\`\`
+
+2. ONLY output the SQL code block - no explanations, no other text
+3. Use Oracle-specific syntax (ROWNUM, CONNECT BY, etc.)
+4. Never use syntax from other SQL dialects (like LIMIT)
+5. Always end queries with a semicolon
+6. Use consistent formatting:
+   - Keywords in UPPERCASE
+   - Identifiers in lowercase
+   - One clause per line
+   - Proper indentation for subqueries
+   - Spaces around operators
+
+Example response format:
+\`\`\`sql
+SELECT 
+  e.last_name,
+  e.salary
+FROM 
+  employees e
+WHERE 
+  ROWNUM <= 5
+ORDER BY 
+  e.salary DESC;
+\`\`\``
+            },
+            { 
+              role: "user", 
+              content: `Database Schema:\n${schema}\n\nGenerate Oracle SQL for: ${prompt}` 
+            }
           ],
           temperature: temperature,
           max_tokens: maxTokens,
@@ -210,8 +260,43 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
         payload = {
           model: model || 'llama3',
           messages: [
-            { role: "system", content: "You are an SQL expert assistant. Use the provided database schema to generate accurate SQL queries based on user requests." },
-            { role: "user", content: `Database Schema:\n${schema}\n\nGenerate SQL for: ${prompt}` }
+            { 
+              role: "system", 
+              content: `You are an Oracle SQL expert assistant. Follow these rules strictly:
+
+1. ALWAYS respond in this exact format:
+\`\`\`sql
+-- Your SQL query here, using Oracle syntax
+\`\`\`
+
+2. ONLY output the SQL code block - no explanations, no other text
+3. Use Oracle-specific syntax (ROWNUM, CONNECT BY, etc.)
+4. Never use syntax from other SQL dialects (like LIMIT)
+5. Always end queries with a semicolon
+6. Use consistent formatting:
+   - Keywords in UPPERCASE
+   - Identifiers in lowercase
+   - One clause per line
+   - Proper indentation for subqueries
+   - Spaces around operators
+
+Example response format:
+\`\`\`sql
+SELECT 
+  e.last_name,
+  e.salary
+FROM 
+  employees e
+WHERE 
+  ROWNUM <= 5
+ORDER BY 
+  e.salary DESC;
+\`\`\``
+            },
+            { 
+              role: "user", 
+              content: `Database Schema:\n${schema}\n\nGenerate Oracle SQL for: ${prompt}` 
+            }
           ],
           options: {
             temperature: temperature
@@ -224,8 +309,43 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
         payload = {
           model: model,
           messages: [
-            { role: "system", content: "You are an SQL expert assistant. Use the provided database schema to generate accurate SQL queries based on user requests." },
-            { role: "user", content: `Database Schema:\n${schema}\n\nGenerate SQL for: ${prompt}` }
+            { 
+              role: "system", 
+              content: `You are an Oracle SQL expert assistant. Follow these rules strictly:
+
+1. ALWAYS respond in this exact format:
+\`\`\`sql
+-- Your SQL query here, using Oracle syntax
+\`\`\`
+
+2. ONLY output the SQL code block - no explanations, no other text
+3. Use Oracle-specific syntax (ROWNUM, CONNECT BY, etc.)
+4. Never use syntax from other SQL dialects (like LIMIT)
+5. Always end queries with a semicolon
+6. Use consistent formatting:
+   - Keywords in UPPERCASE
+   - Identifiers in lowercase
+   - One clause per line
+   - Proper indentation for subqueries
+   - Spaces around operators
+
+Example response format:
+\`\`\`sql
+SELECT 
+  e.last_name,
+  e.salary
+FROM 
+  employees e
+WHERE 
+  ROWNUM <= 5
+ORDER BY 
+  e.salary DESC;
+\`\`\``
+            },
+            { 
+              role: "user", 
+              content: `Database Schema:\n${schema}\n\nGenerate Oracle SQL for: ${prompt}` 
+            }
           ],
           temperature: temperature,
           max_tokens: maxTokens
@@ -266,7 +386,6 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
       }
       
       // Try to extract just the SQL code from the response
-      // Look for SQL between markdown code blocks or backticks
       let extractedSql = '';
       
       // First, try to match markdown SQL code blocks
@@ -317,6 +436,15 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
           }
         }
       }
+
+      // Clean up any remaining placeholders or template artifacts
+      extractedSql = extractedSql
+        .replace(/(__PLACEHOLDER_\d+_\d+__)/g, '')
+        .replace(/(_+PLACEHOLDER_\d+_\d+_+)/g, '')
+        .replace(/\{\{.*?\}\}/g, '')
+        .replace(/\[\[.*?\]\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
       
       console.log('Extracted SQL:', extractedSql);
       return extractedSql;
@@ -377,48 +505,52 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-gradient-to-b from-background to-background/95">
       {/* Header */}
-      <header className="border-b border-border p-4 bg-card">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onChangeMode}
-              className="mr-2"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <Database className="h-6 w-6 text-amber-500" />
-            <h1 className="text-xl font-bold">SQL Generator</h1>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="theme-toggle w-10 h-10 p-0"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5 text-yellow-500" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-            <ApiSettings 
-              settings={apiSettings}
-              onSettingsChange={handleApiSettingsChange}
-            />
+      <header className="border-b border-border/40 backdrop-blur-sm bg-background/60 sticky top-0 z-50">
+        <div className="container mx-auto py-4 px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onChangeMode}
+                className="hover:bg-background/80"
+              >
+                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+              </Button>
+              <div className="flex items-center gap-2.5">
+                <Database className="h-6 w-6 text-primary" />
+                <h1 className="text-xl font-semibold tracking-tight">SQL Generator</h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="rounded-full hover:bg-background/80"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5 text-yellow-500" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
+              <ApiSettings 
+                settings={apiSettings}
+                onSettingsChange={handleApiSettingsChange}
+              />
+            </div>
           </div>
         </div>
       </header>
       
       {/* Main Content */}
       <div className="flex-grow overflow-hidden">
-        <div className="container mx-auto h-full p-4">
-          <div className="grid grid-cols-12 gap-4 h-full">
+        <div className="container mx-auto h-full p-6">
+          <div className="grid grid-cols-12 gap-6 h-full">
             {/* Left Column - Schema Uploader */}
             <div className="col-span-12 md:col-span-3 h-full flex flex-col gap-4">
               <SchemaUploader 
@@ -428,7 +560,7 @@ JOIN ${tables[1]} ON ${tables[0]}.id = ${tables[1]}.${tables[0].slice(0, -1)}_id
             </div>
             
             {/* Middle Column - SQL Editor */}
-            <div className="col-span-12 md:col-span-6 h-full flex flex-col gap-4">
+            <div className="col-span-12 md:col-span-6 h-full flex flex-col">
               <SqlEditor 
                 sql={currentSql}
                 onSqlChange={handleSqlChange}

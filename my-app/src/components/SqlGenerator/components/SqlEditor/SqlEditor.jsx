@@ -10,19 +10,36 @@ import { Code, Sparkles, Send, Copy, Loader2 } from 'lucide-react';
 const highlightSql = (sql) => {
   if (!sql) return '';
   
-  // Define SQL keywords for highlighting
+  // Define SQL keywords for highlighting (including Oracle-specific keywords)
   const keywords = [
+    // Standard SQL keywords
     'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON',
-    'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'INSERT', 'UPDATE', 'DELETE',
+    'GROUP BY', 'ORDER BY', 'HAVING', 'INSERT', 'UPDATE', 'DELETE',
     'CREATE', 'ALTER', 'DROP', 'TABLE', 'VIEW', 'INDEX', 'TRIGGER', 'PROCEDURE',
     'AND', 'OR', 'NOT', 'NULL', 'IS', 'IN', 'BETWEEN', 'LIKE', 'AS', 'DISTINCT',
-    'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+    'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+    // Oracle-specific keywords
+    'NUMBER', 'VARCHAR2', 'NVARCHAR2', 'CLOB', 'NCLOB', 'BLOB', 'DATE',
+    'TIMESTAMP', 'ROWID', 'ROWNUM', 'CONNECT BY', 'START WITH', 'PRIOR',
+    'NOCYCLE', 'LEVEL', 'CONNECT_BY_ROOT', 'CONNECT_BY_ISLEAF', 'SYS_CONNECT_BY_PATH',
+    'WITH', 'PARTITION BY', 'OVER', 'MERGE', 'USING', 'MATCHED', 'FORALL',
+    'BULK COLLECT', 'RETURNING', 'INTO', 'PACKAGE', 'FUNCTION', 'PRAGMA',
+    'EXCEPTION', 'RAISE', 'SEQUENCE', 'MATERIALIZED VIEW', 'SYNONYM'
   ];
   
-  // Define SQL functions for separate highlighting
+  // Define SQL functions (including Oracle-specific functions)
   const functions = [
-    'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'ROUND', 'FLOOR', 'CEILING', 'ABS',
-    'CONCAT', 'SUBSTRING', 'TRIM', 'UPPER', 'LOWER', 'DATE', 'NOW', 'CURRENT_TIMESTAMP'
+    // Standard SQL functions
+    'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'ROUND', 'FLOOR', 'CEIL', 'ABS',
+    'CONCAT', 'SUBSTR', 'TRIM', 'UPPER', 'LOWER',
+    // Oracle-specific functions
+    'NVL', 'NVL2', 'DECODE', 'COALESCE', 'TO_CHAR', 'TO_DATE', 'TO_NUMBER',
+    'SYSDATE', 'SYSTIMESTAMP', 'MONTHS_BETWEEN', 'ADD_MONTHS', 'LAST_DAY',
+    'NEXT_DAY', 'TRUNC', 'EXTRACT', 'INSTR', 'REGEXP_LIKE', 'REGEXP_REPLACE',
+    'REGEXP_SUBSTR', 'REGEXP_INSTR', 'REGEXP_COUNT', 'LISTAGG', 'LAG', 'LEAD',
+    'FIRST_VALUE', 'LAST_VALUE', 'ROW_NUMBER', 'RANK', 'DENSE_RANK',
+    'PERCENTILE_CONT', 'PERCENTILE_DISC', 'MEDIAN', 'STATS_MODE',
+    'CAST', 'NULLIF', 'GREATEST', 'LEAST', 'UID', 'USER', 'USERENV'
   ];
   
   // Define regex patterns
@@ -148,11 +165,11 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
   const examplePrompts = getExamplePrompts();
   
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-200 dark:border-indigo-800 pb-3">
+    <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-border/50">
+      <CardHeader className="space-y-1.5 pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Sparkles className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Sparkles className="w-5 h-5 text-primary" />
             Natural Language to SQL
           </CardTitle>
           
@@ -161,17 +178,18 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
               variant="ghost" 
               size="icon"
               onClick={copyToClipboard}
+              className="rounded-full hover:bg-background/80"
             >
               <Copy className="h-4 w-4" />
             </Button>
           )}
         </div>
-        <CardDescription>
-          Describe what you want to query in plain English
+        <CardDescription className="text-sm text-muted-foreground">
+          Describe your query in plain English and let AI generate the SQL for you
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="p-4 flex-grow flex flex-col gap-4">
+      <CardContent className="flex-grow flex flex-col gap-6 p-6">
         {/* Natural Language Input */}
         <div className="space-y-4">
           {examplePrompts.length > 0 && (
@@ -182,7 +200,7 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-xs bg-background/50 hover:bg-background/80 transition-colors"
                   onClick={() => setPrompt(example)}
                 >
                   {example}
@@ -191,40 +209,45 @@ const SqlEditor = ({ sql, onSqlChange, onGenerateSql, isGenerating, schema }) =>
             </div>
           )}
           
-          <form onSubmit={handlePromptSubmit} className="space-y-3">
+          <form onSubmit={handlePromptSubmit} className="space-y-4">
             <Textarea
               value={prompt}
               onChange={handlePromptChange}
               placeholder="Describe your query in natural language..."
-              className="w-full min-h-[100px]"
+              className="w-full min-h-[120px] bg-background/50 backdrop-blur-sm resize-none focus:ring-2 focus:ring-primary/20 transition-all"
               disabled={isGenerating}
             />
             <Button 
               type="submit" 
               disabled={!prompt.trim() || isGenerating}
-              className="bg-indigo-600 hover:bg-indigo-700 w-full"
+              className="w-full bg-primary/90 hover:bg-primary transition-colors h-10"
             >
               {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Generating...
+                </>
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Generate SQL Query
+                </>
               )}
-              Generate SQL Query
             </Button>
           </form>
         </div>
         
         {/* Generated SQL Display */}
-        <div className="flex-grow">
-          <div className="flex items-center gap-2 mb-2">
-            <Code className="w-4 h-4 text-gray-500" />
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Generated SQL</h3>
+        <div className="flex-grow flex flex-col">
+          <div className="flex items-center gap-2 mb-3">
+            <Code className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">Generated SQL</h3>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800 h-[calc(100%-2rem)] overflow-y-auto">
+          <div className="flex-grow relative rounded-lg border border-border/50 bg-background/50 backdrop-blur-sm overflow-hidden">
             <div 
-              className="font-mono text-sm p-4 whitespace-pre-wrap"
+              className="font-mono text-sm p-4 absolute inset-0 overflow-auto"
               dangerouslySetInnerHTML={{ 
-                __html: highlightedSql || '<span class="text-gray-400">-- Generated SQL will appear here --</span>' 
+                __html: highlightedSql || '<span class="text-muted-foreground">-- Your generated SQL query will appear here --</span>' 
               }}
             />
           </div>
