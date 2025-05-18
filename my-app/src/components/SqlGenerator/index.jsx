@@ -8,6 +8,51 @@ import SqlHistory from './components/SqlHistory';
 import ApiSettings from './components/ApiSettings';
 import { DEFAULT_ENDPOINTS } from './constants/apiConstants';
 
+// Constants for localStorage keys
+const STORAGE_KEYS = {
+  SQL_HISTORY: 'sql_generator_history',
+  SCHEMA: 'sql_generator_schema',
+  API_SETTINGS: 'sql_generator_api_settings'
+};
+
+// Helper functions for localStorage operations
+const saveToStorage = (key, value) => {
+  try {
+    const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
+    localStorage.setItem(key, serializedValue);
+    
+    // Verify the save was successful
+    const savedValue = localStorage.getItem(key);
+    if (!savedValue) {
+      console.error(`Failed to verify saved data for key: ${key}`);
+    }
+    
+    console.log(`Successfully saved data for key: ${key}`);
+  } catch (error) {
+    console.error(`Error saving to localStorage for key ${key}:`, error);
+  }
+};
+
+const loadFromStorage = (key) => {
+  try {
+    const value = localStorage.getItem(key);
+    if (!value) {
+      console.log(`No data found in localStorage for key: ${key}`);
+      return null;
+    }
+    
+    // If it's a JSON string, parse it
+    if (value.startsWith('{') || value.startsWith('[')) {
+      return JSON.parse(value);
+    }
+    
+    return value;
+  } catch (error) {
+    console.error(`Error loading from localStorage for key ${key}:`, error);
+    return null;
+  }
+};
+
 const SqlGenerator = ({ onChangeMode }) => {
   const [schema, setSchema] = useState('');
   const [apiSettings, setApiSettings] = useState({
@@ -22,22 +67,56 @@ const SqlGenerator = ({ onChangeMode }) => {
   const [currentSql, setCurrentSql] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Load history from localStorage
+  // Load data from localStorage on component mount
   useEffect(() => {
-    const savedHistory = localStorage.getItem('sql_history');
+    console.log('Loading persisted data...');
+    
+    // Load Schema
+    const savedSchema = loadFromStorage(STORAGE_KEYS.SCHEMA);
+    if (savedSchema) {
+      console.log('Restoring saved schema');
+      setSchema(savedSchema);
+    }
+
+    // Load SQL History
+    const savedHistory = loadFromStorage(STORAGE_KEYS.SQL_HISTORY);
     if (savedHistory) {
-      try {
-        setSqlHistory(JSON.parse(savedHistory));
-      } catch (error) {
-        console.error('Failed to parse SQL history:', error);
-      }
+      console.log('Restoring saved SQL history');
+      setSqlHistory(savedHistory);
+    }
+    
+    // Load API Settings
+    const savedApiSettings = loadFromStorage(STORAGE_KEYS.API_SETTINGS);
+    if (savedApiSettings) {
+      console.log('Restoring saved API settings');
+      setApiSettings(prev => ({
+        ...prev,
+        ...savedApiSettings
+      }));
     }
   }, []);
 
+  // Save schema to localStorage when it changes
+  useEffect(() => {
+    if (schema) {
+      console.log('Saving schema...');
+      saveToStorage(STORAGE_KEYS.SCHEMA, schema);
+    }
+  }, [schema]);
+
   // Save history to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem('sql_history', JSON.stringify(sqlHistory));
+    if (sqlHistory.length > 0) {
+      console.log('Saving SQL history...');
+      saveToStorage(STORAGE_KEYS.SQL_HISTORY, sqlHistory);
+    }
   }, [sqlHistory]);
+  
+  // Save API settings to localStorage when they change
+  useEffect(() => {
+    console.log('Saving API settings...');
+    saveToStorage(STORAGE_KEYS.API_SETTINGS, apiSettings);
+  }, [apiSettings]);
 
   const handleSchemaChange = (newSchema) => {
     setSchema(newSchema);
