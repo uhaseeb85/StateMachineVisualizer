@@ -526,23 +526,25 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   };
 
   /**
-   * Generates detailed step-by-step instructions for a path
+   * Generates detailed step-by-step instructions for a path, grouping steps and breaking on failures
    * @param {Object} path - The path object with steps and rules
-   * @returns {string} - Detailed step instructions
+   * @returns {string} - Detailed step instructions with line breaks on failures
    */
   const generateStepInstructions = (path) => {
     if (!path.steps || path.steps.length === 0) {
       return 'No steps available';
     }
 
-    let instructions = [];
+    let instructionSections = [];
+    let currentSection = [];
+    let absoluteStepNum = 1;
     
     for (let i = 0; i < path.steps.length; i++) {
       const step = path.steps[i];
-      const stepNum = i + 1;
       
       if (i === 0) {
-        instructions.push(`${stepNum}. Start at "${step.name}"`);
+        currentSection.push(`${absoluteStepNum}. Start at "${step.name}"`);
+        absoluteStepNum++;
       } else {
         const prevRule = path.rules[i - 1];
         let condition = '';
@@ -551,11 +553,23 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
           condition = prevRule.type === 'success' ? ' (on success)' : ' (on failure)';
         }
         
-        instructions.push(`${stepNum}. Navigate to "${step.name}"${condition}`);
+        currentSection.push(`${absoluteStepNum}. Navigate to "${step.name}"${condition}`);
+        absoluteStepNum++;
+        
+        // If this transition was due to a failure, end the current section
+        if (prevRule && prevRule.type === 'failure') {
+          instructionSections.push(currentSection.join('. '));
+          currentSection = [];
+        }
       }
     }
     
-    return instructions.join('\n');
+    // Add any remaining steps in the current section
+    if (currentSection.length > 0) {
+      instructionSections.push(currentSection.join('. '));
+    }
+    
+    return instructionSections.join('\n\n');
   };
 
   /**
@@ -563,55 +577,25 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
    */
   const exportToExcel = () => {
     try {
-      // Prepare data for Excel export
-      const excelData = paths.map((path, index) => ({
-        'Path ID': `Path ${index + 1}`,
-        'Path Description': generatePathDescription(path, index),
-        'Total Steps': path.steps.length,
-        'Success Conditions': path.rules ? path.rules.filter(rule => rule.type === 'success').length : 0,
-        'Failure Conditions': path.rules ? path.rules.filter(rule => rule.type === 'failure').length : 0,
-        'Start Step': path.steps.length > 0 ? path.steps[0].name : '',
-        'End Step': path.steps.length > 0 ? path.steps[path.steps.length - 1].name : '',
-        'Intermediate Steps': path.steps.length > 2 ? 
-          path.steps.slice(1, -1).map(step => step.name).join(' → ') : 'None',
-        'Step-by-Step Instructions': generateStepInstructions(path),
-        'Full Path Flow': path.steps.map((step, stepIndex) => {
-          if (stepIndex === path.steps.length - 1) {
-            return step.name;
-          }
-          const rule = path.rules[stepIndex];
-          const ruleText = rule ? ` --[${rule.type}]--> ` : ' --> ';
-          return step.name + ruleText;
-        }).join('') + (path.steps.length > 1 ? path.steps[path.steps.length - 1].name : ''),
-        'Test Case Priority': index < 5 ? 'High' : index < 15 ? 'Medium' : 'Low',
-        'Expected Result': path.steps.length > 0 ? `Successfully reach "${path.steps[path.steps.length - 1].name}"` : 'Path completion',
-        'Sub-Steps Included': path.steps.some(step => step.isSubStep) ? 'Yes' : 'No',
-        'Path Complexity': path.steps.length <= 3 ? 'Simple' : path.steps.length <= 6 ? 'Medium' : 'Complex',
-        'Generated On': new Date().toLocaleString()
-      }));
+             // Prepare data for Excel export
+       const excelData = paths.map((path, index) => ({
+         'Path ID': `Path ${index + 1}`,
+         'Step-by-Step Instructions': generateStepInstructions(path),
+         'Expected Result': path.steps.length > 0 ? `Successfully reach "${path.steps[path.steps.length - 1].name}"` : 'Path completion',
+         'Generated On': new Date().toLocaleString()
+       }));
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(excelData);
 
-      // Set column widths for better readability
-      const columnWidths = [
-        { wch: 10 },  // Path ID
-        { wch: 50 },  // Path Description
-        { wch: 12 },  // Total Steps
-        { wch: 15 },  // Success Conditions
-        { wch: 15 },  // Failure Conditions
-        { wch: 25 },  // Start Step
-        { wch: 25 },  // End Step
-        { wch: 40 },  // Intermediate Steps
-        { wch: 60 },  // Step-by-Step Instructions
-        { wch: 80 },  // Full Path Flow
-        { wch: 15 },  // Test Case Priority
-        { wch: 40 },  // Expected Result
-        { wch: 15 },  // Sub-Steps Included
-        { wch: 15 },  // Path Complexity
-        { wch: 20 }   // Generated On
-      ];
+             // Set column widths for better readability
+       const columnWidths = [
+         { wch: 10 },  // Path ID
+         { wch: 80 },  // Step-by-Step Instructions
+         { wch: 40 },  // Expected Result
+         { wch: 20 }   // Generated On
+       ];
       ws['!cols'] = columnWidths;
 
       // Add some basic styling to the header row
