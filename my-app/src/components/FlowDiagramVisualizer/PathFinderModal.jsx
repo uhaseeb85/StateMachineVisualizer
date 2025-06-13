@@ -10,6 +10,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import * as XLSX from 'xlsx-js-style';
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,8 @@ import {
   X,
   Loader2,
   Route,
-  Download
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -480,6 +482,195 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     toast.success('Paths exported successfully');
   };
 
+  /**
+   * Generates a meaningful description of a path for test documentation
+   * @param {Object} path - The path object with steps and rules
+   * @param {number} index - The path index
+   * @returns {string} - A meaningful description of the path
+   */
+  const generatePathDescription = (path, index) => {
+    if (!path.steps || path.steps.length === 0) {
+      return `Path ${index + 1}: Empty path`;
+    }
+
+    const startStep = path.steps[0];
+    const endStep = path.steps[path.steps.length - 1];
+    const intermediateSteps = path.steps.slice(1, -1);
+    
+    let description = `Path ${index + 1}: Navigate from "${startStep.name}"`;
+    
+    if (path.steps.length > 2) {
+      const intermediateNames = intermediateSteps.map(step => `"${step.name}"`).join(', ');
+      description += ` through ${intermediateNames}`;
+    }
+    
+    if (path.steps.length > 1) {
+      description += ` to "${endStep.name}"`;
+    }
+
+    // Add rule information for better test documentation
+    if (path.rules && path.rules.length > 0) {
+      const successCount = path.rules.filter(rule => rule.type === 'success').length;
+      const failureCount = path.rules.filter(rule => rule.type === 'failure').length;
+      
+      if (successCount > 0 && failureCount > 0) {
+        description += ` (${successCount} success condition${successCount > 1 ? 's' : ''}, ${failureCount} failure condition${failureCount > 1 ? 's' : ''})`;
+      } else if (successCount > 0) {
+        description += ` (${successCount} success condition${successCount > 1 ? 's' : ''})`;
+      } else if (failureCount > 0) {
+        description += ` (${failureCount} failure condition${failureCount > 1 ? 's' : ''})`;
+      }
+    }
+
+    return description;
+  };
+
+  /**
+   * Generates detailed step-by-step instructions for a path
+   * @param {Object} path - The path object with steps and rules
+   * @returns {string} - Detailed step instructions
+   */
+  const generateStepInstructions = (path) => {
+    if (!path.steps || path.steps.length === 0) {
+      return 'No steps available';
+    }
+
+    let instructions = [];
+    
+    for (let i = 0; i < path.steps.length; i++) {
+      const step = path.steps[i];
+      const stepNum = i + 1;
+      
+      if (i === 0) {
+        instructions.push(`${stepNum}. Start at "${step.name}"`);
+      } else {
+        const prevRule = path.rules[i - 1];
+        let condition = '';
+        
+        if (prevRule) {
+          condition = prevRule.type === 'success' ? ' (on success)' : ' (on failure)';
+        }
+        
+        instructions.push(`${stepNum}. Navigate to "${step.name}"${condition}`);
+      }
+    }
+    
+    return instructions.join('\n');
+  };
+
+  /**
+   * Exports the found paths as an Excel file with meaningful descriptions for test documentation
+   */
+  const exportToExcel = () => {
+    try {
+      // Prepare data for Excel export
+      const excelData = paths.map((path, index) => ({
+        'Path ID': `Path ${index + 1}`,
+        'Path Description': generatePathDescription(path, index),
+        'Total Steps': path.steps.length,
+        'Success Conditions': path.rules ? path.rules.filter(rule => rule.type === 'success').length : 0,
+        'Failure Conditions': path.rules ? path.rules.filter(rule => rule.type === 'failure').length : 0,
+        'Start Step': path.steps.length > 0 ? path.steps[0].name : '',
+        'End Step': path.steps.length > 0 ? path.steps[path.steps.length - 1].name : '',
+        'Intermediate Steps': path.steps.length > 2 ? 
+          path.steps.slice(1, -1).map(step => step.name).join(' → ') : 'None',
+        'Step-by-Step Instructions': generateStepInstructions(path),
+        'Full Path Flow': path.steps.map((step, stepIndex) => {
+          if (stepIndex === path.steps.length - 1) {
+            return step.name;
+          }
+          const rule = path.rules[stepIndex];
+          const ruleText = rule ? ` --[${rule.type}]--> ` : ' --> ';
+          return step.name + ruleText;
+        }).join('') + (path.steps.length > 1 ? path.steps[path.steps.length - 1].name : ''),
+        'Test Case Priority': index < 5 ? 'High' : index < 15 ? 'Medium' : 'Low',
+        'Expected Result': path.steps.length > 0 ? `Successfully reach "${path.steps[path.steps.length - 1].name}"` : 'Path completion',
+        'Sub-Steps Included': path.steps.some(step => step.isSubStep) ? 'Yes' : 'No',
+        'Path Complexity': path.steps.length <= 3 ? 'Simple' : path.steps.length <= 6 ? 'Medium' : 'Complex',
+        'Generated On': new Date().toLocaleString()
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths for better readability
+      const columnWidths = [
+        { wch: 10 },  // Path ID
+        { wch: 50 },  // Path Description
+        { wch: 12 },  // Total Steps
+        { wch: 15 },  // Success Conditions
+        { wch: 15 },  // Failure Conditions
+        { wch: 25 },  // Start Step
+        { wch: 25 },  // End Step
+        { wch: 40 },  // Intermediate Steps
+        { wch: 60 },  // Step-by-Step Instructions
+        { wch: 80 },  // Full Path Flow
+        { wch: 15 },  // Test Case Priority
+        { wch: 40 },  // Expected Result
+        { wch: 15 },  // Sub-Steps Included
+        { wch: 15 },  // Path Complexity
+        { wch: 20 }   // Generated On
+      ];
+      ws['!cols'] = columnWidths;
+
+      // Add some basic styling to the header row
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (ws[cellAddress]) {
+          ws[cellAddress].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: 'E3F2FD' } },
+            border: {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: 'thin' },
+              right: { style: 'thin' }
+            }
+          };
+        }
+      }
+
+      // Add borders to all cells
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (ws[cellAddress]) {
+            if (!ws[cellAddress].s) ws[cellAddress].s = {};
+            ws[cellAddress].s.border = {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Flow Diagram Paths');
+
+      // Generate filename
+      const defaultName = `flow-diagram-test-paths-${new Date().toISOString().slice(0, 10)}`;
+      const fileName = window.prompt('Enter Excel file name:', defaultName);
+      
+      if (!fileName) {
+        return;
+      }
+      
+      const finalFileName = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
+      
+      // Save the file
+      XLSX.writeFile(wb, finalFileName);
+      
+      toast.success(`Excel file "${finalFileName}" exported successfully`);
+      
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export Excel file');
+    }
+  };
+
   // Calculate pagination values
   const indexOfLastPath = currentPage * pathsPerPage;
   const indexOfFirstPath = indexOfLastPath - pathsPerPage;
@@ -532,9 +723,19 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                 variant="outline"
                 onClick={exportResults}
                 disabled={currentPaths.length === 0}
+                title="Export as HTML file"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export Results
+                Export HTML
+              </Button>
+              <Button
+                variant="outline"
+                onClick={exportToExcel}
+                disabled={currentPaths.length === 0}
+                title="Export as Excel file for test documentation"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Excel
               </Button>
             </div>
           </DialogTitle>
