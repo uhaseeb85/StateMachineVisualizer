@@ -553,14 +553,21 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
           condition = prevRule.type === 'success' ? ' (on success)' : ' (on failure)';
         }
         
-        currentSection.push(`${absoluteStepNum}. Navigate to "${step.name}"${condition}`);
-        absoluteStepNum++;
-        
-        // If this transition was due to a failure, end the current section
+        // If this is a failure transition, close current section first, then start new section
         if (prevRule && prevRule.type === 'failure') {
-          instructionSections.push(currentSection.join('. '));
-          currentSection = [];
+          // Close current section if it has content
+          if (currentSection.length > 0) {
+            instructionSections.push(currentSection.join('. '));
+            currentSection = [];
+          }
+          // Add the failure step as its own section
+          instructionSections.push(`${absoluteStepNum}. Navigate to "${step.name}"${condition}`);
+        } else {
+          // Add to current section for success transitions
+          currentSection.push(`${absoluteStepNum}. Navigate to "${step.name}"${condition}`);
         }
+        
+        absoluteStepNum++;
       }
     }
     
@@ -572,18 +579,29 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     return instructionSections.join('\n\n');
   };
 
-  /**
+    /**
    * Exports the found paths as an Excel file with meaningful descriptions for test documentation
    */
   const exportToExcel = () => {
     try {
-             // Prepare data for Excel export
-       const excelData = paths.map((path, index) => ({
-         'Path ID': `Path ${index + 1}`,
-         'Step-by-Step Instructions': generateStepInstructions(path),
-         'Expected Result': path.steps.length > 0 ? `Successfully reach "${path.steps[path.steps.length - 1].name}"` : 'Path completion',
-         'Generated On': new Date().toLocaleString()
-       }));
+      // Prepare data for Excel export - create separate rows for each section
+      const excelData = [];
+      
+      paths.forEach((path, pathIndex) => {
+        const pathId = `Path ${pathIndex + 1}`;
+        const instructionSections = generateStepInstructions(path).split('\n\n');
+        const expectedResult = path.steps.length > 0 ? `Successfully reach "${path.steps[path.steps.length - 1].name}"` : 'Path completion';
+        const generatedOn = new Date().toLocaleString();
+        
+        instructionSections.forEach((section, sectionIndex) => {
+          excelData.push({
+            'Path ID': sectionIndex === 0 ? pathId : pathId, // Keep the same Path ID for all sections
+            'Step-by-Step Instructions': section,
+            'Expected Result': sectionIndex === 0 ? expectedResult : '', // Only show expected result in first row
+            'Generated On': sectionIndex === 0 ? generatedOn : '' // Only show timestamp in first row
+          });
+        });
+      });
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
