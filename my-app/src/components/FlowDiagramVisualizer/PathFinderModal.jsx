@@ -918,17 +918,25 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                   </div>
                 </div>
 
-                {currentPaths.map((path, index) => (
-                  <Card
-                    key={index}
-                    className="p-4 bg-gray-50 dark:bg-gray-700/50"
-                  >
-                    {renderPath(path)}
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      Path length: {path.steps.length} steps, {path.rules.length} transitions
-                    </div>
-                  </Card>
-                ))}
+                {currentPaths.map((path, index) => {
+                  const pathNumber = indexOfFirstPath + index + 1;
+                  return (
+                    <Card
+                      key={index}
+                      className="p-4 bg-gray-50 dark:bg-gray-700/50"
+                    >
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Path {pathNumber}
+                        </h3>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {path.steps.length} steps, {path.rules.length} transitions
+                        </div>
+                      </div>
+                      {renderPath(path)}
+                    </Card>
+                  );
+                })}
 
                 {/* Pagination */}
                 {totalPages > 1 && (
