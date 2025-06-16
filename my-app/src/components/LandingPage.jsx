@@ -12,7 +12,8 @@ import {
   Sparkles,
   Search,
   FileText,
-  Brain
+  Brain,
+  AudioLines
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
@@ -230,6 +231,55 @@ const LandingPage = ({ onGetStarted }) => {
                        group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300"
             >
               Start AI Analysis
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </motion.div>
+
+          {/* AI Audio Analyzer Mode */}
+          <motion.div 
+            className="group relative rounded-3xl bg-gradient-to-b from-pink-500/10 to-transparent p-10 hover:from-pink-500/20 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px] lg:col-span-2"
+            onClick={() => handleModeSelect('aiAudioAnalyzer')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-pink-500/20">
+                  <AudioLines className="w-8 h-8 text-pink-400" />
+                </div>
+                <h3 className="text-2xl font-semibold">AI Audio Analyzer</h3>
+              </div>
+              <p className="text-gray-400 mb-8 text-lg">
+                Analyze IVR conversations for fraudulent activity using AI. 
+                Transcribe audio, detect suspicious patterns, and monitor folders automatically.
+                Perfect for banks and financial institutions to prevent fraud.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                <div className="p-4 bg-pink-500/10 rounded-lg border border-pink-500/20">
+                  <AudioLines className="w-6 h-6 text-pink-400 mb-2" />
+                  <h4 className="text-white font-medium mb-1">Audio Transcription</h4>
+                  <p className="text-sm text-gray-400">Convert speech to text with speaker identification</p>
+                </div>
+                <div className="p-4 bg-pink-500/10 rounded-lg border border-pink-500/20">
+                  <Brain className="w-6 h-6 text-pink-400 mb-2" />
+                  <h4 className="text-white font-medium mb-1">Fraud Detection</h4>
+                  <p className="text-sm text-gray-400">AI-powered analysis of suspicious patterns</p>
+                </div>
+                <div className="p-4 bg-pink-500/10 rounded-lg border border-pink-500/20">
+                  <FileText className="w-6 h-6 text-pink-400 mb-2" />
+                  <h4 className="text-white font-medium mb-1">Automated Reports</h4>
+                  <p className="text-sm text-gray-400">Generate comprehensive analysis reports</p>
+                </div>
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 py-6
+                       group-hover:bg-pink-500 group-hover:text-white transition-all duration-300"
+            >
+              Start Audio Analysis
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
