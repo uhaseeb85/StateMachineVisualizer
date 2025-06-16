@@ -594,14 +594,23 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         
         instructionSections.forEach((section, sectionIndex) => {
           // Extract the last step mentioned in this section for the expected result
-          const stepMatches = section.match(/Navigate to "([^"]+)"/g);
+          const stepMatches = section.match(/Navigate to "([^"]+)"[^.]*(\(on failure\)|\(on success\))?/g);
           let expectedResult = 'Path completion';
           
           if (stepMatches && stepMatches.length > 0) {
             // Get the last step mentioned in this section
             const lastStepMatch = stepMatches[stepMatches.length - 1];
-            const stepName = lastStepMatch.match(/Navigate to "([^"]+)"/)[1];
-            expectedResult = `Successfully reach "${stepName}"`;
+            const stepNameMatch = lastStepMatch.match(/Navigate to "([^"]+)"/);
+            const isFailureStep = lastStepMatch.includes('(on failure)');
+            
+            if (stepNameMatch) {
+              const stepName = stepNameMatch[1];
+              if (isFailureStep) {
+                expectedResult = `Failed Step "${stepName}"`;
+              } else {
+                expectedResult = `Successfully reach "${stepName}"`;
+              }
+            }
           } else if (section.includes('Start at "')) {
             // If this section only has a start step, use that
             const startMatch = section.match(/Start at "([^"]+)"/);
