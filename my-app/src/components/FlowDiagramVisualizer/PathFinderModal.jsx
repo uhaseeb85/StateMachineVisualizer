@@ -590,14 +590,30 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       paths.forEach((path, pathIndex) => {
         const pathId = `Path ${pathIndex + 1}`;
         const instructionSections = generateStepInstructions(path).split('\n\n');
-        const expectedResult = path.steps.length > 0 ? `Successfully reach "${path.steps[path.steps.length - 1].name}"` : 'Path completion';
         const generatedOn = new Date().toLocaleString();
         
         instructionSections.forEach((section, sectionIndex) => {
+          // Extract the last step mentioned in this section for the expected result
+          const stepMatches = section.match(/Navigate to "([^"]+)"/g);
+          let expectedResult = 'Path completion';
+          
+          if (stepMatches && stepMatches.length > 0) {
+            // Get the last step mentioned in this section
+            const lastStepMatch = stepMatches[stepMatches.length - 1];
+            const stepName = lastStepMatch.match(/Navigate to "([^"]+)"/)[1];
+            expectedResult = `Successfully reach "${stepName}"`;
+          } else if (section.includes('Start at "')) {
+            // If this section only has a start step, use that
+            const startMatch = section.match(/Start at "([^"]+)"/);
+            if (startMatch) {
+              expectedResult = `Successfully reach "${startMatch[1]}"`;
+            }
+          }
+          
           excelData.push({
-            'Path ID': sectionIndex === 0 ? pathId : pathId, // Keep the same Path ID for all sections
+            'Path ID': pathId, // Keep the same Path ID for all sections
             'Step-by-Step Instructions': section,
-            'Expected Result': sectionIndex === 0 ? expectedResult : '', // Only show expected result in first row
+            'Expected Result': expectedResult, // Show expected result for each section
             'Generated On': sectionIndex === 0 ? generatedOn : '' // Only show timestamp in first row
           });
         });
