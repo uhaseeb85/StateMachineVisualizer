@@ -608,14 +608,14 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
               if (isFailureStep) {
                 expectedResult = `Failed Step "${stepName}"`;
               } else {
-                expectedResult = `Successfully executed "${stepName}"`;
+                expectedResult = `Successfully reach "${stepName}"`;
               }
             }
           } else if (section.includes('Start at "')) {
             // If this section only has a start step, use that
             const startMatch = section.match(/Start at "([^"]+)"/);
             if (startMatch) {
-              expectedResult = `Successfully executed "${startMatch[1]}"`;
+              expectedResult = `Successfully reach "${startMatch[1]}"`;
             }
           }
           
