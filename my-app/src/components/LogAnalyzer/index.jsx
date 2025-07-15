@@ -82,13 +82,11 @@ const LogAnalyzer = ({ onChangeMode }) => {
   const handleLogFileUpload = (event) => {
     const newFiles = Array.from(event.target.files);
     
-    // Check if adding these files would exceed the 5 file limit
-    if (logFiles.length + newFiles.length > 5) {
-      toast.error('Maximum 5 log files allowed');
-      return;
+    // Only take the first file
+    if (newFiles.length > 0) {
+      setLogFiles([newFiles[0]]);
     }
     
-    setLogFiles([...logFiles, ...newFiles]);
     event.target.value = ''; // Reset input to allow selecting the same file again
   };
 
@@ -424,4 +422,4 @@ LogAnalyzer.propTypes = {
   onChangeMode: PropTypes.func.isRequired
 };
 
-export default LogAnalyzer; 
+export default LogAnalyzer;

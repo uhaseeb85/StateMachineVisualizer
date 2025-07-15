@@ -78,7 +78,7 @@ const FileAnalysis = ({
               Getting Started with File Analysis
             </h3>
             <ol className="list-decimal pl-4 text-sm text-blue-700 dark:text-blue-300 space-y-1">
-              <li>Upload one or more log files (up to 5 files)</li>
+              <li>Upload a log file</li>
               <li>Upload a log dictionary containing pattern definitions (or use our sample)</li>
               <li>Click "Analyze Logs" to search for patterns in your files</li>
               <li>View results organized by severity with line numbers and context</li>
@@ -102,11 +102,10 @@ const FileAnalysis = ({
             type="file"
             onChange={handleLogFileUpload}
             accept=".txt,.log"
-            multiple
           />
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Upload text files containing your logs (one log entry per line)
+          Upload a text file containing your logs (one log entry per line)
         </p>
         
         {/* Display uploaded files */}

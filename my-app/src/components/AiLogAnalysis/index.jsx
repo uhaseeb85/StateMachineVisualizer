@@ -108,13 +108,11 @@ const AiLogAnalysis = ({ onChangeMode }) => {
   const handleLogFileUpload = (event) => {
     const newFiles = Array.from(event.target.files);
     
-    // Check if adding these files would exceed the 5 file limit
-    if (logFiles.length + newFiles.length > 5) {
-      toast.error('Maximum 5 log files allowed');
-      return;
+    // Only take the first file
+    if (newFiles.length > 0) {
+      setLogFiles([newFiles[0]]);
     }
     
-    setLogFiles([...logFiles, ...newFiles]);
     event.target.value = ''; // Reset input to allow selecting the same file again
   };
 
@@ -177,10 +175,10 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                 </div>
                 <div>
                   <h4 className="font-medium text-green-800 dark:text-green-200 text-base mb-1.5">
-                    Upload Log Files
+                    Upload Log File
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Upload your log files (up to 5) using the "Upload Log Files" button. Text (.txt) and log (.log) files are supported.
+                    Upload your log file using the "Upload Log Files" button. Text (.txt) and log (.log) files are supported.
                   </p>
                 </div>
               </div>
@@ -333,13 +331,13 @@ const AiLogAnalysis = ({ onChangeMode }) => {
   // Render Files Modal
   const renderFilesModal = () => {
     if (!showFilesModal) return null;
-    
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-green-900 dark:text-green-200">
-              Upload Log Files <span className="text-sm font-normal">({logFiles.length}/5)</span>
+              Upload Log File
             </h3>
             <Button
               variant="ghost"
@@ -353,42 +351,32 @@ const AiLogAnalysis = ({ onChangeMode }) => {
           
           {logFiles.length > 0 ? (
             <div className="flex flex-col space-y-3">
-              {logFiles.map((file, index) => (
-                <div key={index} className="p-3 bg-white dark:bg-gray-800 rounded border border-green-200 dark:border-green-800 flex justify-between items-center">
-                  <div className="flex items-center">
-                    <FileText className="h-5 w-5 text-green-500 mr-2" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </p>
-                    </div>
+              <div className="p-3 bg-white dark:bg-gray-800 rounded border border-green-200 dark:border-green-800 flex justify-between items-center">
+                <div className="flex items-center">
+                  <FileText className="h-5 w-5 text-green-500 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{logFiles[0].name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {(logFiles[0].size / 1024).toFixed(1)} KB
+                    </p>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setLogFiles(logFiles.filter((_, i) => i !== index))}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
-              ))}
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setLogFiles([]);
+                    setShowFilesModal(false);
+                  }}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-sm text-green-800 dark:text-green-300">
-                {logFiles.length === 1 
-                  ? "Your log file is ready for AI analysis"
-                  : `Your ${logFiles.length} log files are ready for AI analysis`}
+                Your log file is ready for AI analysis
               </p>
-              <div className="flex justify-between mt-4">
-                {logFiles.length < 5 && (
-                  <Button
-                    onClick={() => fileInputRef.current.click()}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Add More Files
-                  </Button>
-                )}
+              <div className="flex justify-end">
                 <Button
                   variant="outline" 
                   size="sm"
@@ -399,7 +387,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                   className="text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <X className="h-4 w-4 mr-1" />
-                  Clear All Files
+                  Clear File
                 </Button>
               </div>
             </div>
@@ -413,17 +401,17 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                       className="relative cursor-pointer rounded-md font-medium text-green-600 dark:text-green-400 hover:text-green-500 focus-within:outline-none"
                       onClick={() => fileInputRef.current.click()}
                     >
-                      <span>Upload log files</span>
+                      <span>Upload a log file</span>
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    TXT or LOG up to 10MB each (max 5 files)
+                    TXT or LOG up to 10MB
                   </p>
                 </div>
               </div>
               <p className="mt-3 text-sm text-green-800 dark:text-green-300">
-                Upload log files to start analyzing with AI
+                Upload a log file to start analyzing with AI
               </p>
             </div>
           )}
@@ -478,7 +466,6 @@ const AiLogAnalysis = ({ onChangeMode }) => {
               }}
               accept=".txt,.log"
               className="hidden"
-              multiple
             />
 
             {/* Action buttons */}
@@ -499,7 +486,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                   className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-300 dark:border-green-800"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {logFiles.length > 0 ? `Log Files (${logFiles.length}/5)` : 'Upload Log Files'}
+                  {logFiles.length > 0 ? `Log File (${logFiles.length})` : 'Upload Log File'}
                 </Button>
               </div>
               
@@ -546,4 +533,4 @@ AiLogAnalysis.propTypes = {
   onChangeMode: PropTypes.func.isRequired
 };
 
-export default AiLogAnalysis; 
+export default AiLogAnalysis;
