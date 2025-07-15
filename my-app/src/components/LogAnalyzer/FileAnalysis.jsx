@@ -27,7 +27,7 @@ const FileAnalysis = ({
 }) => {
   // Large dictionary warning modal
   const renderLargeDictionaryWarning = () => {
-    if (!logDictionary || logDictionary.length <= 2) return null;
+    if (!logDictionary || logDictionary.length <= 25) return null;
     
     return (
       <div className="p-4 mb-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
