@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, X, Trash, Cpu } from 'lucide-react';
+import { FileText, X, Trash, Cpu, AlertTriangle } from 'lucide-react';
 import { SCREENS } from './constants';
 import DictionaryUpload from './DictionaryUpload';
 import AnalyzeButton from './AnalyzeButton';
@@ -25,6 +25,37 @@ const FileAnalysis = ({
   sessionId,
   isUsingWorkers
 }) => {
+  // Large dictionary warning modal
+  const renderLargeDictionaryWarning = () => {
+    if (!logDictionary || logDictionary.length <= 2) return null;
+    
+    return (
+      <div className="p-4 mb-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+              Large Log Dictionary Detected
+            </h3>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              Your log dictionary contains {logDictionary.length} patterns. For optimal performance, we recommend:
+            </p>
+            <ul className="list-disc pl-5 mt-2 text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+              <li>Keep patterns under 25 entries per dictionary</li>
+              <li>Create separate dictionaries for different projects or teams</li>
+              <li>Focus on the most critical patterns for your analysis</li>
+            </ul>
+            <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400 italic">
+              You can still proceed with the analysis, but performance may be affected.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
@@ -58,6 +89,9 @@ const FileAnalysis = ({
           </div>
         </div>
       </div>
+
+      {/* Large dictionary warning */}
+      {renderLargeDictionaryWarning()}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -188,4 +222,4 @@ FileAnalysis.propTypes = {
   isUsingWorkers: PropTypes.bool
 };
 
-export default FileAnalysis; 
+export default FileAnalysis;
