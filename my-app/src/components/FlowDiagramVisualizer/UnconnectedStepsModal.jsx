@@ -1,16 +1,12 @@
 import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from 'lucide-react';
+import { X, FileSpreadsheet } from 'lucide-react';
+import ExcelJS from 'exceljs';
 
 /**
  * UnconnectedStepsModal
- * Modal to display steps with no incoming or outgoing connections.
- * @param {Object} props
- * @param {boolean} props.isOpen - Whether the modal is open
- * @param {Function} props.onClose - Function to close the modal
- * @param {Array} props.steps - All steps in the flow
- * @param {Array} props.connections - All connections in the flow
+ * Modal to display steps missing outgoing success/failure connections, with export to Excel.
  */
 const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
   // For each step, check if it is missing outgoing success and/or failure connections
@@ -26,13 +22,51 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
       } else if (!hasFailure) {
         status = 'No Failure outgoing connection';
       }
-      return { ...step, status, show: !hasSuccess || !hasFailure };
+      // Find parent step
+      let parentStep = null;
+      if (step.parentId) {
+        parentStep = steps.find(s => s.id === step.parentId);
+      }
+      return { ...step, status, show: !hasSuccess || !hasFailure, parentStep };
     })
     .filter(step => step.show);
 
+  // Export to Excel handler using exceljs
+  const handleExportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Unconnected Steps');
+    worksheet.columns = [
+      { header: 'Step Name', key: 'stepName', width: 30 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Parent Step', key: 'parentStep', width: 30 },
+      { header: 'Status', key: 'status', width: 40 },
+    ];
+    unconnectedSteps.forEach(step => {
+      worksheet.addRow({
+        stepName: step.name || step.id,
+        description: step.description || '',
+        parentStep: step.parentStep ? (step.parentStep.name || step.parentStep.id) : '',
+        status: step.status
+      });
+    });
+    // Generate buffer and trigger download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'unconnected_steps.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+      <DialogContent className="w-[70vw] max-w-[90vw] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <X className="h-5 w-5 text-pink-600" />
@@ -41,24 +75,40 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
         </DialogHeader>
         <div className="py-4">
           {unconnectedSteps.length === 0 ? (
-            <div className="text-gray-500 dark:text-gray-400 text-center">All steps are connected.</div>
+            <div className="text-gray-500 dark:text-gray-400 text-center">All steps have both outgoing connections.</div>
           ) : (
-            <ul className="space-y-2">
-              {unconnectedSteps.map(step => (
-                <li key={step.id} className="border rounded p-2 bg-gray-50 dark:bg-gray-800">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {step.name ? step.name : step.id}
-                  </div>
-                  {step.status && (
-                    <div className="text-xs text-gray-500 mt-1">{step.status}</div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-700 rounded-lg overflow-hidden">
+                <thead className="bg-gray-700 text-white">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Step Name</th>
+                    <th className="px-4 py-2 text-left">Description</th>
+                    <th className="px-4 py-2 text-left">Parent Step</th>
+                    <th className="px-4 py-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unconnectedSteps.map((step, idx) => (
+                    <tr key={step.id} className={idx % 2 === 0 ? 'bg-gray-800/80' : 'bg-gray-700/80'}>
+                      <td className="px-4 py-2 font-semibold text-white">{step.name ? step.name : step.id}</td>
+                      <td className="px-4 py-2 text-gray-200">{step.description || '-'}</td>
+                      <td className="px-4 py-2 text-blue-200">{step.parentStep ? (step.parentStep.name || step.parentStep.id) : '-'}</td>
+                      <td className="px-4 py-2 text-yellow-200">{step.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
         <DialogFooter>
           <Button onClick={onClose} className="bg-pink-600 hover:bg-pink-700 text-white">Close</Button>
+          {unconnectedSteps.length > 0 && (
+            <Button onClick={handleExportExcel} className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Export to Excel
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -72,4 +122,4 @@ UnconnectedStepsModal.propTypes = {
   connections: PropTypes.array.isRequired,
 };
 
-export default UnconnectedStepsModal; 
+export default UnconnectedStepsModal;
