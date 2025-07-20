@@ -34,7 +34,7 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
   // Export to Excel handler using exceljs
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Unconnected Steps');
+    const worksheet = workbook.addWorksheet('Missing Connections');
     worksheet.columns = [
       { header: 'Step Name', key: 'stepName', width: 30 },
       { header: 'Description', key: 'description', width: 40 },
@@ -55,7 +55,7 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'unconnected_steps.xlsx';
+    a.download = 'missing_connections.xlsx';
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -70,7 +70,7 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <X className="h-5 w-5 text-pink-600" />
-            Unconnected Steps
+            Missing Connections
           </DialogTitle>
         </DialogHeader>
         <div className="py-4">
