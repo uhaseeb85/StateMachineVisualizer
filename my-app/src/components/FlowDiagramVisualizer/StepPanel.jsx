@@ -1409,6 +1409,66 @@ const StepPanel = ({
                   spellCheck={false}
                 />
               </div>
+
+              {/* Assumptions Section */}
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="h-5 w-5 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01" /></svg>
+                  <label className="text-base font-semibold">Assumptions</label>
+                </div>
+                <ul className="mb-2 space-y-1">
+                  {(selectedStep.assumptions || []).map((a, i) => (
+                    <li key={i} className="flex items-center gap-2 bg-green-100 dark:bg-green-800/40 rounded px-2 py-1">
+                      <span className="flex-1 text-green-900 dark:text-green-100">{a}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 p-0" onClick={() => {
+                        const updated = [...selectedStep.assumptions];
+                        updated.splice(i, 1);
+                        handleUpdateStep(selectedStep.id, { assumptions: updated });
+                      }} title="Remove assumption">
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+                <AddNoteInput
+                  onAdd={val => {
+                    const updated = [...(selectedStep.assumptions || []), val];
+                    handleUpdateStep(selectedStep.id, { assumptions: updated });
+                  }}
+                  label="Add Assumption"
+                  colorClass="green"
+                />
+              </div>
+
+              {/* Questions Section */}
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 14h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <label className="text-base font-semibold">Questions</label>
+                </div>
+                <ul className="mb-2 space-y-1">
+                  {(selectedStep.questions || []).map((q, i) => (
+                    <li key={i} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-800/40 rounded px-2 py-1">
+                      <span className="flex-1 text-blue-900 dark:text-blue-100">{q}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 p-0" onClick={() => {
+                        const updated = [...selectedStep.questions];
+                        updated.splice(i, 1);
+                        handleUpdateStep(selectedStep.id, { questions: updated });
+                      }} title="Remove question">
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+                <AddNoteInput
+                  onAdd={val => {
+                    const updated = [...(selectedStep.questions || []), val];
+                    handleUpdateStep(selectedStep.id, { questions: updated });
+                  }}
+                  label="Add Question"
+                  colorClass="blue"
+                />
+              </div>
               
               {/* Screenshot Section */}
               <div>
@@ -1742,3 +1802,31 @@ StepPanel.propTypes = {
 };
 
 export default StepPanel;
+
+function AddNoteInput({ onAdd, label, colorClass }) {
+  const [value, setValue] = useState('');
+  const color = colorClass === 'green' ? 'green' : colorClass === 'blue' ? 'blue' : 'gray';
+  const inputBg = color === 'green' ? 'bg-green-50 dark:bg-green-900/40' : color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/40' : 'bg-gray-100 dark:bg-gray-800';
+  const border = color === 'green' ? 'border-green-300 dark:border-green-700' : color === 'blue' ? 'border-blue-300 dark:border-blue-700' : 'border-gray-300 dark:border-gray-600';
+  const focus = color === 'green' ? 'focus:ring-green-400' : color === 'blue' ? 'focus:ring-blue-400' : 'focus:ring-gray-400';
+  const btnBg = color === 'green' ? 'bg-green-600 hover:bg-green-700' : color === 'blue' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-700';
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <input
+        className={`rounded px-2 py-1 text-xs ${inputBg} text-foreground border ${border} focus:outline-none ${focus}`}
+        type="text"
+        placeholder={label}
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && value.trim()) { onAdd(value.trim()); setValue(''); } }}
+      />
+      <button
+        className={`${btnBg} text-white rounded px-2 py-1 text-xs`}
+        onClick={() => { if (value.trim()) { onAdd(value.trim()); setValue(''); } }}
+        type="button"
+        title={label}
+      >+
+      </button>
+    </div>
+  );
+}
