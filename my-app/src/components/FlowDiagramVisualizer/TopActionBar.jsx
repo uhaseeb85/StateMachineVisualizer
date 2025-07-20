@@ -11,7 +11,8 @@ import {
   Sun,
   Save,
   GitBranch,
-  Settings
+  Settings,
+  ListX
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -19,6 +20,7 @@ import { useState, useRef, useEffect } from 'react';
 import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
 import FlowDiagramToolsModal from './FlowDiagramToolsModal';
 import FileHistoryDropdown from './FileHistoryDropdown';
+import UnconnectedStepsModal from './UnconnectedStepsModal';
 
 const TopActionBar = ({
   onChangeMode,
@@ -44,6 +46,7 @@ const TopActionBar = ({
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const dropdownRef = useRef(null);
   const [showAnalysisToolsModal, setShowAnalysisToolsModal] = useState(false);
+  const [showUnconnectedStepsModal, setShowUnconnectedStepsModal] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -269,6 +272,20 @@ const TopActionBar = ({
               Tools
             </Button>
 
+            {/* Unconnected Steps Button */}
+            <Button
+              onClick={() => setShowUnconnectedStepsModal(true)}
+              title="Show steps with no connections"
+              className="unconnected-steps-button bg-pink-600 text-white text-sm
+                       hover:bg-pink-500 hover:scale-105
+                       dark:bg-pink-700 dark:hover:bg-pink-600
+                       transform transition-all duration-200
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <ListX className="w-4 h-4" />
+              Show Unconnected Steps
+            </Button>
+
             {/* Mode Switch Button */}
             <Button
               onClick={onChangeMode}
@@ -305,6 +322,14 @@ const TopActionBar = ({
         selectedRootElement={selectedRootElement}
         setSelectedRootElement={setSelectedRootElement}
         onGenerateFlowDiagram={handleGenerateFlowDiagram}
+      />
+
+      {/* Unconnected Steps Modal */}
+      <UnconnectedStepsModal
+        isOpen={showUnconnectedStepsModal}
+        onClose={() => setShowUnconnectedStepsModal(false)}
+        steps={steps}
+        connections={connections}
       />
     </div>
   );

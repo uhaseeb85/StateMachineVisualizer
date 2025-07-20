@@ -63,6 +63,7 @@ The State Machine Visualizer is an application designed to help engineers and de
 - Auto-layout using Dagre algorithm
 - Interactive graph manipulation
 - Export as images
+- **Unconnected Steps Modal:** Easily view all steps that have no incoming or outgoing connections with a single click from the toolbar
 
 ### Log Analysis
 - Local file analysis with pattern matching
