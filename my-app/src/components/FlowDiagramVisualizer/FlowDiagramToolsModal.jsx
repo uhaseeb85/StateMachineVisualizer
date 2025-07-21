@@ -7,7 +7,7 @@
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Route, GitBranch, X } from 'lucide-react'; // Updated icons
+import { Route, GitBranch, X, ListX } from 'lucide-react'; // Updated icons
 import { useState, useEffect } from 'react';
 
 // Root Element Selection Modal Component
@@ -97,6 +97,7 @@ const FlowDiagramToolsModal = ({
   isOpen, 
   onClose, 
   onFindPath,
+  onShowMissingConnections,
   // Props for Generate Flow Diagram
   rootElements,
   selectedRootElement,
@@ -178,6 +179,23 @@ const FlowDiagramToolsModal = ({
                 </p>
               </div>
             </div>
+
+            {/* Show Missing Connections Tool Option */}
+            <div 
+              className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
+              onClick={() => handleSelectTool(onShowMissingConnections)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectTool(onShowMissingConnections); }}
+            >
+              <ListX className="w-8 h-8 text-pink-600 dark:text-pink-500 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Show Missing Connections</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Identify steps that are missing success or failure connections.
+                </p>
+              </div>
+            </div>
           </div>
           
           <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -206,6 +224,7 @@ FlowDiagramToolsModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onFindPath: PropTypes.func.isRequired,
+  onShowMissingConnections: PropTypes.func.isRequired,
   // Props for Generate Flow Diagram
   rootElements: PropTypes.array,
   selectedRootElement: PropTypes.object,

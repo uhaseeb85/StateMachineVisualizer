@@ -16,6 +16,7 @@ import TopActionBar from './TopActionBar';
 import StepPanel from './StepPanel';
 import SimulationModal from './SimulationModal';
 import PathFinderModal from './PathFinderModal';
+import UnconnectedStepsModal from './UnconnectedStepsModal';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
 import { TourProvider } from './TourProvider';
@@ -36,6 +37,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   // Modal visibility state
   const [showSimulation, setShowSimulation] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
+  const [showUnconnectedSteps, setShowUnconnectedSteps] = useState(false);
 
   // Initialize flow diagram hook with storage key
   const {
@@ -88,6 +90,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     loadFileFromHistory(fileName);
   };
 
+  /**
+   * Handles showing the missing connections modal
+   */
+  const handleShowMissingConnections = () => {
+    setShowUnconnectedSteps(true);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -126,6 +135,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onChangeMode={onChangeMode}
           onSimulate={() => setShowSimulation(true)}
           onFindPath={() => setShowPathFinder(true)}
+          onShowMissingConnections={handleShowMissingConnections}
           onClear={clearAll}
           onImport={importData}
           onExport={exportData}
@@ -169,6 +179,15 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             steps={steps}
             connections={connections}
             onClose={() => setShowPathFinder(false)}
+          />
+        )}
+
+        {showUnconnectedSteps && (
+          <UnconnectedStepsModal
+            isOpen={showUnconnectedSteps}
+            onClose={() => setShowUnconnectedSteps(false)}
+            steps={steps}
+            connections={connections}
           />
         )}
       </div>
