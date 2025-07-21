@@ -17,6 +17,7 @@ import StepPanel from './StepPanel';
 import SimulationModal from './SimulationModal';
 import PathFinderModal from './PathFinderModal';
 import UnconnectedStepsModal from './UnconnectedStepsModal';
+import AllAssumptionsQuestionsModal from './AllAssumptionsQuestionsModal';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
 import { TourProvider } from './TourProvider';
@@ -38,6 +39,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   const [showSimulation, setShowSimulation] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
   const [showUnconnectedSteps, setShowUnconnectedSteps] = useState(false);
+  const [showAllAssumptionsQuestions, setShowAllAssumptionsQuestions] = useState(false);
 
   // Initialize flow diagram hook with storage key
   const {
@@ -97,6 +99,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     setShowUnconnectedSteps(true);
   };
 
+  /**
+   * Handles showing the all assumptions and questions modal
+   */
+  const handleShowAllAssumptionsQuestions = () => {
+    setShowAllAssumptionsQuestions(true);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -136,6 +145,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onSimulate={() => setShowSimulation(true)}
           onFindPath={() => setShowPathFinder(true)}
           onShowMissingConnections={handleShowMissingConnections}
+          onShowAllAssumptionsQuestions={handleShowAllAssumptionsQuestions}
           onClear={clearAll}
           onImport={importData}
           onExport={exportData}
@@ -188,6 +198,14 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             onClose={() => setShowUnconnectedSteps(false)}
             steps={steps}
             connections={connections}
+          />
+        )}
+
+        {showAllAssumptionsQuestions && (
+          <AllAssumptionsQuestionsModal
+            isOpen={showAllAssumptionsQuestions}
+            onClose={() => setShowAllAssumptionsQuestions(false)}
+            steps={steps}
           />
         )}
       </div>
