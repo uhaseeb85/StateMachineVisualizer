@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, FileSpreadsheet } from 'lucide-react';
-import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 
 /**
  * UnconnectedStepsModal
@@ -31,37 +31,28 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
     })
     .filter(step => step.show);
 
-  // Export to Excel handler using exceljs
-  const handleExportExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Missing Connections');
-    worksheet.columns = [
-      { header: 'Step Name', key: 'stepName', width: 30 },
-      { header: 'Description', key: 'description', width: 40 },
-      { header: 'Parent Step', key: 'parentStep', width: 30 },
-      { header: 'Status', key: 'status', width: 40 },
+  // Export to Excel handler using xlsx
+  const handleExportExcel = () => {
+    // Prepare data for xlsx
+    const data = [
+      ['Step Name', 'Description', 'Parent Step', 'Status'], // Header row
+      ...unconnectedSteps.map(step => [
+        step.name || step.id,
+        step.description || '',
+        step.parentStep ? (step.parentStep.name || step.parentStep.id) : '',
+        step.status
+      ])
     ];
-    unconnectedSteps.forEach(step => {
-      worksheet.addRow({
-        stepName: step.name || step.id,
-        description: step.description || '',
-        parentStep: step.parentStep ? (step.parentStep.name || step.parentStep.id) : '',
-        status: step.status
-      });
-    });
-    // Generate buffer and trigger download
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'missing_connections.xlsx';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Missing Connections');
+    
+    // Generate and download file
+    XLSX.writeFile(workbook, 'missing_connections.xlsx');
   };
 
   return (

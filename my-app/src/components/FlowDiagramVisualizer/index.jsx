@@ -32,11 +32,11 @@ const STORAGE_KEY = 'flowDiagramData';
  */
 const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   console.log('Rendering FlowDiagramVisualizer');
-  
+
   // Modal visibility state
   const [showSimulation, setShowSimulation] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
-  
+
   // Initialize flow diagram hook with storage key
   const {
     steps,
@@ -140,7 +140,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onRemoveFile={removeFileFromHistory}
           onClearHistory={clearFileHistory}
         />
-        
+
         {/* Main step panel for diagram editing */}
         <div className="mt-8 bg-background rounded-xl border shadow-sm">
           <StepPanel
