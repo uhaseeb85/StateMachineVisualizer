@@ -68,6 +68,13 @@ const StepPanel = ({
   const [editingCaptionIndex, setEditingCaptionIndex] = useState(null);
   const [editedCaption, setEditedCaption] = useState('');
   const captionInputRef = useRef(null);
+  // Add state for editing assumptions and questions
+  const [editingAssumptionIndex, setEditingAssumptionIndex] = useState(null);
+  const [editedAssumption, setEditedAssumption] = useState('');
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState(null);
+  const [editedQuestion, setEditedQuestion] = useState('');
+  const assumptionInputRef = useRef(null);
+  const questionInputRef = useRef(null);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [zoomedImageCaption, setZoomedImageCaption] = useState('');
   const [downloadCount, setDownloadCount] = useState(0);
@@ -1410,6 +1417,130 @@ const StepPanel = ({
                 />
               </div>
 
+              {/* Connections Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Connections</h3>
+                <div className="space-y-4">
+                  {/* Success Paths Section */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-green-600 dark:text-green-400">
+                        Success Paths
+                      </label>
+                      <Button
+                        size="sm"
+                        className="h-7 px-2 bg-green-100 hover:bg-green-200 text-green-700 border-green-200"
+                        onClick={() => handleConnectionStart(selectedStep, 'success')}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Path
+                      </Button>
+                    </div>
+                    
+                    {/* List of success connections */}
+                    <div className="space-y-2">
+                      {connections
+                        .filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'success')
+                        .map(conn => {
+                          const targetStep = steps.find(s => s.id === conn.toStepId);
+                          if (!targetStep) return null;
+                          
+                          // Find parent step if this is a sub-step
+                          const parentStep = targetStep.parentId 
+                            ? steps.find(s => s.id === targetStep.parentId) 
+                            : null;
+                          const displayName = parentStep 
+                            ? `${parentStep.name} → ${targetStep.name}` 
+                            : targetStep.name;
+                          
+                          return (
+                            <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} 
+                                 className="flex items-center justify-between px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-100">
+                              <div className="flex items-center">
+                                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                                <span>{displayName}</span>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 hover:bg-green-100"
+                                onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, 'success')}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                        
+                      {connections.filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'success').length === 0 && (
+                        <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 dark:bg-gray-900/20 rounded-md border border-gray-100">
+                          No success paths defined
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Failure Paths Section */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium text-red-600 dark:text-red-400">
+                        Failure Paths
+                      </label>
+                      <Button
+                        size="sm"
+                        className="h-7 px-2 bg-red-100 hover:bg-red-200 text-red-700 border-red-200"
+                        onClick={() => handleConnectionStart(selectedStep, 'failure')}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Path
+                      </Button>
+                    </div>
+                    
+                    {/* List of failure connections */}
+                    <div className="space-y-2">
+                      {connections
+                        .filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure')
+                        .map(conn => {
+                          const targetStep = steps.find(s => s.id === conn.toStepId);
+                          if (!targetStep) return null;
+                          
+                          // Find parent step if this is a sub-step
+                          const parentStep = targetStep.parentId 
+                            ? steps.find(s => s.id === targetStep.parentId) 
+                            : null;
+                          const displayName = parentStep 
+                            ? `${parentStep.name} → ${targetStep.name}` 
+                            : targetStep.name;
+                          
+                          return (
+                            <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} 
+                                 className="flex items-center justify-between px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-100">
+                              <div className="flex items-center">
+                                <XCircle className="h-4 w-4 text-red-500 mr-2" />
+                                <span>{displayName}</span>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 hover:bg-red-100"
+                                onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, 'failure')}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                        
+                      {connections.filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure').length === 0 && (
+                        <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 dark:bg-gray-900/20 rounded-md border border-gray-100">
+                          No failure paths defined
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Assumptions Section */}
               <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
@@ -1419,14 +1550,87 @@ const StepPanel = ({
                 <ul className="mb-2 space-y-1">
                   {(selectedStep.assumptions || []).map((a, i) => (
                     <li key={i} className="flex items-center gap-2 bg-green-100 dark:bg-green-800/40 rounded px-2 py-1">
-                      <span className="flex-1 text-green-900 dark:text-green-100">{a}</span>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 p-0" onClick={() => {
-                        const updated = [...selectedStep.assumptions];
-                        updated.splice(i, 1);
-                        handleUpdateStep(selectedStep.id, { assumptions: updated });
-                      }} title="Remove assumption">
-                        <X className="h-3 w-3" />
-                      </Button>
+                      {editingAssumptionIndex === i ? (
+                        <div className="flex-1 flex items-center gap-1">
+                          <span className="font-semibold text-green-800 dark:text-green-200 min-w-[24px]">{i+1}.</span>
+                          <Input
+                            ref={assumptionInputRef}
+                            value={editedAssumption}
+                            onChange={(e) => setEditedAssumption(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const updated = [...selectedStep.assumptions];
+                                updated[i] = editedAssumption;
+                                handleUpdateStep(selectedStep.id, { assumptions: updated });
+                                setEditingAssumptionIndex(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingAssumptionIndex(null);
+                              }
+                            }}
+                            className="flex-1 h-7 py-1 bg-white dark:bg-gray-800"
+                            autoFocus
+                          />
+                          <Button
+                            size="icon"
+                            className="h-7 w-7 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => {
+                              const updated = [...selectedStep.assumptions];
+                              updated[i] = editedAssumption;
+                              handleUpdateStep(selectedStep.id, { assumptions: updated });
+                              setEditingAssumptionIndex(null);
+                            }}
+                            title="Save assumption"
+                          >
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => setEditingAssumptionIndex(null)}
+                            title="Cancel"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="font-semibold text-green-800 dark:text-green-200 min-w-[24px]">{i+1}.</span>
+                          <span className="flex-1 text-green-900 dark:text-green-100">{a}</span>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 p-0 hover:bg-green-200 dark:hover:bg-green-700" 
+                              onClick={() => {
+                                setEditedAssumption(a);
+                                setEditingAssumptionIndex(i);
+                                setTimeout(() => {
+                                  if (assumptionInputRef.current) {
+                                    assumptionInputRef.current.focus();
+                                  }
+                                }, 50);
+                              }} 
+                              title="Edit assumption"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 p-0" 
+                              onClick={() => {
+                                const updated = [...selectedStep.assumptions];
+                                updated.splice(i, 1);
+                                handleUpdateStep(selectedStep.id, { assumptions: updated });
+                              }} 
+                              title="Remove assumption"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -1449,14 +1653,87 @@ const StepPanel = ({
                 <ul className="mb-2 space-y-1">
                   {(selectedStep.questions || []).map((q, i) => (
                     <li key={i} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-800/40 rounded px-2 py-1">
-                      <span className="flex-1 text-blue-900 dark:text-blue-100">{q}</span>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 p-0" onClick={() => {
-                        const updated = [...selectedStep.questions];
-                        updated.splice(i, 1);
-                        handleUpdateStep(selectedStep.id, { questions: updated });
-                      }} title="Remove question">
-                        <X className="h-3 w-3" />
-                      </Button>
+                      {editingQuestionIndex === i ? (
+                        <div className="flex-1 flex items-center gap-1">
+                          <span className="font-semibold text-blue-800 dark:text-blue-200 min-w-[24px]">{i+1}.</span>
+                          <Input
+                            ref={questionInputRef}
+                            value={editedQuestion}
+                            onChange={(e) => setEditedQuestion(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const updated = [...selectedStep.questions];
+                                updated[i] = editedQuestion;
+                                handleUpdateStep(selectedStep.id, { questions: updated });
+                                setEditingQuestionIndex(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingQuestionIndex(null);
+                              }
+                            }}
+                            className="flex-1 h-7 py-1 bg-white dark:bg-gray-800"
+                            autoFocus
+                          />
+                          <Button
+                            size="icon"
+                            className="h-7 w-7 bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => {
+                              const updated = [...selectedStep.questions];
+                              updated[i] = editedQuestion;
+                              handleUpdateStep(selectedStep.id, { questions: updated });
+                              setEditingQuestionIndex(null);
+                            }}
+                            title="Save question"
+                          >
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => setEditingQuestionIndex(null)}
+                            title="Cancel"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="font-semibold text-blue-800 dark:text-blue-200 min-w-[24px]">{i+1}.</span>
+                          <span className="flex-1 text-blue-900 dark:text-blue-100">{q}</span>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 p-0 hover:bg-blue-200 dark:hover:bg-blue-700" 
+                              onClick={() => {
+                                setEditedQuestion(q);
+                                setEditingQuestionIndex(i);
+                                setTimeout(() => {
+                                  if (questionInputRef.current) {
+                                    questionInputRef.current.focus();
+                                  }
+                                }, 50);
+                              }} 
+                              title="Edit question"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 p-0" 
+                              onClick={() => {
+                                const updated = [...selectedStep.questions];
+                                updated.splice(i, 1);
+                                handleUpdateStep(selectedStep.id, { questions: updated });
+                              }} 
+                              title="Remove question"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -1608,129 +1885,6 @@ const StepPanel = ({
                     <p className="text-xs text-gray-500 mt-1">Upload screenshots that illustrate this step (Max: 2MB each)</p>
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Connections</h3>
-              <div className="space-y-4">
-                {/* Success Paths Section */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-green-600 dark:text-green-400">
-                      Success Paths
-                    </label>
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 bg-green-100 hover:bg-green-200 text-green-700 border-green-200"
-                      onClick={() => handleConnectionStart(selectedStep, 'success')}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Path
-                    </Button>
-                  </div>
-                  
-                  {/* List of success connections */}
-                  <div className="space-y-2">
-                    {connections
-                      .filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'success')
-                      .map(conn => {
-                        const targetStep = steps.find(s => s.id === conn.toStepId);
-                        if (!targetStep) return null;
-                        
-                        // Find parent step if this is a sub-step
-                        const parentStep = targetStep.parentId 
-                          ? steps.find(s => s.id === targetStep.parentId) 
-                          : null;
-                        const displayName = parentStep 
-                          ? `${parentStep.name} → ${targetStep.name}` 
-                          : targetStep.name;
-                        
-                        return (
-                          <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} 
-                               className="flex items-center justify-between px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-100">
-                            <div className="flex items-center">
-                              <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
-                              <span>{displayName}</span>
-                            </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 hover:bg-green-100"
-                              onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, 'success')}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                      
-                    {connections.filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'success').length === 0 && (
-                      <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 dark:bg-gray-900/20 rounded-md border border-gray-100">
-                        No success paths defined
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Failure Paths Section */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-red-600 dark:text-red-400">
-                      Failure Paths
-                    </label>
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 bg-red-100 hover:bg-red-200 text-red-700 border-red-200"
-                      onClick={() => handleConnectionStart(selectedStep, 'failure')}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Path
-                    </Button>
-                  </div>
-                  
-                  {/* List of failure connections */}
-                  <div className="space-y-2">
-                    {connections
-                      .filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure')
-                      .map(conn => {
-                        const targetStep = steps.find(s => s.id === conn.toStepId);
-                        if (!targetStep) return null;
-                        
-                        // Find parent step if this is a sub-step
-                        const parentStep = targetStep.parentId 
-                          ? steps.find(s => s.id === targetStep.parentId) 
-                          : null;
-                        const displayName = parentStep 
-                          ? `${parentStep.name} → ${targetStep.name}` 
-                          : targetStep.name;
-                        
-                        return (
-                          <div key={`${conn.fromStepId}-${conn.toStepId}-${conn.type}`} 
-                               className="flex items-center justify-between px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-100">
-                            <div className="flex items-center">
-                              <XCircle className="h-4 w-4 text-red-500 mr-2" />
-                              <span>{displayName}</span>
-                            </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 hover:bg-red-100"
-                              onClick={() => handleRemoveConnection(selectedStep.id, conn.toStepId, 'failure')}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                      
-                    {connections.filter(conn => conn.fromStepId === selectedStep.id && conn.type === 'failure').length === 0 && (
-                      <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 dark:bg-gray-900/20 rounded-md border border-gray-100">
-                        No failure paths defined
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
