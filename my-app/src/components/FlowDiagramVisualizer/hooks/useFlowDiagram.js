@@ -471,13 +471,42 @@ const useFlowDiagram = (storageKey) => {
   };
 
   /**
-   * Exports the flow diagram data to a ZIP file that contains:
-   * - data.json: All step and connection information
-   * - images/: Directory containing all uploaded images
+   * Exports the flow diagram data as JSON (if no images) or ZIP (if images exist)
+   * - JSON: Simple export with all step and connection information
+   * - ZIP: Contains data.json and images/ directory with uploaded images
    */
   const exportData = async () => {
     try {
-      // Create a new zip file
+      // Check if any step has uploaded images (blob URLs or data URLs)
+      const hasUploadedImages = steps.some(step => {
+        if (!step.imageUrls || step.imageUrls.length === 0) return false;
+        
+        return step.imageUrls.some(imageUrl => {
+          // Check for uploaded images (blob URLs or data URLs)
+          return imageUrl && (
+            imageUrl.startsWith('blob:') || 
+            imageUrl.startsWith('data:')
+          );
+        });
+      });
+      
+      // If no uploaded images, export as JSON
+      if (!hasUploadedImages) {
+        const flowData = {
+          steps: steps,
+          connections: connections
+        };
+        
+        const jsonBlob = new Blob([JSON.stringify(flowData, null, 2)], {
+          type: 'application/json'
+        });
+        
+        saveAs(jsonBlob, "flow_diagram_export.json");
+        toast.success("Flow diagram exported as JSON successfully");
+        return;
+      }
+      
+      // If images exist, export as ZIP
       const zip = new JSZip();
       
       // Create an images folder in the zip
@@ -557,7 +586,7 @@ const useFlowDiagram = (storageKey) => {
       const zipBlob = await zip.generateAsync({type: "blob"});
       saveAs(zipBlob, "flow_diagram_export.zip");
       
-      toast.success("Flow diagram exported successfully");
+      toast.success("Flow diagram exported as ZIP successfully");
     } catch (error) {
       console.error('Error exporting flow diagram:', error);
       toast.error('Error exporting flow diagram: ' + error.message);
@@ -565,17 +594,17 @@ const useFlowDiagram = (storageKey) => {
   };
 
   /**
-   * Imports flow diagram data from a ZIP file
+   * Imports flow diagram data from a ZIP, JSON, or CSV file
    * Handles extraction of image files and restoring the flow structure
-   * @param {File} file - ZIP file to import
+   * @param {File} file - ZIP, JSON, or CSV file to import
    * @returns {Promise} Resolves when import is complete
    */
   const importData = async (file) => {
     console.log('Starting import of file:', file.name);
     try {
       // Validate file type
-      if (!file.name.endsWith('.zip') && !file.name.endsWith('.csv')) {
-        throw new Error('Please upload a ZIP or CSV file.');
+      if (!file.name.endsWith('.zip') && !file.name.endsWith('.json') && !file.name.endsWith('.csv')) {
+        throw new Error('Please upload a ZIP, JSON, or CSV file.');
       }
       
       // Get the file name without extension for history
@@ -592,14 +621,46 @@ const useFlowDiagram = (storageKey) => {
         return result;
       }
       
-      // Extract the zip file
+      // Handle JSON import
+      if (file.name.endsWith('.json')) {
+        const jsonText = await file.text();
+        const flowData = JSON.parse(jsonText);
+        
+        if (!flowData.steps || !Array.isArray(flowData.steps)) {
+          throw new Error('Invalid JSON format: Missing steps array');
+        }
+        
+        // For JSON imports, all image URLs should be preserved as-is
+        // (they should be external URLs since JSON exports don't include uploaded images)
+        const processedSteps = flowData.steps.map(step => {
+          // Ensure backward compatibility
+          if (step.imageUrls && step.imageUrls.length > 0 && !step.imageUrl) {
+            step.imageUrl = step.imageUrls[0];
+          }
+          return step;
+        });
+        
+        // Update the flow diagram
+        setSteps(processedSteps);
+        setConnections(flowData.connections || []);
+        
+        // Update file history and current file name
+        updateFileHistory(fileName);
+        setCurrentFileName(fileName);
+        saveFlow(fileName);
+        
+        toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections from JSON`);
+        return;
+      }
+      
+      // Handle ZIP import
       const zip = new JSZip();
       const zipContents = await zip.loadAsync(file);
       
       // Check for data.json
       const dataFile = zipContents.file("data.json");
       if (!dataFile) {
-        throw new Error('Invalid export file: Missing data.json');
+        throw new Error('Invalid ZIP file: Missing data.json');
       }
       
       // Extract the JSON data
@@ -659,7 +720,7 @@ const useFlowDiagram = (storageKey) => {
       setCurrentFileName(fileName);
       saveFlow(fileName);
       
-      toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections`);
+      toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections from ZIP`);
     } catch (error) {
       console.error('Error importing flow diagram:', error);
       toast.error('Error importing file: ' + error.message);

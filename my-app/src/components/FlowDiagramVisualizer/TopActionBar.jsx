@@ -70,8 +70,8 @@ const TopActionBar = ({
     const file = event.target.files?.[0];
     if (file) {
       console.log('Selected file:', file);
-      if (!file.name.endsWith('.csv') && !file.name.endsWith('.zip')) {
-        toast.error('Please select a CSV or ZIP file');
+      if (!file.name.endsWith('.csv') && !file.name.endsWith('.zip') && !file.name.endsWith('.json')) {
+        toast.error('Please select a CSV, JSON, or ZIP file');
         return;
       }
       try {
@@ -182,7 +182,7 @@ const TopActionBar = ({
             <div className="flex gap-2">
               <Button
                 onClick={handleExport}
-                title="Export as ZIP file"
+                title="Export as JSON (no images) or ZIP (with images)"
                 className="export-csv-button bg-gray-900 text-white text-sm
                          dark:bg-gray-800 dark:text-gray-100
                          hover:bg-blue-600 hover:scale-105
@@ -193,7 +193,7 @@ const TopActionBar = ({
                          flex items-center gap-2 px-3 py-1.5 rounded-md"
               >
                 <Upload className="w-4 h-4" />
-                Export as ZIP
+                Export
               </Button>
 
               <div className="relative">
@@ -216,7 +216,7 @@ const TopActionBar = ({
                   type="file"
                   id="file-import"
                   className="hidden"
-                  accept=".csv,.zip"
+                  accept=".csv,.zip,.json"
                   onChange={handleImport}
                 />
               </div>
