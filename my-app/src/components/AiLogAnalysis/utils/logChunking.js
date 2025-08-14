@@ -2,12 +2,48 @@
  * Smart log chunking utility that extracts relevant error/warning contexts
  */
 
-// Patterns to identify important log entries
+// Patterns to identify important log entries - Enhanced for Java Spring + log4j
 const IMPORTANCE_PATTERNS = {
-  ERROR: /\b(error|exception|fail(ed|ure)?|crash(ed)?)\b/i,
-  WARNING: /\b(warn(ing)?|deprecated)\b/i,
-  EXCEPTION_STACK: /^\s+at\s+.+\(.+\)/,
-  TIMESTAMP: /\d{4}-\d{2}-\d{2}|\d{2}:\d{2}:\d{2}/,
+  // Core error patterns
+  ERROR: /\b(error|exception|fail(ed|ure)?|crash(ed)?|fatal|critical|severe)\b/i,
+  
+  // Warning patterns
+  WARNING: /\b(warn(ing)?|deprecated|caution|notice)\b/i,
+  
+  // Java/Spring specific exception patterns
+  JAVA_EXCEPTION: /\b(Exception|Error|Throwable|SQLException|IOException|RuntimeException|NullPointerException|IllegalArgumentException|IllegalStateException|ClassNotFoundException|NoSuchMethodException|OutOfMemoryError|StackOverflowError|TimeoutException|InterruptedException)\b/,
+  
+  // Spring-specific patterns
+  SPRING_ERROR: /\b(BeanCreationException|BeanDefinitionStoreException|NoSuchBeanDefinitionException|ApplicationContextException|DataAccessException|TransactionException|SecurityException|AuthenticationException|AccessDeniedException)\b/,
+  
+  // Database/JPA patterns
+  DATABASE_ISSUE: /\b(SQLException|DataAccessException|ConstraintViolationException|OptimisticLockException|PessimisticLockException|TransactionRollbackException|ConnectionException|HibernateException|JDBCException)\b/,
+  
+  // Web/HTTP patterns
+  HTTP_ERROR: /\b(HttpStatus|status.*[45]\d{2}|400|401|403|404|405|408|409|410|422|429|500|501|502|503|504|timeout|connection.*refused|connection.*reset)\b/i,
+  
+  // Log4j specific patterns
+  LOG4J_ERROR: /\b(ERROR|FATAL)\s+\[/,
+  LOG4J_WARN: /\b(WARN|WARNING)\s+\[/,
+  
+  // Spring Boot startup/shutdown patterns
+  SPRING_LIFECYCLE: /\b(Started|Stopped|Failed to start|Shutdown|Shutting down|Application startup|Context initialization|Bean.*created|Bean.*destroyed|Port.*already in use|Unable to start embedded|Tomcat.*started|Tomcat.*stopped)\b/i,
+  
+  // Performance and resource patterns
+  PERFORMANCE: /\b(slow|timeout|latency|OutOfMemoryError|memory.*leak|GC.*overhead|thread.*pool.*exhausted|connection.*pool.*exhausted|deadlock|blocked|waiting)\b/i,
+  
+  // Security patterns
+  SECURITY: /\b(Unauthorized|Forbidden|Authentication.*failed|Access.*denied|Security.*violation|CSRF|XSS|SQL.*injection|Invalid.*token|Session.*expired|Login.*failed)\b/i,
+  
+  // Stack trace patterns (Java specific)
+  EXCEPTION_STACK: /^\s*at\s+[\w\.$]+\([^)]*\).*$/,
+  CAUSED_BY: /^Caused by:/,
+  
+  // Spring/Java common timestamp patterns
+  TIMESTAMP: /\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}|\d{2}:\d{2}:\d{2}[\.,]\d{3}|\d{13}|\[.*\d{4}-\d{2}-\d{2}.*\]/,
+  
+  // Request/Response patterns
+  REQUEST_RESPONSE: /\b(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+\/|Request.*processing|Response.*time|Controller.*mapping|RestController|RequestMapping|ResponseEntity)\b/i
 };
 
 /**
@@ -30,8 +66,11 @@ const extractContext = (lines, matchIndex, contextLines = 5) => {
  */
 const isStackTraceLine = (line) => {
   return IMPORTANCE_PATTERNS.EXCEPTION_STACK.test(line) ||
-         line.includes('Caused by:') ||
-         line.includes('at ') && line.includes('.java:');
+         IMPORTANCE_PATTERNS.CAUSED_BY.test(line) ||
+         /^\s*at\s+/.test(line) ||  // Java stack trace lines
+         /^\s*\.{3}\s*\d+\s+more/.test(line) ||  // "... 5 more" lines
+         /^\s*Suppressed:/.test(line) ||  // Suppressed exceptions
+         line.includes('.java:') && line.includes('at ');
 };
 
 /**
@@ -65,20 +104,39 @@ export const smartChunkLog = (logContent, maxTokens) => {
   let stackTraceStart = 0;
 
   lines.forEach((line, index) => {
+    // Check all pattern categories
     const isError = IMPORTANCE_PATTERNS.ERROR.test(line);
     const isWarning = IMPORTANCE_PATTERNS.WARNING.test(line);
+    const isJavaException = IMPORTANCE_PATTERNS.JAVA_EXCEPTION.test(line);
+    const isSpringError = IMPORTANCE_PATTERNS.SPRING_ERROR.test(line);
+    const isDatabaseIssue = IMPORTANCE_PATTERNS.DATABASE_ISSUE.test(line);
+    const isHttpError = IMPORTANCE_PATTERNS.HTTP_ERROR.test(line);
+    const isLog4jError = IMPORTANCE_PATTERNS.LOG4J_ERROR.test(line);
+    const isLog4jWarn = IMPORTANCE_PATTERNS.LOG4J_WARN.test(line);
+    const isSpringLifecycle = IMPORTANCE_PATTERNS.SPRING_LIFECYCLE.test(line);
+    const isPerformance = IMPORTANCE_PATTERNS.PERFORMANCE.test(line);
+    const isSecurity = IMPORTANCE_PATTERNS.SECURITY.test(line);
+    const isRequestResponse = IMPORTANCE_PATTERNS.REQUEST_RESPONSE.test(line);
     const isStack = isStackTraceLine(line);
+    const isCausedBy = IMPORTANCE_PATTERNS.CAUSED_BY.test(line);
 
-    if (isError) {
+    // Count errors and warnings (including Java-specific ones)
+    if (isError || isJavaException || isSpringError || isDatabaseIssue || isHttpError || isLog4jError || isSecurity) {
       metadata.totalErrors++;
-      console.log('Found error at line', index, ':', line.substring(0, 100));
+      console.log('Found error/exception at line', index, ':', line.substring(0, 100));
     }
-    if (isWarning) {
+    if (isWarning || isLog4jWarn || isPerformance) {
       metadata.totalWarnings++;
       console.log('Found warning at line', index, ':', line.substring(0, 100));
     }
 
-    if (isError || isWarning || isStack) {
+    // Check if this line is important (should be included in chunks)
+    const isImportant = isError || isWarning || isJavaException || isSpringError || 
+                       isDatabaseIssue || isHttpError || isLog4jError || isLog4jWarn ||
+                       isSpringLifecycle || isPerformance || isSecurity || 
+                       isRequestResponse || isStack || isCausedBy;
+
+    if (isImportant) {
       if (isStack && !inStackTrace) {
         inStackTrace = true;
         stackTraceStart = index;
