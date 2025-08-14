@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import { DEFAULT_ENDPOINTS } from '../../constants/apiConstants';
 import LogSizeManager from '../LogSizeManager';
 
@@ -21,7 +21,10 @@ const ApiSettings = ({
   toggleDemoMode,
   checkApiConnection,
   logContent,
-  onContextSizeChange
+  detectedModelName,
+  modelContextLimit,
+  isDetectingModel,
+  chunkingEnabled
 }) => {
   return (
     <div className="p-5 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
@@ -34,7 +37,9 @@ const ApiSettings = ({
           <div className="flex-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 p-4">
             <LogSizeManager 
               logContent={logContent}
-              onContextSizeChange={onContextSizeChange}
+              modelContextLimit={modelContextLimit}
+              modelName={detectedModelName}
+              chunkingEnabled={chunkingEnabled}
             />
           </div>
           
@@ -140,10 +145,19 @@ const ApiSettings = ({
             variant="outline" 
             className="mt-2"
             onClick={checkApiConnection}
-            disabled={demoMode}
+            disabled={demoMode || isDetectingModel}
           >
-            <RefreshCw className="w-3 h-3 mr-1" />
-            Test Connection
+            {isDetectingModel ? (
+              <>
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Detecting Model...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Test Connection
+              </>
+            )}
           </Button>
         </div>
         
@@ -151,7 +165,14 @@ const ApiSettings = ({
           {demoMode ? (
             <p className="text-amber-600 dark:text-amber-400">✓ Demo mode is active - using simulated AI responses</p>
           ) : apiAvailable === true ? (
-            <p className="text-green-600 dark:text-green-400">✓ Connected to AI API</p>
+            <div>
+              <p className="text-green-600 dark:text-green-400">✓ Connected to AI API</p>
+              {detectedModelName && detectedModelName !== 'Unknown' && (
+                <p className="text-blue-600 dark:text-blue-400 mt-1">
+                  Model: {detectedModelName} ({Math.floor(modelContextLimit / 1000)}K tokens)
+                </p>
+              )}
+            </div>
           ) : apiAvailable === false ? (
             <p className="text-red-600 dark:text-red-400">✗ Cannot connect to AI</p>
           ) : (
@@ -175,7 +196,10 @@ ApiSettings.propTypes = {
   toggleDemoMode: PropTypes.func.isRequired,
   checkApiConnection: PropTypes.func.isRequired,
   logContent: PropTypes.string.isRequired,
-  onContextSizeChange: PropTypes.func.isRequired
+  detectedModelName: PropTypes.string.isRequired,
+  modelContextLimit: PropTypes.number.isRequired,
+  isDetectingModel: PropTypes.bool.isRequired,
+  chunkingEnabled: PropTypes.bool.isRequired
 };
 
 export default ApiSettings; 

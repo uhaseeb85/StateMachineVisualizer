@@ -1,3 +1,145 @@
+import { MODEL_CONTEXT_LIMITS, MODEL_DETECTION_PATTERNS } from '../constants/apiConstants';
+
+/**
+ * Detect the model name and context limit from an API endpoint
+ * @param {string} apiEndpoint The API endpoint URL
+ * @param {string} apiProvider The API provider type (LM_STUDIO, OLLAMA, CUSTOM)
+ * @param {string} userModelName User-specified model name (for Ollama)
+ * @returns {Promise<Object>} Object containing modelName and contextLimit
+ */
+export const detectModelCapabilities = async (apiEndpoint, apiProvider, userModelName = '') => {
+  try {
+    const detectionConfig = MODEL_DETECTION_PATTERNS[apiProvider];
+    if (!detectionConfig) {
+      return { modelName: 'Unknown', contextLimit: MODEL_CONTEXT_LIMITS.default };
+    }
+
+    // For LM Studio, the baseUrl should be constructed more carefully
+    let baseUrl;
+    if (apiProvider === 'LM_STUDIO') {
+      // LM Studio endpoint: http://localhost:1234/v1/chat/completions
+      // We want base: http://localhost:1234
+      baseUrl = apiEndpoint.replace('/v1/chat/completions', '');
+    } else if (apiProvider === 'OLLAMA') {
+      // Ollama endpoint: http://localhost:11434/api/chat
+      // We want base: http://localhost:11434
+      baseUrl = apiEndpoint.replace('/api/chat', '');
+    } else {
+      // For custom endpoints, try to extract base URL
+      // Remove the last path segment
+      baseUrl = apiEndpoint.replace(/\/[^\/]*$/, '');
+      // If it ends with /v1, that's probably fine to keep
+    }
+    
+    const detectionUrl = `${baseUrl}${detectionConfig.endpoint}`;
+    
+    console.log(`Detecting model capabilities for ${apiProvider}`);
+    console.log(`Original endpoint: ${apiEndpoint}`);
+    console.log(`Base URL: ${baseUrl}`);
+    console.log(`Detection URL: ${detectionUrl}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    const response = await fetch(detectionUrl, {
+      method: detectionConfig.method,
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    let modelName = 'Unknown';
+    let contextLimit = MODEL_CONTEXT_LIMITS.default;
+
+    console.log(`Model detection response for ${apiProvider}:`, data);
+
+    if (apiProvider === 'LM_STUDIO' || apiProvider === 'CUSTOM') {
+      // OpenAI-compatible API response format
+      if (data.data && data.data.length > 0) {
+        modelName = data.data[0].id || 'Unknown';
+      }
+    } else if (apiProvider === 'OLLAMA') {
+      // Ollama API response format
+      if (userModelName) {
+        // Use user-specified model name for Ollama
+        modelName = userModelName;
+      } else if (data.models && data.models.length > 0) {
+        modelName = data.models[0].name || 'Unknown';
+      }
+    }
+
+    // Look up context limit based on model name
+    contextLimit = getContextLimitForModel(modelName);
+
+    console.log(`Detected model: ${modelName}, context limit: ${contextLimit}`);
+    return { modelName, contextLimit };
+  } catch (error) {
+    console.error('Error detecting model capabilities:', error);
+    return { 
+      modelName: userModelName || 'Unknown', 
+      contextLimit: userModelName ? getContextLimitForModel(userModelName) : MODEL_CONTEXT_LIMITS.default 
+    };
+  }
+};
+
+/**
+ * Get context limit for a specific model name
+ * @param {string} modelName The model name to look up
+ * @returns {number} Context limit in tokens
+ */
+export const getContextLimitForModel = (modelName) => {
+  if (!modelName || modelName === 'Unknown') {
+    return MODEL_CONTEXT_LIMITS.default;
+  }
+
+  // Normalize model name for lookup
+  const normalizedName = modelName.toLowerCase().trim();
+
+  // Direct match
+  if (MODEL_CONTEXT_LIMITS[normalizedName]) {
+    return MODEL_CONTEXT_LIMITS[normalizedName];
+  }
+
+  // Pattern matching for common model variations
+  for (const [knownModel, limit] of Object.entries(MODEL_CONTEXT_LIMITS)) {
+    if (knownModel === 'default') continue;
+    
+    // Check if the model name contains the known model pattern
+    if (normalizedName.includes(knownModel) || knownModel.includes(normalizedName)) {
+      return limit;
+    }
+  }
+
+  // Special case patterns
+  if (normalizedName.includes('gpt-4') && normalizedName.includes('32k')) {
+    return MODEL_CONTEXT_LIMITS['gpt-4-32k'];
+  }
+  if (normalizedName.includes('gpt-4') && (normalizedName.includes('turbo') || normalizedName.includes('preview'))) {
+    return MODEL_CONTEXT_LIMITS['gpt-4-turbo'];
+  }
+  if (normalizedName.includes('gpt-3.5') && normalizedName.includes('16k')) {
+    return MODEL_CONTEXT_LIMITS['gpt-3.5-turbo-16k'];
+  }
+  if (normalizedName.includes('claude-3')) {
+    return MODEL_CONTEXT_LIMITS['claude-3-sonnet']; // Default to sonnet
+  }
+  if (normalizedName.includes('llama') && normalizedName.includes('3')) {
+    return MODEL_CONTEXT_LIMITS['llama3'];
+  }
+  if (normalizedName.includes('llama') && normalizedName.includes('2')) {
+    return MODEL_CONTEXT_LIMITS['llama2'];
+  }
+
+  // Fallback to default
+  return MODEL_CONTEXT_LIMITS.default;
+};
+
 /**
  * Process log files for AI analysis
  * @param {Object} logContents Object containing log file contents

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import PropTypes from 'prop-types';
 import { Server } from 'lucide-react';
-import { Dialog, DialogContent, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog";
 
 // Import components from their new locations
 import { ChatContainer } from './components/ChatUI';
@@ -24,7 +24,7 @@ import LogSizeManager from './components/LogSizeManager';
 // Import constants and utilities from their new locations
 import { DEFAULT_ENDPOINTS, DEMO_RESPONSES } from './constants/apiConstants';
 import { addStatusLog as addLog, checkApiConnection as checkApi, getDemoResponse } from './utils/aiHelpers';
-import { processCombinedLogs, formatLogDictionary, createSystemPrompt, prepareApiMessages } from './utils/apiUtils';
+import { processCombinedLogs, formatLogDictionary, createSystemPrompt, prepareApiMessages, detectModelCapabilities } from './utils/apiUtils';
 import useAiStreaming from './hooks/useAiStreaming';
 import { processLogsWithChunking } from './utils/logChunking';
 
@@ -34,15 +34,29 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
   
   // State
   const [query, setQuery] = useState('');
-  const [apiEndpoint, setApiEndpoint] = useState(DEFAULT_ENDPOINTS.LM_STUDIO);
-  const [apiProvider, setApiProvider] = useState('LM_STUDIO'); // 'LM_STUDIO', 'OLLAMA', or 'CUSTOM'
-  const [modelName, setModelName] = useState(''); // Only used for Ollama
+  const [apiEndpoint, setApiEndpoint] = useState(() => {
+    const saved = localStorage.getItem('aiLogAnalysis_apiEndpoint');
+    return saved || DEFAULT_ENDPOINTS.LM_STUDIO;
+  });
+  const [apiProvider, setApiProvider] = useState(() => {
+    const saved = localStorage.getItem('aiLogAnalysis_apiProvider');
+    return saved || 'LM_STUDIO';
+  });
+  const [modelName, setModelName] = useState(() => {
+    const saved = localStorage.getItem('aiLogAnalysis_modelName');
+    return saved || '';
+  });
   const [statusLog, setStatusLog] = useState([]);
   const [logContents, setLogContents] = useState({}); // Object mapping file names to their content
   const [showSettings, setShowSettings] = useState(false);
   const [apiAvailable, setApiAvailable] = useState(null);
-  const [demoMode, setDemoMode] = useState(true); // Enable demo mode by default
-  const [contextSize, setContextSize] = useState(4000);
+  const [demoMode, setDemoMode] = useState(() => {
+    const saved = localStorage.getItem('aiLogAnalysis_demoMode');
+    return saved ? JSON.parse(saved) : true; // Default to true
+  });
+  const [detectedModelName, setDetectedModelName] = useState('Unknown');
+  const [modelContextLimit, setModelContextLimit] = useState(4000);
+  const [isDetectingModel, setIsDetectingModel] = useState(false);
   const [combinedLogContent, setCombinedLogContent] = useState('');
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [processedChunks, setProcessedChunks] = useState([]);
@@ -77,11 +91,13 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
 
   // Load log files' content
   useEffect(() => {
+    console.log('LogFiles changed:', logFiles?.length || 0, 'files');
     if (logFiles && logFiles.length > 0) {
       readLogFiles();
     } else {
       setLogContents({});
       setCombinedLogContent('');
+      setProcessedChunks([]); // Clear chunks when no files
     }
   }, [logFiles]);
 
@@ -90,6 +106,38 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     const combined = Object.values(logContents).join('\n\n');
     setCombinedLogContent(combined);
   }, [logContents]);
+
+  // Reprocess chunks when model context limit changes
+  useEffect(() => {
+    console.log('=== CHUNK PROCESSING USEEFFECT ===');
+    console.log('logContents keys:', Object.keys(logContents).length);
+    console.log('modelContextLimit:', modelContextLimit);
+    console.log('=====================================');
+    
+    if (Object.keys(logContents).length > 0) {
+      // Use actual limit if detected, otherwise use fallback
+      const contextLimit = modelContextLimit > 0 ? modelContextLimit : 4000;
+      console.log('Processing chunks with context limit:', contextLimit);
+      
+      try {
+        const { processedChunks, metadata } = processLogsWithChunking(logContents, contextLimit);
+        console.log('Processed chunks result:', processedChunks.length, 'chunks created');
+        setProcessedChunks(processedChunks);
+        setChunkMetadata(metadata);
+        
+        if (modelContextLimit > 0) {
+          addStatusLog(`Chunks reprocessed for ${Math.floor(modelContextLimit / 1000)}K token limit. ${metadata.totalChunks} chunks created.`);
+        } else {
+          addStatusLog(`Chunks processed with fallback 4K token limit. ${metadata.totalChunks} chunks created.`);
+        }
+      } catch (error) {
+        console.error('Error in chunk processing useEffect:', error);
+        addStatusLog(`Error processing chunks: ${error.message}`, true);
+      }
+    } else {
+      console.log('No log contents to process');
+    }
+  }, [modelContextLimit, logContents]);
 
   // Add log dictionary info to status log if available
   useEffect(() => {
@@ -145,24 +193,32 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     }
   }, [demoMode, chatHistory.length]);
 
-  // Check if API is available only if demo mode is disabled
+  // Check if API is available and detect model only if demo mode is disabled
   useEffect(() => {
     if (!demoMode) {
       checkApiConnection();
     } else {
       // In demo mode, we simulate a successful connection
       setApiAvailable(true);
+      setDetectedModelName('Demo Mode');
+      setModelContextLimit(32000);
     }
-  }, [apiEndpoint, apiProvider, demoMode]);
+  }, [apiEndpoint, apiProvider, modelName, demoMode]);
 
-  // Update API endpoint when provider changes
+  // Update API endpoint when provider changes (only if it's a default endpoint)
   useEffect(() => {
-    if (apiProvider === 'LM_STUDIO') {
-      setApiEndpoint(DEFAULT_ENDPOINTS.LM_STUDIO);
-    } else if (apiProvider === 'OLLAMA') {
-      setApiEndpoint(DEFAULT_ENDPOINTS.OLLAMA);
-    } else if (apiProvider === 'CUSTOM') {
-      setApiEndpoint(DEFAULT_ENDPOINTS.CUSTOM);
+    const currentEndpoint = apiEndpoint;
+    const isDefaultEndpoint = Object.values(DEFAULT_ENDPOINTS).includes(currentEndpoint);
+    
+    // Only auto-update if the current endpoint is one of the defaults
+    if (isDefaultEndpoint) {
+      if (apiProvider === 'LM_STUDIO') {
+        updateApiEndpoint(DEFAULT_ENDPOINTS.LM_STUDIO);
+      } else if (apiProvider === 'OLLAMA') {
+        updateApiEndpoint(DEFAULT_ENDPOINTS.OLLAMA);
+      } else if (apiProvider === 'CUSTOM') {
+        updateApiEndpoint(DEFAULT_ENDPOINTS.CUSTOM);
+      }
     }
   }, [apiProvider]);
   
@@ -192,7 +248,53 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
 
   // Check API connection
   const checkApiConnection = async () => {
+    // First check basic connection
     checkApi(apiEndpoint, apiProvider, setApiAvailable, addStatusLog);
+    
+    // Then try to detect model capabilities separately (don't block on this)
+    if (!demoMode) {
+      // Run model detection in the background
+      setTimeout(() => {
+        detectModel();
+      }, 1000); // Small delay to let connection check complete first
+    }
+  };
+
+  // Detect model capabilities
+  const detectModel = async () => {
+    if (demoMode) {
+      setDetectedModelName('Demo Mode');
+      setModelContextLimit(32000); // Generous limit for demo
+      return;
+    }
+
+    setIsDetectingModel(true);
+    addStatusLog('Detecting model capabilities...');
+    
+    try {
+      const { modelName: detected, contextLimit } = await detectModelCapabilities(
+        apiEndpoint, 
+        apiProvider, 
+        modelName
+      );
+      
+      setDetectedModelName(detected);
+      setModelContextLimit(contextLimit);
+      
+      addStatusLog(`Detected model: ${detected} (${Math.floor(contextLimit / 1000)}K tokens)`);
+    } catch (error) {
+      console.error('Error detecting model:', error);
+      console.log('Model detection failed, but connection may still work for chat');
+      
+      // Don't fail the entire connection for model detection issues
+      // Use fallback values and still allow chat to work
+      setDetectedModelName(modelName || 'Unknown Model');
+      setModelContextLimit(4000); // Conservative fallback
+      
+      addStatusLog(`Could not detect model details (${error.message}), using fallback settings`, false);
+    } finally {
+      setIsDetectingModel(false);
+    }
   };
 
   // Toggle demo mode
@@ -201,6 +303,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     console.log("Toggling demo mode from", demoMode, "to", newDemoMode);
     
     setDemoMode(newDemoMode);
+    localStorage.setItem('aiLogAnalysis_demoMode', JSON.stringify(newDemoMode));
     
     if (newDemoMode) {
       setApiAvailable(true);
@@ -225,6 +328,22 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
       toast.info("Demo mode disabled");
       checkApiConnection();
     }
+  };
+
+  // Helper functions to persist API settings
+  const updateApiProvider = (provider) => {
+    setApiProvider(provider);
+    localStorage.setItem('aiLogAnalysis_apiProvider', provider);
+  };
+
+  const updateApiEndpoint = (endpoint) => {
+    setApiEndpoint(endpoint);
+    localStorage.setItem('aiLogAnalysis_apiEndpoint', endpoint);
+  };
+
+  const updateModelName = (name) => {
+    setModelName(name);
+    localStorage.setItem('aiLogAnalysis_modelName', name);
   };
 
   // Read the log files content
@@ -276,14 +395,38 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
         }
       }
       
+      console.log('=== FILE READING COMPLETE ===');
+      console.log('Total files read:', Object.keys(fileContents).length);
+      console.log('File names:', Object.keys(fileContents));
+      console.log('Total size:', totalSize, 'characters');
+      console.log('==============================');
+      
+      // Set log contents first
       setLogContents(fileContents);
       
-      // Process chunks after loading files
-      const { processedChunks, metadata } = processLogsWithChunking(fileContents, contextSize);
-      setProcessedChunks(processedChunks);
-      setChunkMetadata(metadata);
-      
-      addStatusLog(`All log files processed. Found ${metadata.totalErrors} errors and ${metadata.totalWarnings} warnings across ${metadata.totalChunks} chunks.`);
+      // Small delay to ensure state is updated, then process chunks
+      setTimeout(() => {
+        try {
+          // Process chunks after loading files - use fallback if model limit not detected yet
+          const contextLimit = modelContextLimit > 0 ? modelContextLimit : 4000; // Fallback to 4K
+          console.log('Processing chunks with context limit:', contextLimit);
+          
+          const { processedChunks, metadata } = processLogsWithChunking(fileContents, contextLimit);
+          console.log('Initial chunk processing result:', processedChunks.length, 'chunks');
+          console.log('Chunk metadata:', metadata);
+          
+          setProcessedChunks(processedChunks);
+          setChunkMetadata(metadata);
+          
+          addStatusLog(`All log files processed. Found ${metadata.totalErrors} errors and ${metadata.totalWarnings} warnings across ${metadata.totalChunks} chunks.`);
+        } catch (chunkError) {
+          console.error('Error during chunk processing:', chunkError);
+          addStatusLog(`Error processing chunks: ${chunkError.message}`, true);
+          // Still set empty chunks if processing fails
+          setProcessedChunks([]);
+          setChunkMetadata({ totalChunks: 0, totalErrors: 0, totalWarnings: 0 });
+        }
+      }, 100); // Small delay to ensure state updates
       
     } catch (error) {
       console.error("Error reading log files:", error);
@@ -297,13 +440,17 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     stopStreaming(setChatHistory);
   };
 
-  const handleContextSizeChange = (newSize) => {
-    setContextSize(newSize);
-    addStatusLog(`Context window size updated to ${newSize} tokens`);
-  };
-
   // Modify handleQuerySubmit to handle chunks
   const handleQuerySubmit = async () => {
+    console.log('=== QUERY SUBMIT DEBUG ===');
+    console.log('Demo mode:', demoMode);
+    console.log('LogContents keys:', Object.keys(logContents).length);
+    console.log('LogContents:', Object.keys(logContents));
+    console.log('Processed chunks:', processedChunks.length);
+    console.log('Model context limit:', modelContextLimit);
+    console.log('Query:', query.trim());
+    console.log('========================');
+    
     if (!query.trim()) {
       toast.error("Please enter a query");
       return;
@@ -315,9 +462,38 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
     }
 
     // Only check for log files if not in demo mode
-    if (!demoMode && processedChunks.length === 0) {
+    if (!demoMode && (processedChunks.length === 0 && Object.keys(logContents).length === 0)) {
+      console.log('No log files uploaded');
       toast.warning("Please upload log files to analyze");
       return;
+    }
+
+    // If we have log contents but no processed chunks, it might be a processing issue
+    if (!demoMode && Object.keys(logContents).length > 0 && processedChunks.length === 0) {
+      console.log('Log contents exist but no processed chunks - triggering manual reprocessing');
+      
+      // Try to reprocess chunks immediately
+      const contextLimit = modelContextLimit > 0 ? modelContextLimit : 4000;
+      console.log('Using context limit:', contextLimit);
+      
+      try {
+        const { processedChunks: newChunks, metadata } = processLogsWithChunking(logContents, contextLimit);
+        console.log('Manual reprocessing result:', newChunks.length, 'chunks');
+        
+        if (newChunks.length > 0) {
+          setProcessedChunks(newChunks);
+          setChunkMetadata(metadata);
+          console.log('Chunks updated, proceeding with query');
+          // Don't return here, let the query continue
+        } else {
+          toast.warning("Could not process log files. Please try uploading them again.");
+          return;
+        }
+      } catch (error) {
+        console.error('Error in manual chunk processing:', error);
+        toast.error("Error processing log files. Please try uploading them again.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -392,7 +568,7 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
             query: chunkQuery,
             logContents: { [chunk.filename]: chunk.chunk },
             logDictionary,
-            contextSize,
+            contextSize: modelContextLimit,
             chatHistory: [] // Don't include chat history for chunk analysis
           });
 
@@ -571,19 +747,25 @@ const LlmAnalysis = ({ logFiles, sessionData, logDictionary }) => {
           <DialogPortal>
             <DialogOverlay className="!bg-black" />
             <DialogContent className="w-[125%] max-w-5xl p-0 border-0 bg-white dark:bg-gray-900 shadow-lg">
+              <DialogTitle className="sr-only">
+                API Settings
+              </DialogTitle>
               <ApiSettings
                 apiProvider={apiProvider}
-                setApiProvider={setApiProvider}
+                setApiProvider={updateApiProvider}
                 apiEndpoint={apiEndpoint}
-                setApiEndpoint={setApiEndpoint}
+                setApiEndpoint={updateApiEndpoint}
                 modelName={modelName}
-                setModelName={setModelName}
+                setModelName={updateModelName}
                 apiAvailable={apiAvailable}
                 demoMode={demoMode}
                 toggleDemoMode={toggleDemoMode}
                 checkApiConnection={checkApiConnection}
                 logContent={combinedLogContent}
-                onContextSizeChange={handleContextSizeChange}
+                detectedModelName={detectedModelName}
+                modelContextLimit={modelContextLimit}
+                isDetectingModel={isDetectingModel}
+                chunkingEnabled={true}
               />
             </DialogContent>
           </DialogPortal>

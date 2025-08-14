@@ -41,7 +41,13 @@ const isStackTraceLine = (line) => {
  * @returns {{chunks: string[], metadata: Object}} Chunked log content and metadata
  */
 export const smartChunkLog = (logContent, maxTokens) => {
+  console.log('=== SMART CHUNK LOG START ===');
+  console.log('Input content length:', logContent.length);
+  console.log('maxTokens:', maxTokens);
+  
   const lines = logContent.split('\n');
+  console.log('Total lines:', lines.length);
+  
   const chunks = [];
   let currentChunk = [];
   let currentChunkTokens = 0;
@@ -63,8 +69,14 @@ export const smartChunkLog = (logContent, maxTokens) => {
     const isWarning = IMPORTANCE_PATTERNS.WARNING.test(line);
     const isStack = isStackTraceLine(line);
 
-    if (isError) metadata.totalErrors++;
-    if (isWarning) metadata.totalWarnings++;
+    if (isError) {
+      metadata.totalErrors++;
+      console.log('Found error at line', index, ':', line.substring(0, 100));
+    }
+    if (isWarning) {
+      metadata.totalWarnings++;
+      console.log('Found warning at line', index, ':', line.substring(0, 100));
+    }
 
     if (isError || isWarning || isStack) {
       if (isStack && !inStackTrace) {
@@ -86,6 +98,44 @@ export const smartChunkLog = (logContent, maxTokens) => {
       });
     }
   });
+
+  console.log('Important ranges found:', importantRanges.size);
+  console.log('Total errors:', metadata.totalErrors);
+  console.log('Total warnings:', metadata.totalWarnings);
+
+  // If no important ranges found, include all content in chunks
+  if (importantRanges.size === 0) {
+    console.log('No error/warning patterns found, chunking all content');
+    
+    // Simple chunking: divide content into chunks based on token limit
+    let currentText = '';
+    let currentTokens = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineTokens = Math.ceil(line.length / charsPerToken);
+      
+      if (currentTokens + lineTokens <= maxTokens) {
+        currentText += (currentText ? '\n' : '') + line;
+        currentTokens += lineTokens;
+      } else {
+        if (currentText) {
+          chunks.push(currentText);
+        }
+        currentText = line;
+        currentTokens = lineTokens;
+      }
+    }
+    
+    // Add the last chunk
+    if (currentText) {
+      chunks.push(currentText);
+    }
+    
+    console.log('All-content chunking result:', chunks.length, 'chunks');
+    metadata.chunks = chunks.length;
+    return { chunks, metadata };
+  }
 
   // Second pass: build chunks from important ranges
   let currentSection = [];
@@ -153,6 +203,10 @@ export const smartChunkLog = (logContent, maxTokens) => {
  * @returns {Array<{filename: string, chunk: string}>} Array of chunked logs with filenames
  */
 export const processLogsWithChunking = (logContents, maxTokens) => {
+  console.log('=== CHUNKING FUNCTION START ===');
+  console.log('Input logContents keys:', Object.keys(logContents));
+  console.log('maxTokens:', maxTokens);
+  
   const processedChunks = [];
   const metadata = {
     totalFiles: Object.keys(logContents).length,
@@ -161,23 +215,36 @@ export const processLogsWithChunking = (logContents, maxTokens) => {
     totalWarnings: 0,
   };
 
-  for (const [filename, content] of Object.entries(logContents)) {
-    const { chunks, metadata: fileMetadata } = smartChunkLog(content, maxTokens);
-    
-    metadata.totalChunks += chunks.length;
-    metadata.totalErrors += fileMetadata.totalErrors;
-    metadata.totalWarnings += fileMetadata.totalWarnings;
+  try {
+    for (const [filename, content] of Object.entries(logContents)) {
+      console.log('Processing file:', filename, 'content length:', content.length);
+      
+      const { chunks, metadata: fileMetadata } = smartChunkLog(content, maxTokens);
+      console.log('File chunks created:', chunks.length);
+      
+      metadata.totalChunks += chunks.length;
+      metadata.totalErrors += fileMetadata.totalErrors;
+      metadata.totalWarnings += fileMetadata.totalWarnings;
 
-    chunks.forEach((chunk, index) => {
-      processedChunks.push({
-        filename,
-        chunk,
-        chunkIndex: index + 1,
-        totalChunks: chunks.length,
-        metadata: fileMetadata
+      chunks.forEach((chunk, index) => {
+        processedChunks.push({
+          filename,
+          chunk,
+          chunkIndex: index + 1,
+          totalChunks: chunks.length,
+          metadata: fileMetadata
+        });
       });
-    });
-  }
+    }
 
-  return { processedChunks, metadata };
+    console.log('=== CHUNKING FUNCTION COMPLETE ===');
+    console.log('Total processed chunks:', processedChunks.length);
+    console.log('Metadata:', metadata);
+    console.log('===============================');
+    
+    return { processedChunks, metadata };
+  } catch (error) {
+    console.error('Error in processLogsWithChunking:', error);
+    throw error;
+  }
 }; 

@@ -5,6 +5,56 @@ export const DEFAULT_ENDPOINTS = {
   CUSTOM: "http://your-llm-server/v1/chat/completions"
 };
 
+// Known model context limits (in tokens)
+export const MODEL_CONTEXT_LIMITS = {
+  // OpenAI models
+  'gpt-3.5-turbo': 4096,
+  'gpt-3.5-turbo-16k': 16384,
+  'gpt-4': 8192,
+  'gpt-4-32k': 32768,
+  'gpt-4-turbo': 128000,
+  'gpt-4o': 128000,
+  
+  // Anthropic Claude
+  'claude-3-haiku': 200000,
+  'claude-3-sonnet': 200000,
+  'claude-3-opus': 200000,
+  'claude-instant': 100000,
+  
+  // Common open source models
+  'llama2': 4096,
+  'llama2-7b': 4096,
+  'llama2-13b': 4096,
+  'llama2-70b': 4096,
+  'llama3': 8192,
+  'llama3-8b': 8192,
+  'llama3-70b': 8192,
+  'mistral': 8192,
+  'mistral-7b': 8192,
+  'codellama': 16384,
+  'phi3': 4096,
+  'gemma': 8192,
+  
+  // Default fallback
+  'default': 4096
+};
+
+// Provider-specific model detection patterns
+export const MODEL_DETECTION_PATTERNS = {
+  LM_STUDIO: {
+    endpoint: '/v1/models',
+    method: 'GET'
+  },
+  OLLAMA: {
+    endpoint: '/api/tags',
+    method: 'GET'
+  },
+  CUSTOM: {
+    endpoint: '/v1/models',
+    method: 'GET'
+  }
+};
+
 // Demo mode sample responses
 export const DEMO_RESPONSES = {
   greeting: "I'm analyzing your log files in demo mode. What would you like to know about your logs?",
