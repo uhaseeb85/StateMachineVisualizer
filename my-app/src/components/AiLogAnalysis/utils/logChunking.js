@@ -43,7 +43,7 @@ const IMPORTANCE_PATTERNS = {
   TIMESTAMP: /\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}|\d{2}:\d{2}:\d{2}[\.,]\d{3}|\d{13}|\[.*\d{4}-\d{2}-\d{2}.*\]/,
   
   // Request/Response patterns
-  REQUEST_RESPONSE: /\b(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+\/|Request.*processing|Response.*time|Controller.*mapping|RestController|RequestMapping|ResponseEntity)\b/i
+  REQUEST_RESPONSE: /\b(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+\/|Request.*processing|Response.*time|Controller.*mapping|RestController|RequestMapping|ResponseEntity\b/i
 };
 
 /**
