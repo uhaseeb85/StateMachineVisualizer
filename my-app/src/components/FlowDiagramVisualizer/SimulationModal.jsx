@@ -197,6 +197,15 @@ const SimulationModal = ({
     }
   }, [simulationPath]);
 
+  /**
+   * Update next steps when steps or connections change (for real-time updates during editing)
+   */
+  useEffect(() => {
+    if (currentStep) {
+      updateNextSteps(currentStep);
+    }
+  }, [steps, connections]);
+
   // Add animation styles
   useEffect(() => {
     const styleSheet = document.createElement("style");
@@ -1166,6 +1175,9 @@ const SimulationModal = ({
               isOpen={!!editingStep}
               onClose={() => setEditingStep(null)}
               onSave={handleSaveStep}
+              allSteps={steps}
+              connections={connections}
+              onRemoveConnection={onRemoveConnection}
             />
           )}
 

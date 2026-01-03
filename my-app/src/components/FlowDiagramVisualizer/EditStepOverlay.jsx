@@ -24,6 +24,9 @@ import {
   Check,
   Image as ImageIcon,
   Trash2,
+  CheckCircle2,
+  XCircle,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,8 +37,11 @@ import { toast } from 'sonner';
  * @param {boolean} props.isOpen - Whether the overlay is open
  * @param {Function} props.onClose - Callback when overlay is closed
  * @param {Function} props.onSave - Callback when changes are saved
+ * @param {Array} props.allSteps - All available steps (for displaying connection targets)
+ * @param {Array} props.connections - All connections (to show existing connections)
+ * @param {Function} props.onRemoveConnection - Callback to remove a connection
  */
-const EditStepOverlay = ({ step, isOpen, onClose, onSave }) => {
+const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection }) => {
   const [formData, setFormData] = useState({
     name: step?.name || '',
     description: step?.description || '',
@@ -204,6 +210,107 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave }) => {
               rows={3}
             />
           </div>
+
+          {/* Connections Section */}
+          {connections.length > 0 && onRemoveConnection && (
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+              <div className="flex items-center gap-2 mb-3">
+                <LinkIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <label className="text-sm font-semibold">🔗 Connections from this step</label>
+              </div>
+              
+              {/* Success Connections */}
+              {connections.filter(c => c.fromStepId === step.id && c.type === 'success').length > 0 && (
+                <div className="mb-3">
+                  <div className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Success Paths:
+                  </div>
+                  <div className="space-y-1">
+                    {connections
+                      .filter(c => c.fromStepId === step.id && c.type === 'success')
+                      .map((conn, idx) => {
+                        const targetStep = allSteps.find(s => s.id === conn.toStepId);
+                        if (!targetStep) return null;
+                        
+                        return (
+                          <div 
+                            key={`success-${idx}`}
+                            className="flex items-center justify-between px-2 py-1 bg-green-100 dark:bg-green-800/40 rounded text-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-3 w-3 text-green-600" />
+                              <span>{targetStep.name}</span>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 hover:bg-green-200 dark:hover:bg-green-700"
+                              onClick={() => {
+                                onRemoveConnection(step.id, targetStep.id, 'success');
+                                toast.success('Connection removed');
+                              }}
+                              title="Remove connection"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Failure Connections */}
+              {connections.filter(c => c.fromStepId === step.id && c.type === 'failure').length > 0 && (
+                <div>
+                  <div className="text-xs font-medium text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Failure Paths:
+                  </div>
+                  <div className="space-y-1">
+                    {connections
+                      .filter(c => c.fromStepId === step.id && c.type === 'failure')
+                      .map((conn, idx) => {
+                        const targetStep = allSteps.find(s => s.id === conn.toStepId);
+                        if (!targetStep) return null;
+                        
+                        return (
+                          <div 
+                            key={`failure-${idx}`}
+                            className="flex items-center justify-between px-2 py-1 bg-red-100 dark:bg-red-800/40 rounded text-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <XCircle className="h-3 w-3 text-red-600" />
+                              <span>{targetStep.name}</span>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 hover:bg-red-200 dark:hover:bg-red-700"
+                              onClick={() => {
+                                onRemoveConnection(step.id, targetStep.id, 'failure');
+                                toast.success('Connection removed');
+                              }}
+                              title="Remove connection"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* No connections message */}
+              {connections.filter(c => c.fromStepId === step.id).length === 0 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-2">
+                  No connections from this step
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Assumptions */}
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
@@ -444,7 +551,18 @@ EditStepOverlay.propTypes = {
   }),
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired
+  onSave: PropTypes.func.isRequired,
+  allSteps: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    parentId: PropTypes.string
+  })),
+  connections: PropTypes.arrayOf(PropTypes.shape({
+    fromStepId: PropTypes.string.isRequired,
+    toStepId: PropTypes.string.isRequired,
+    type: PropTypes.oneOf(['success', 'failure']).isRequired
+  })),
+  onRemoveConnection: PropTypes.func
 };
 
 export default EditStepOverlay;
