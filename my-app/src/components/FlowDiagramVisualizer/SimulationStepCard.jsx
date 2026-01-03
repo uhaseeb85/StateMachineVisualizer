@@ -13,8 +13,7 @@ import {
   XCircle,
   ArrowRight,
   X,
-  Settings,
-  Plus,
+  Edit,
 } from 'lucide-react';
 
 /**
@@ -68,14 +67,12 @@ const getStepCardClasses = (status, isSubStep) => {
  * @param {'current' | 'success' | 'failure' | 'end'} props.status - Current status of the step
  * @param {boolean} props.isSubStep - Whether this is a sub-step
  * @param {Function} props.onEdit - Callback when edit button is clicked
- * @param {Function} props.onAddConnection - Callback when add connection button is clicked
  */
 const SimulationStepCard = ({ 
   step, 
   status, 
   isSubStep = false,
-  onEdit, 
-  onAddConnection 
+  onEdit
 }) => {
   const [showActions, setShowActions] = useState(false);
 
@@ -103,32 +100,21 @@ const SimulationStepCard = ({
           )}
         </div>
         
-        {/* Action buttons - show on hover */}
+        {/* Action button - show on hover */}
         {showActions && status !== 'end' && (
           <div className="flex gap-1 items-center animate-fade-in">
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+              className="h-8 px-3 hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center gap-1"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(step);
               }}
-              title="Edit this step"
+              title="Edit step & connections"
             >
-              <Settings className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 hover:bg-green-100 dark:hover:bg-green-900/50"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddConnection(step);
-              }}
-              title="Add connection"
-            >
-              <Plus className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <Edit className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Edit</span>
             </Button>
           </div>
         )}
@@ -146,8 +132,7 @@ SimulationStepCard.propTypes = {
   }).isRequired,
   status: PropTypes.oneOf(['current', 'success', 'failure', 'end']).isRequired,
   isSubStep: PropTypes.bool,
-  onEdit: PropTypes.func.isRequired,
-  onAddConnection: PropTypes.func.isRequired
+  onEdit: PropTypes.func.isRequired
 };
 
 export default SimulationStepCard;

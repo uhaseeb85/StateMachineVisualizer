@@ -40,8 +40,9 @@ import { toast } from 'sonner';
  * @param {Array} props.allSteps - All available steps (for displaying connection targets)
  * @param {Array} props.connections - All connections (to show existing connections)
  * @param {Function} props.onRemoveConnection - Callback to remove a connection
+ * @param {Function} props.onAddConnection - Callback to add a new connection
  */
-const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection }) => {
+const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection, onAddConnection }) => {
   const [formData, setFormData] = useState({
     name: step?.name || '',
     description: step?.description || '',
@@ -57,6 +58,11 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const [editedQuestion, setEditedQuestion] = useState('');
   const [newAssumption, setNewAssumption] = useState('');
   const [newQuestion, setNewQuestion] = useState('');
+  
+  // Connection creator state
+  const [showConnectionCreator, setShowConnectionCreator] = useState(false);
+  const [newConnectionType, setNewConnectionType] = useState('success');
+  const [newConnectionTarget, setNewConnectionTarget] = useState('');
   
   const fileInputRef = useRef(null);
 
@@ -178,12 +184,12 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Edit Step: {step.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto px-6 space-y-4 py-4">
           {/* Step Name */}
           <div>
             <label className="text-sm font-medium mb-1 block">
@@ -212,12 +218,188 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           </div>
 
           {/* Connections Section */}
-          {connections.length > 0 && onRemoveConnection && (
+          {(connections.length > 0 || onAddConnection) && (onRemoveConnection || onAddConnection) && (
             <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
-              <div className="flex items-center gap-2 mb-3">
-                <LinkIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                <label className="text-sm font-semibold">🔗 Connections from this step</label>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <label className="text-sm font-semibold">🔗 Connections from this step</label>
+                </div>
+                {onAddConnection && !showConnectionCreator && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-purple-300 hover:bg-purple-100"
+                    onClick={() => {
+                      setShowConnectionCreator(true);
+                      setNewConnectionType('success');
+                      setNewConnectionTarget('');
+                    }}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Connection
+                  </Button>
+                )}
               </div>
+
+              {/* Inline Connection Creator */}
+              {showConnectionCreator && onAddConnection && (
+                <div className="mb-3 p-3 bg-white dark:bg-gray-800 rounded-lg border-2 border-purple-300 dark:border-purple-600">
+               <div className="space-y-3">
+                    {/* Connection Type Selector */}
+                    <div>
+                      <label className="text-xs font-medium mb-2 block">Type:</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          variant={newConnectionType === 'success' ? 'default' : 'outline'}
+                          className={`h-10 flex items-center justify-center gap-1 ${
+                            newConnectionType === 'success' 
+                              ? 'bg-green-600 hover:bg-green-700' 
+                              : 'border-green-200 hover:bg-green-50'
+                          }`}
+                          onClick={() => setNewConnectionType('success')}
+                        >
+                          <CheckCircle2 className={`h-4 w-4 ${
+                            newConnectionType === 'success' ? 'text-white' : 'text-green-600'
+                          }`} />
+                          <span className={`text-xs ${
+                            newConnectionType === 'success' ? 'text-white' : 'text-green-700'
+                          }`}>
+                            Success
+                          </span>
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant={newConnectionType === 'failure' ? 'default' : 'outline'}
+                          className={`h-10 flex items-center justify-center gap-1 ${
+                            newConnectionType === 'failure' 
+                              ? 'bg-red-600 hover:bg-red-700' 
+                              : 'border-red-200 hover:bg-red-50'
+                          }`}
+                          onClick={() => setNewConnectionType('failure')}
+                        >
+                          <XCircle className={`h-4 w-4 ${
+                            newConnectionType === 'failure' ? 'text-white' : 'text-red-600'
+                          }`} />
+                          <span className={`text-xs ${
+                            newConnectionType === 'failure' ? 'text-white' : 'text-red-700'
+                          }`}>
+                            Failure
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Target Step Selector */}
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Target:</label>
+                      <select
+                        value={newConnectionTarget}
+                        onChange={(e) => setNewConnectionTarget(e.target.value)}
+                        className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                                 bg-white dark:bg-gray-700 px-2 text-sm"
+                      >
+                        <option value="">Select target step...</option>
+                        
+                        {/* Root Steps */}
+                        <optgroup label="Root Steps">
+                          {allSteps
+                            .filter(s => !s.parentId && s.id !== step.id)
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </optgroup>
+                        
+                        {/* Sub Steps */}
+                        {allSteps.some(s => s.parentId) && (
+                          <optgroup label="Sub Steps">
+                            {allSteps
+                              .filter(s => s.parentId && s.id !== step.id)
+                              .map(s => {
+                                const parent = allSteps.find(p => p.id === s.parentId);
+                                return (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} (in {parent?.name || 'Unknown'})
+                                  </option>
+                                );
+                              })}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Preview */}
+                    {newConnectionTarget && (
+                      <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs">
+                        <div className="text-gray-500 dark:text-gray-400 mb-1">Preview:</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{step.name}</span>
+                          <span className={newConnectionType === 'success' ? 'text-green-600' : 'text-red-600'}>
+                            →
+                          </span>
+                          <span className="font-medium">
+                            {allSteps.find(s => s.id === newConnectionTarget)?.name}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (!newConnectionTarget) {
+                            toast.error('Please select a target step');
+                            return;
+                          }
+
+                          // Check for duplicate
+                          const exists = connections.some(
+                            c => c.fromStepId === step.id && 
+                                 c.toStepId === newConnectionTarget && 
+                                 c.type === newConnectionType
+                          );
+
+                          if (exists) {
+                            toast.error('This connection already exists');
+                            return;
+                          }
+
+                          const result = onAddConnection(step.id, newConnectionTarget, newConnectionType);
+                          if (result) {
+                            const targetName = allSteps.find(s => s.id === newConnectionTarget)?.name;
+                            toast.success(`Added ${newConnectionType} connection to ${targetName}`);
+                            setShowConnectionCreator(false);
+                            setNewConnectionTarget('');
+                          }
+                        }}
+                        disabled={!newConnectionTarget}
+                        className={`flex-1 ${
+                          newConnectionType === 'success' 
+                            ? 'bg-green-600 hover:bg-green-700' 
+                            : 'bg-red-600 hover:bg-red-700'
+                        }`}
+                      >
+                        <LinkIcon className="h-3 w-3 mr-1" />
+                        Add Connection
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowConnectionCreator(false);
+                          setNewConnectionTarget('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Success Connections */}
               {connections.filter(c => c.fromStepId === step.id && c.type === 'success').length > 0 && (
@@ -525,7 +707,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] px-6 py-4 z-10">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
@@ -562,7 +744,8 @@ EditStepOverlay.propTypes = {
     toStepId: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['success', 'failure']).isRequired
   })),
-  onRemoveConnection: PropTypes.func
+  onRemoveConnection: PropTypes.func,
+  onAddConnection: PropTypes.func
 };
 
 export default EditStepOverlay;

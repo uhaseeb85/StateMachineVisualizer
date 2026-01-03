@@ -38,7 +38,6 @@ import {
 import { toast } from 'sonner';
 import SimulationStepCard from './SimulationStepCard';
 import EditStepOverlay from './EditStepOverlay';
-import AddConnectionOverlay from './AddConnectionOverlay';
 import CreateStepOverlay from './CreateStepOverlay';
 
 /**
@@ -102,7 +101,6 @@ const SimulationModal = ({
   
   // Overlay state for editing
   const [editingStep, setEditingStep] = useState(null);
-  const [addingConnectionFrom, setAddingConnectionFrom] = useState(null);
   const [showCreateStep, setShowCreateStep] = useState(false);
   
   // Ref for layout container (used for auto-scrolling)
@@ -754,14 +752,6 @@ const SimulationModal = ({
     setEditingStep(step);
   };
 
-  const handleAddConnectionClick = (step) => {
-    if (!onAddConnection) {
-      toast.error('Add connection functionality not available');
-      return;
-    }
-    setAddingConnectionFrom(step);
-  };
-
   const handleCreateStep = () => {
     if (!onAddStep) {
       toast.error('Create step functionality not available');
@@ -790,18 +780,6 @@ const SimulationModal = ({
     if (currentStep?.id === stepId) {
       setCurrentStep({ ...currentStep, ...updates });
     }
-  };
-
-  const handleAddConnectionComplete = (fromStepId, toStepId, type) => {
-    const result = onAddConnection(fromStepId, toStepId, type);
-    setAddingConnectionFrom(null);
-    
-    // Update next steps preview if the current step was modified
-    if (currentStep?.id === fromStepId) {
-      updateNextSteps(currentStep);
-    }
-    
-    return result;
   };
 
   const handleCreateStepComplete = (stepData) => {
@@ -974,7 +952,6 @@ const SimulationModal = ({
                             status={status}
                             isSubStep={isSubStep}
                             onEdit={handleEditStep}
-                            onAddConnection={handleAddConnectionClick}
                           />
                         </div>
                       );
@@ -1178,18 +1155,7 @@ const SimulationModal = ({
               allSteps={steps}
               connections={connections}
               onRemoveConnection={onRemoveConnection}
-            />
-          )}
-
-          {/* Add Connection Overlay */}
-          {addingConnectionFrom && (
-            <AddConnectionOverlay
-              sourceStep={addingConnectionFrom}
-              allSteps={steps}
-              existingConnections={connections}
-              isOpen={!!addingConnectionFrom}
-              onClose={() => setAddingConnectionFrom(null)}
-              onAdd={handleAddConnectionComplete}
+              onAddConnection={onAddConnection}
             />
           )}
 
