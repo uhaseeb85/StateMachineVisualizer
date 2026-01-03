@@ -181,6 +181,11 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             steps={steps}
             connections={connections}
             onClose={() => setShowSimulation(false)}
+            onAddStep={handleAddStep}
+            onUpdateStep={updateStep}
+            onRemoveStep={removeStep}
+            onAddConnection={addConnection}
+            onRemoveConnection={removeConnection}
           />
         )}
 
@@ -234,4 +239,4 @@ FlowDiagramVisualizer.propTypes = {
   onChangeMode: PropTypes.func.isRequired,
 };
 
-export default FlowDiagramVisualizer; 
+export default FlowDiagramVisualizer;

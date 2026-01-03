@@ -32,8 +32,14 @@ import {
   Columns,
   AlignRight,
   Play,
+  Plus,
+  Edit3,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import SimulationStepCard from './SimulationStepCard';
+import EditStepOverlay from './EditStepOverlay';
+import AddConnectionOverlay from './AddConnectionOverlay';
+import CreateStepOverlay from './CreateStepOverlay';
 
 /**
  * @typedef {Object} Step
@@ -62,8 +68,22 @@ import { toast } from 'sonner';
  * @param {Step[]} props.steps - Array of steps in the flow diagram
  * @param {Connection[]} props.connections - Array of connections between steps
  * @param {Function} props.onClose - Callback function when modal is closed
+ * @param {Function} props.onAddStep - Callback for adding a new step
+ * @param {Function} props.onUpdateStep - Callback for updating a step
+ * @param {Function} props.onRemoveStep - Callback for removing a step
+ * @param {Function} props.onAddConnection - Callback for adding a connection
+ * @param {Function} props.onRemoveConnection - Callback for removing a connection
  */
-const SimulationModal = ({ steps, connections, onClose }) => {
+const SimulationModal = ({ 
+  steps, 
+  connections, 
+  onClose,
+  onAddStep,
+  onUpdateStep,
+  onRemoveStep,
+  onAddConnection,
+  onRemoveConnection
+}) => {
   // Modal state
   const [isOpen, setIsOpen] = useState(true);
   const [showStartSelector, setShowStartSelector] = useState(true);
@@ -79,6 +99,11 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   
   // View mode state
   const [stairView, setStairView] = useState(false);
+  
+  // Overlay state for editing
+  const [editingStep, setEditingStep] = useState(null);
+  const [addingConnectionFrom, setAddingConnectionFrom] = useState(null);
+  const [showCreateStep, setShowCreateStep] = useState(false);
   
   // Ref for layout container (used for auto-scrolling)
   const simulationContainerRef = useRef(null);
@@ -709,6 +734,73 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     return index;
   };
 
+  /**
+   * Handlers for editing overlays
+   */
+  const handleEditStep = (step) => {
+    if (!onUpdateStep) {
+      toast.error('Edit functionality not available');
+      return;
+    }
+    setEditingStep(step);
+  };
+
+  const handleAddConnectionClick = (step) => {
+    if (!onAddConnection) {
+      toast.error('Add connection functionality not available');
+      return;
+    }
+    setAddingConnectionFrom(step);
+  };
+
+  const handleCreateStep = () => {
+    if (!onAddStep) {
+      toast.error('Create step functionality not available');
+      return;
+    }
+    setShowCreateStep(true);
+  };
+
+  const handleSaveStep = (stepId, updates) => {
+    onUpdateStep(stepId, updates);
+    setEditingStep(null);
+    
+    // Update simulation path if this step is in it
+    const updatedPath = simulationPath.map(item => {
+      if (item.step.id === stepId) {
+        return {
+          ...item,
+          step: { ...item.step, ...updates }
+        };
+      }
+      return item;
+    });
+    setSimulationPath(updatedPath);
+    
+    // Update current step if it's the one being edited
+    if (currentStep?.id === stepId) {
+      setCurrentStep({ ...currentStep, ...updates });
+    }
+  };
+
+  const handleAddConnectionComplete = (fromStepId, toStepId, type) => {
+    const result = onAddConnection(fromStepId, toStepId, type);
+    setAddingConnectionFrom(null);
+    
+    // Update next steps preview if the current step was modified
+    if (currentStep?.id === fromStepId) {
+      updateNextSteps(currentStep);
+    }
+    
+    return result;
+  };
+
+  const handleCreateStepComplete = (stepData) => {
+    const newStepId = onAddStep(stepData);
+    setShowCreateStep(false);
+    return newStepId;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       {showStartSelector ? (
@@ -860,6 +952,26 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                   
                   // Only render if this is a main step or if its parent was already rendered
                   if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
+                    // Use enhanced step card if editing is enabled
+                    if (onUpdateStep && onAddConnection && status !== 'end') {
+                      return (
+                        <div 
+                          key={`${step.id}-${index}`} 
+                          className={`step-item ${isSubStep ? "sub-step-container" : ""} ${stairView ? 'stair-step' : ''}`}
+                          style={stairView ? {'--step-level': stepLevel} : {}}
+                        >
+                          <SimulationStepCard
+                            step={step}
+                            status={status}
+                            isSubStep={isSubStep}
+                            onEdit={handleEditStep}
+                            onAddConnection={handleAddConnectionClick}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback to static card
                     return (
                       <div 
                         key={`${step.id}-${index}`} 
@@ -1034,7 +1146,52 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 </div>
               </Card>
             )}
+
+            {/* Floating Add Step Button */}
+            {onAddStep && !isComplete && (
+              <Button
+                onClick={handleCreateStep}
+                className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-10"
+                title="Add new step"
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            )}
           </div>
+
+          {/* Edit Step Overlay */}
+          {editingStep && (
+            <EditStepOverlay
+              step={editingStep}
+              isOpen={!!editingStep}
+              onClose={() => setEditingStep(null)}
+              onSave={handleSaveStep}
+            />
+          )}
+
+          {/* Add Connection Overlay */}
+          {addingConnectionFrom && (
+            <AddConnectionOverlay
+              sourceStep={addingConnectionFrom}
+              allSteps={steps}
+              existingConnections={connections}
+              isOpen={!!addingConnectionFrom}
+              onClose={() => setAddingConnectionFrom(null)}
+              onAdd={handleAddConnectionComplete}
+            />
+          )}
+
+          {/* Create Step Overlay */}
+          {showCreateStep && (
+            <CreateStepOverlay
+              isOpen={showCreateStep}
+              onClose={() => setShowCreateStep(false)}
+              onCreate={handleCreateStepComplete}
+              allSteps={steps}
+              currentStep={currentStep}
+              onAddConnection={onAddConnection}
+            />
+          )}
         </DialogContent>
       )}
     </Dialog>
@@ -1053,7 +1210,12 @@ SimulationModal.propTypes = {
     toStepId: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['success', 'failure']).isRequired
   })).isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  onAddStep: PropTypes.func,
+  onUpdateStep: PropTypes.func,
+  onRemoveStep: PropTypes.func,
+  onAddConnection: PropTypes.func,
+  onRemoveConnection: PropTypes.func
 };
 
-export default SimulationModal; 
+export default SimulationModal;
