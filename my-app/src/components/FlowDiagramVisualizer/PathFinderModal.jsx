@@ -818,15 +818,31 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                          text-sm dark:bg-gray-700 dark:text-white px-3"
               >
                 <option value="">Select Starting Step</option>
-                {steps.map(step => {
-                  // Find parent step if this is a sub-step
-                  const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                  return (
-                    <option key={step.id} value={step.id}>
-                      {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
-                    </option>
-                  );
-                })}
+                
+                {/* Root Steps */}
+                <optgroup label="Root Steps">
+                  {steps
+                    .filter(s => !s.parentId)
+                    .map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </optgroup>
+                
+                {/* Sub Steps */}
+                {steps.some(s => s.parentId) && (
+                  <optgroup label="Sub Steps">
+                    {steps
+                      .filter(s => s.parentId)
+                      .map(s => {
+                        const parent = steps.find(p => p.id === s.parentId);
+                        return (
+                          <option key={s.id} value={s.id}>
+                            {s.name} (in {parent?.name || 'Unknown'})
+                          </option>
+                        );
+                      })}
+                  </optgroup>
+                )}
               </select>
 
               {(searchMode === 'specificStep' || searchMode === 'intermediateStep') && (
@@ -837,15 +853,31 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Target Step</option>
-                  {steps.map(step => {
-                    // Find parent step if this is a sub-step
-                    const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                    return (
-                      <option key={step.id} value={step.id}>
-                        {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
-                      </option>
-                    );
-                  })}
+                  
+                  {/* Root Steps */}
+                  <optgroup label="Root Steps">
+                    {steps
+                      .filter(s => !s.parentId)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </optgroup>
+                  
+                  {/* Sub Steps */}
+                  {steps.some(s => s.parentId) && (
+                    <optgroup label="Sub Steps">
+                      {steps
+                        .filter(s => s.parentId)
+                        .map(s => {
+                          const parent = steps.find(p => p.id === s.parentId);
+                          return (
+                            <option key={s.id} value={s.id}>
+                              {s.name} (in {parent?.name || 'Unknown'})
+                            </option>
+                          );
+                        })}
+                    </optgroup>
+                  )}
                 </select>
               )}
 
@@ -857,15 +889,31 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Intermediate Step</option>
-                  {steps.map(step => {
-                    // Find parent step if this is a sub-step
-                    const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                    return (
-                      <option key={step.id} value={step.id}>
-                        {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
-                      </option>
-                    );
-                  })}
+                  
+                  {/* Root Steps */}
+                  <optgroup label="Root Steps">
+                    {steps
+                      .filter(s => !s.parentId)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </optgroup>
+                  
+                  {/* Sub Steps */}
+                  {steps.some(s => s.parentId) && (
+                    <optgroup label="Sub Steps">
+                      {steps
+                        .filter(s => s.parentId)
+                        .map(s => {
+                          const parent = steps.find(p => p.id === s.parentId);
+                          return (
+                            <option key={s.id} value={s.id}>
+                              {s.name} (in {parent?.name || 'Unknown'})
+                            </option>
+                          );
+                        })}
+                    </optgroup>
+                  )}
                 </select>
               )}
 
@@ -991,4 +1039,4 @@ PathFinderModal.propTypes = {
   onClose: PropTypes.func.isRequired
 };
 
-export default PathFinderModal; 
+export default PathFinderModal;
