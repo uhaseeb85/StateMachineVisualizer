@@ -1156,6 +1156,7 @@ const SimulationModal = ({
               connections={connections}
               onRemoveConnection={onRemoveConnection}
               onAddConnection={onAddConnection}
+              onAddStep={onAddStep}
             />
           )}
 
