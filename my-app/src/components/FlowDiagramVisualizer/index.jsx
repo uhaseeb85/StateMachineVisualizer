@@ -18,6 +18,8 @@ import SimulationModal from './SimulationModal';
 import PathFinderModal from './PathFinderModal';
 import UnconnectedStepsModal from './UnconnectedStepsModal';
 import AllAssumptionsQuestionsModal from './AllAssumptionsQuestionsModal';
+import ActionHistoryModal from './ActionHistoryModal';
+import FlowDiagramComparer from './FlowDiagramComparer';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
 import { TourProvider } from './TourProvider';
@@ -40,6 +42,8 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   const [showPathFinder, setShowPathFinder] = useState(false);
   const [showUnconnectedSteps, setShowUnconnectedSteps] = useState(false);
   const [showAllAssumptionsQuestions, setShowAllAssumptionsQuestions] = useState(false);
+  const [showActionHistory, setShowActionHistory] = useState(false);
+  const [showComparer, setShowComparer] = useState(false);
 
   // Initialize flow diagram hook with storage key
   const {
@@ -61,7 +65,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     loadFileFromHistory,
     checkFileExists,
     removeFileFromHistory,
-    clearFileHistory
+    clearFileHistory,
+    // Action history functionality
+    actionHistory,
+    clearActionHistory,
+    exportHistoryToExcel,
+    getEventCount,
+    restoreFromHistory
   } = useFlowDiagram(STORAGE_KEY);
 
   /**
@@ -106,6 +116,20 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     setShowAllAssumptionsQuestions(true);
   };
 
+  /**
+   * Handles showing the action history modal
+   */
+  const handleShowActionHistory = () => {
+    setShowActionHistory(true);
+  };
+
+  /**
+   * Handles showing the flow diagram comparer modal
+   */
+  const handleShowComparer = () => {
+    setShowComparer(true);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
@@ -146,6 +170,9 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onFindPath={() => setShowPathFinder(true)}
           onShowMissingConnections={handleShowMissingConnections}
           onShowAllAssumptionsQuestions={handleShowAllAssumptionsQuestions}
+          onShowActionHistory={handleShowActionHistory}
+          onShowComparer={handleShowComparer}
+          actionHistoryCount={getEventCount()}
           onClear={clearAll}
           onImport={importData}
           onExport={exportData}
@@ -211,6 +238,26 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             isOpen={showAllAssumptionsQuestions}
             onClose={() => setShowAllAssumptionsQuestions(false)}
             steps={steps}
+          />
+        )}
+
+        {showActionHistory && (
+          <ActionHistoryModal
+            isOpen={showActionHistory}
+            onClose={() => setShowActionHistory(false)}
+            history={actionHistory}
+            onRestore={restoreFromHistory}
+            onExportToExcel={exportHistoryToExcel}
+            onClearHistory={clearActionHistory}
+          />
+        )}
+
+        {showComparer && (
+          <FlowDiagramComparer
+            isOpen={showComparer}
+            onClose={() => setShowComparer(false)}
+            steps={steps}
+            connections={connections}
           />
         )}
       </div>
