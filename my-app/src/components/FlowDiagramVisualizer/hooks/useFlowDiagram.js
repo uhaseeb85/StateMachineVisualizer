@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import Papa from 'papaparse';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import useActionHistory, { EVENT_TYPES } from './useActionHistory';
 
 /**
  * @param {string} storageKey - Key used for localStorage persistence
@@ -28,6 +29,17 @@ const useFlowDiagram = (storageKey) => {
   });
   const [fileHistory, setFileHistory] = useState([]);
   const MAX_HISTORY_SIZE = 15;
+
+  // Initialize action history tracking
+  const {
+    history: actionHistory,
+    addEvent: addHistoryEvent,
+    clearHistory: clearActionHistory,
+    exportToExcel: exportHistoryToExcel,
+    getEventCount,
+    filterByType,
+    searchHistory
+  } = useActionHistory();
 
   /**
    * Effect hook to load saved diagram data from localStorage on component mount
@@ -214,9 +226,10 @@ const useFlowDiagram = (storageKey) => {
    * @param {string} stepData.name - Name of the step
    * @param {string} [stepData.description] - Description of the step
    * @param {Object} [stepData.position] - Position coordinates {x, y}
+   * @param {boolean} [skipHistory] - Skip adding to history (for restore operations)
    * @returns {string} ID of the newly created step
    */
-  const addStep = (stepData) => {
+  const addStep = (stepData, skipHistory = false) => {
     console.log('Adding new step:', stepData);
     const newStep = {
       id: uuidv4(),
@@ -225,7 +238,6 @@ const useFlowDiagram = (storageKey) => {
     };
     console.log('Created step with ID:', newStep.id);
     
-    let newStepId;
     setSteps((prev) => {
       const newSteps = [...prev, newStep];
       console.log('Updated steps array:', newSteps);
@@ -236,6 +248,16 @@ const useFlowDiagram = (storageKey) => {
         console.log('Successfully saved to localStorage after adding step');
       } catch (error) {
         console.error('Error saving to localStorage:', error);
+      }
+
+      // Track in history
+      if (!skipHistory) {
+        addHistoryEvent(
+          EVENT_TYPES.STEP_ADDED,
+          `Added step "${newStep.name}"`,
+          `Created new step with ID: ${newStep.id}`,
+          { steps: newSteps, connections }
+        );
       }
       
       return newSteps;
@@ -248,8 +270,9 @@ const useFlowDiagram = (storageKey) => {
    * Updates an existing step's properties
    * @param {string} id - ID of the step to update
    * @param {Object} updates - Object containing properties to update
+   * @param {boolean} [skipHistory] - Skip adding to history (for restore operations)
    */
-  const updateStep = (id, updates) => {
+  const updateStep = (id, updates, skipHistory = false) => {
     console.log('useFlowDiagram.updateStep called with:', { id, updates });
     
     // Validate inputs
@@ -281,6 +304,29 @@ const useFlowDiagram = (storageKey) => {
         console.error('Error saving to localStorage:', error);
       }
 
+      // Track in history - describe what changed
+      if (!skipHistory) {
+        const changeDetails = Object.keys(updates)
+          .map(key => {
+            if (key === 'position') return null; // Skip position changes to reduce noise
+            const oldValue = stepToUpdate[key];
+            const newValue = updates[key];
+            if (oldValue !== newValue) {
+              return `Changed ${key}`;
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .join(', ') || 'Updated step properties';
+
+        addHistoryEvent(
+          EVENT_TYPES.STEP_UPDATED,
+          `Updated step "${stepToUpdate.name}"`,
+          changeDetails,
+          { steps: newSteps, connections }
+        );
+      }
+
       return newSteps;
     });
   };
@@ -288,11 +334,13 @@ const useFlowDiagram = (storageKey) => {
   /**
    * Removes a step and all its associated connections from the diagram
    * @param {string} id - ID of the step to remove
+   * @param {boolean} [skipHistory] - Skip adding to history (for restore operations)
    */
-  const removeStep = (id) => {
+  const removeStep = (id, skipHistory = false) => {
     console.log('Removing step:', id);
     
     setSteps((prevSteps) => {
+      const stepToRemove = prevSteps.find(step => step.id === id);
       const newSteps = prevSteps.filter((step) => step.id !== id);
       
       // First update connections (remove any that reference this step)
@@ -315,6 +363,19 @@ const useFlowDiagram = (storageKey) => {
       } catch (error) {
         console.error('Error saving to localStorage:', error);
       }
+
+      // Track in history
+      if (!skipHistory && stepToRemove) {
+        const removedConnections = connections.filter(
+          (conn) => conn.fromStepId === id || conn.toStepId === id
+        ).length;
+        addHistoryEvent(
+          EVENT_TYPES.STEP_DELETED,
+          `Deleted step "${stepToRemove.name}"`,
+          `Removed step and ${removedConnections} associated connection(s)`,
+          { steps: newSteps, connections: newConnections }
+        );
+      }
       
       return newSteps;
     });
@@ -333,9 +394,10 @@ const useFlowDiagram = (storageKey) => {
    * @param {string} fromStepId - ID of the source step
    * @param {string} toStepId - ID of the target step
    * @param {string} type - Type of connection ('success' or 'failure')
+   * @param {boolean} [skipHistory] - Skip adding to history (for restore operations)
    * @returns {boolean} True if connection was added, false if it already exists
    */
-  const addConnection = (fromStepId, toStepId, type) => {
+  const addConnection = (fromStepId, toStepId, type, skipHistory = false) => {
     console.log('useFlowDiagram.addConnection CALLED with:', { fromStepId, toStepId, type });
     
     // Safeguard against duplicate requests within 500ms
@@ -394,6 +456,18 @@ const useFlowDiagram = (storageKey) => {
       } catch (error) {
         console.error('Error saving to localStorage:', error);
       }
+
+      // Track in history
+      if (!skipHistory) {
+        const fromStep = steps.find(s => s.id === fromStepId);
+        const toStep = steps.find(s => s.id === toStepId);
+        addHistoryEvent(
+          EVENT_TYPES.CONNECTION_ADDED,
+          `Added ${type} connection`,
+          `Connected "${fromStep?.name || fromStepId}" to "${toStep?.name || toStepId}"`,
+          { steps, connections: newConnections }
+        );
+      }
       
       return newConnections;
     });
@@ -408,8 +482,9 @@ const useFlowDiagram = (storageKey) => {
    * @param {string} fromStepId - ID of the source step
    * @param {string} toStepId - ID of the target step
    * @param {string} type - Type of connection to remove
+   * @param {boolean} [skipHistory] - Skip adding to history (for restore operations)
    */
-  const removeConnection = (fromStepId, toStepId, type) => {
+  const removeConnection = (fromStepId, toStepId, type, skipHistory = false) => {
     console.log('Removing connection:', { fromStepId, toStepId, type });
     setConnections((prev) => {
       const newConnections = prev.filter(
@@ -428,6 +503,18 @@ const useFlowDiagram = (storageKey) => {
       } catch (error) {
         console.error('Error saving to localStorage:', error);
       }
+
+      // Track in history
+      if (!skipHistory) {
+        const fromStep = steps.find(s => s.id === fromStepId);
+        const toStep = steps.find(s => s.id === toStepId);
+        addHistoryEvent(
+          EVENT_TYPES.CONNECTION_DELETED,
+          `Removed ${type} connection`,
+          `Disconnected "${fromStep?.name || fromStepId}" from "${toStep?.name || toStepId}"`,
+          { steps, connections: newConnections }
+        );
+      }
       
       return newConnections;
     });
@@ -435,9 +522,13 @@ const useFlowDiagram = (storageKey) => {
 
   /**
    * Clears all steps and connections from the diagram
+   * @param {boolean} [skipHistory] - Skip adding to history (for restore operations)
    */
-  const clearAll = () => {
+  const clearAll = (skipHistory = false) => {
     console.log('Clearing all data');
+    
+    const stepCount = steps.length;
+    const connectionCount = connections.length;
     
     // Revoke all blob URLs to prevent memory leaks
     steps.forEach(step => {
@@ -468,6 +559,16 @@ const useFlowDiagram = (storageKey) => {
     
     setSteps([]);
     setConnections([]);
+
+    // Track in history
+    if (!skipHistory) {
+      addHistoryEvent(
+        EVENT_TYPES.FLOW_CLEARED,
+        'Cleared all data',
+        `Removed ${stepCount} step(s) and ${connectionCount} connection(s)`,
+        { steps: [], connections: [] }
+      );
+    }
   };
 
   /**
@@ -648,6 +749,14 @@ const useFlowDiagram = (storageKey) => {
         updateFileHistory(fileName);
         setCurrentFileName(fileName);
         saveFlow(fileName);
+
+        // Track in history
+        addHistoryEvent(
+          EVENT_TYPES.FLOW_IMPORTED,
+          `Imported flow from ${file.name}`,
+          `Loaded ${processedSteps.length} step(s) and ${(flowData.connections || []).length} connection(s) from JSON`,
+          { steps: processedSteps, connections: flowData.connections || [] }
+        );
         
         toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections from JSON`);
         return;
@@ -719,6 +828,14 @@ const useFlowDiagram = (storageKey) => {
       updateFileHistory(fileName);
       setCurrentFileName(fileName);
       saveFlow(fileName);
+
+      // Track in history
+      addHistoryEvent(
+        EVENT_TYPES.FLOW_IMPORTED,
+        `Imported flow from ${file.name}`,
+        `Loaded ${processedSteps.length} step(s) and ${(flowData.connections || []).length} connection(s) from ZIP`,
+        { steps: processedSteps, connections: flowData.connections || [] }
+      );
       
       toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections from ZIP`);
     } catch (error) {
@@ -862,6 +979,15 @@ const useFlowDiagram = (storageKey) => {
 
             setSteps(newSteps);
             setConnections(newConnections);
+
+            // Track in history (called from parent importData function)
+            addHistoryEvent(
+              EVENT_TYPES.FLOW_IMPORTED,
+              'Imported flow from CSV',
+              `Loaded ${newSteps.length} step(s) and ${newConnections.length} connection(s)`,
+              { steps: newSteps, connections: newConnections }
+            );
+
             toast.success(`Imported ${newSteps.length} steps and ${newConnections.length} connections`);
             resolve();
           } catch (error) {
@@ -877,6 +1003,43 @@ const useFlowDiagram = (storageKey) => {
         }
       });
     });
+  };
+
+  /**
+   * Restores the diagram to a previous state from history
+   * @param {string} eventId - ID of the history event to restore to
+   */
+  const restoreFromHistory = (eventId) => {
+    const event = actionHistory.find(e => e.id === eventId);
+    if (!event || !event.snapshot) {
+      toast.error('Cannot restore: event not found');
+      return false;
+    }
+
+    try {
+      // Restore the snapshot
+      setSteps(event.snapshot.steps);
+      setConnections(event.snapshot.connections);
+
+      // Save to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(event.snapshot));
+
+      // Add a restore event to history
+      const restoreTime = new Date(event.timestamp).toLocaleString();
+      addHistoryEvent(
+        EVENT_TYPES.FLOW_RESTORED,
+        `Restored to previous state`,
+        `Restored to checkpoint from ${restoreTime}`,
+        event.snapshot
+      );
+
+      toast.success('Flow diagram restored successfully');
+      return true;
+    } catch (error) {
+      console.error('Error restoring from history:', error);
+      toast.error('Failed to restore: ' + error.message);
+      return false;
+    }
   };
 
   // Return the hook's public interface
@@ -899,8 +1062,16 @@ const useFlowDiagram = (storageKey) => {
     loadFileFromHistory,
     checkFileExists,
     removeFileFromHistory,
-    clearFileHistory
+    clearFileHistory,
+    // Action history functionality
+    actionHistory,
+    clearActionHistory,
+    exportHistoryToExcel,
+    getEventCount,
+    filterByType,
+    searchHistory,
+    restoreFromHistory
   };
 };
 
-export default useFlowDiagram; 
+export default useFlowDiagram;

@@ -26,6 +26,9 @@ const TopActionBar = ({
   onFindPath,
   onShowMissingConnections,
   onShowAllAssumptionsQuestions,
+  onShowActionHistory,
+  onShowComparer,
+  actionHistoryCount,
   onClear,
   onImport,
   onExport,
@@ -307,6 +310,9 @@ const TopActionBar = ({
         onFindPath={onFindPath}
         onShowMissingConnections={onShowMissingConnections}
         onShowAllAssumptionsQuestions={onShowAllAssumptionsQuestions}
+        onShowActionHistory={onShowActionHistory}
+        onShowComparer={onShowComparer}
+        actionHistoryCount={actionHistoryCount}
         steps={steps}
         // Pass needed props for Generate Flow Diagram
         rootElements={rootElements}
@@ -326,6 +332,9 @@ TopActionBar.propTypes = {
   onFindPath: PropTypes.func.isRequired,
   onShowMissingConnections: PropTypes.func.isRequired,
   onShowAllAssumptionsQuestions: PropTypes.func.isRequired,
+  onShowActionHistory: PropTypes.func.isRequired,
+  onShowComparer: PropTypes.func.isRequired,
+  actionHistoryCount: PropTypes.number,
   onClear: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
@@ -341,4 +350,4 @@ TopActionBar.propTypes = {
   onClearHistory: PropTypes.func
 };
 
-export default TopActionBar; 
+export default TopActionBar;
