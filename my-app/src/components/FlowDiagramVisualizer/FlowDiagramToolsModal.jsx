@@ -142,7 +142,7 @@ const FlowDiagramToolsModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[525px] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+        <DialogContent className="sm:max-w-[900px] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
           <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
             <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Analysis Tools</DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400 mt-1">
@@ -150,7 +150,7 @@ const FlowDiagramToolsModal = ({
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-6 space-y-6">
+          <div className="py-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Pathfinder Tool Option */}
             <div 
               className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
