@@ -125,7 +125,7 @@ const SimulationStepCard = ({
     }
 
     onSave(step.id, formData);
-    toast.success('Step updated successfully');
+    // Removed toast notification - visual feedback from collapse is sufficient
     onToggleExpand(null); // Collapse
   };
 
@@ -145,7 +145,7 @@ const SimulationStepCard = ({
   const handleDelete = () => {
     if (window.confirm(`Are you sure you want to delete "${step.name}"?`)) {
       onDelete(step.id);
-      toast.success('Step deleted');
+      // Removed toast notification - the step removal is visually clear
     }
   };
 
