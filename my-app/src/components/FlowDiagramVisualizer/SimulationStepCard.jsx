@@ -104,7 +104,13 @@ const SimulationStepCard = ({
     imageCaptions: step.imageCaptions || []
   });
 
-  // Sync formData when step prop changes or card expands
+  // Staged connection changes (to prevent persisting on cancel)
+  const [stagedConnectionChanges, setStagedConnectionChanges] = useState({
+    added: [], // { toStepId, type }
+    removed: [] // { toStepId, type }
+  });
+
+  // Sync formData and reset staged changes when step prop changes or card expands
   useEffect(() => {
     if (isExpanded) {
       setFormData({
@@ -115,8 +121,60 @@ const SimulationStepCard = ({
         imageUrls: step.imageUrls || [],
         imageCaptions: step.imageCaptions || []
       });
+      // Reset staged changes when expanding
+      setStagedConnectionChanges({
+        added: [],
+        removed: []
+      });
     }
   }, [step, isExpanded]);
+
+  // Local handlers for connection operations (staging mode)
+  const handleAddConnectionStaged = (fromStepId, toStepId, type) => {
+    // Check if this connection was previously removed
+    const wasRemoved = stagedConnectionChanges.removed.some(
+      conn => conn.toStepId === toStepId && conn.type === type
+    );
+
+    if (wasRemoved) {
+      // If it was removed, just undo the removal
+      setStagedConnectionChanges(prev => ({
+        ...prev,
+        removed: prev.removed.filter(
+          conn => !(conn.toStepId === toStepId && conn.type === type)
+        )
+      }));
+    } else {
+      // Add to staged additions
+      setStagedConnectionChanges(prev => ({
+        ...prev,
+        added: [...prev.added, { toStepId, type }]
+      }));
+    }
+  };
+
+  const handleRemoveConnectionStaged = (fromStepId, toStepId, type) => {
+    // Check if this connection was just added
+    const wasAdded = stagedConnectionChanges.added.some(
+      conn => conn.toStepId === toStepId && conn.type === type
+    );
+
+    if (wasAdded) {
+      // If it was just added, just undo the addition
+      setStagedConnectionChanges(prev => ({
+        ...prev,
+        added: prev.added.filter(
+          conn => !(conn.toStepId === toStepId && conn.type === type)
+        )
+      }));
+    } else {
+      // Add to staged removals
+      setStagedConnectionChanges(prev => ({
+        ...prev,
+        removed: [...prev.removed, { toStepId, type }]
+      }));
+    }
+  };
 
   const handleSave = () => {
     if (!formData.name.trim()) {
@@ -124,8 +182,24 @@ const SimulationStepCard = ({
       return;
     }
 
+    // Apply all staged connection changes
+    stagedConnectionChanges.removed.forEach(({ toStepId, type }) => {
+      onRemoveConnection(step.id, toStepId, type);
+    });
+    
+    stagedConnectionChanges.added.forEach(({ toStepId, type }) => {
+      onAddConnection(step.id, toStepId, type);
+    });
+
+    // Save form data changes
     onSave(step.id, formData);
-    // Removed toast notification - visual feedback from collapse is sufficient
+    
+    // Reset staged changes
+    setStagedConnectionChanges({
+      added: [],
+      removed: []
+    });
+    
     onToggleExpand(null); // Collapse
   };
 
@@ -139,6 +213,13 @@ const SimulationStepCard = ({
       imageUrls: step.imageUrls || [],
       imageCaptions: step.imageCaptions || []
     });
+    
+    // Discard all staged connection changes
+    setStagedConnectionChanges({
+      added: [],
+      removed: []
+    });
+    
     onToggleExpand(null); // Collapse
   };
 
@@ -273,8 +354,9 @@ const SimulationStepCard = ({
             currentStep={step}
             allSteps={allSteps}
             connections={connections}
-            onAddConnection={onAddConnection}
-            onRemoveConnection={onRemoveConnection}
+            stagedChanges={stagedConnectionChanges}
+            onAddConnection={handleAddConnectionStaged}
+            onRemoveConnection={handleRemoveConnectionStaged}
           />
         )}
 

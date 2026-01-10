@@ -16,6 +16,7 @@ import { toast } from 'sonner';
  * @param {Object} props.currentStep - The step being edited
  * @param {Array} props.allSteps - All available steps
  * @param {Array} props.connections - All connections
+ * @param {Object} props.stagedChanges - Staged connection changes (optional)
  * @param {Function} props.onAddConnection - Callback to add a connection
  * @param {Function} props.onRemoveConnection - Callback to remove a connection
  */
@@ -23,6 +24,7 @@ const ConnectionsInlineEditor = ({
   currentStep, 
   allSteps, 
   connections,
+  stagedChanges = null, // If provided, we're in staging mode
   onAddConnection,
   onRemoveConnection 
 }) => {
@@ -30,9 +32,33 @@ const ConnectionsInlineEditor = ({
   const [newConnectionType, setNewConnectionType] = useState('success');
   const [newConnectionTarget, setNewConnectionTarget] = useState('');
 
+  // Calculate effective connections (accounting for staged changes)
   const existingConnections = connections.filter(c => c.fromStepId === currentStep.id);
-  const successConnections = existingConnections.filter(c => c.type === 'success');
-  const failureConnections = existingConnections.filter(c => c.type === 'failure');
+  
+  // If we have staged changes, apply them to the display
+  let effectiveConnections = [...existingConnections];
+  
+  if (stagedChanges) {
+    // Remove connections that are staged for removal
+    effectiveConnections = effectiveConnections.filter(conn => 
+      !stagedChanges.removed.some(
+        staged => staged.toStepId === conn.toStepId && staged.type === conn.type
+      )
+    );
+    
+    // Add connections that are staged for addition
+    stagedChanges.added.forEach(staged => {
+      effectiveConnections.push({
+        fromStepId: currentStep.id,
+        toStepId: staged.toStepId,
+        type: staged.type,
+        isStaged: true // Mark as staged for visual indication
+      });
+    });
+  }
+  
+  const successConnections = effectiveConnections.filter(c => c.type === 'success');
+  const failureConnections = effectiveConnections.filter(c => c.type === 'failure');
 
   const handleAddConnection = () => {
     if (!newConnectionTarget) {
@@ -40,11 +66,9 @@ const ConnectionsInlineEditor = ({
       return;
     }
 
-    // Check for duplicate
-    const exists = connections.some(
-      c => c.fromStepId === currentStep.id && 
-           c.toStepId === newConnectionTarget && 
-           c.type === newConnectionType
+    // Check for duplicate in effective connections
+    const exists = effectiveConnections.some(
+      c => c.toStepId === newConnectionTarget && c.type === newConnectionType
     );
 
     if (exists) {
@@ -55,7 +79,11 @@ const ConnectionsInlineEditor = ({
     onAddConnection(currentStep.id, newConnectionTarget, newConnectionType);
     
     const targetStep = allSteps.find(s => s.id === newConnectionTarget);
-    toast.success(`Added ${newConnectionType} connection to ${targetStep?.name}`);
+    
+    // Only show toast if not in staging mode
+    if (!stagedChanges) {
+      toast.success(`Added ${newConnectionType} connection to ${targetStep?.name}`);
+    }
     
     setNewConnectionTarget('');
     setAddingConnection(false);
@@ -82,11 +110,18 @@ const ConnectionsInlineEditor = ({
               return (
                 <div 
                   key={`success-${conn.toStepId}`}
-                  className="flex items-center justify-between px-2 py-1 bg-green-100 dark:bg-green-800/40 rounded text-sm"
+                  className={`flex items-center justify-between px-2 py-1 rounded text-sm ${
+                    conn.isStaged 
+                      ? 'bg-green-200 dark:bg-green-700/60 border-2 border-green-400 dark:border-green-500'
+                      : 'bg-green-100 dark:bg-green-800/40'
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-3 w-3 text-green-600" />
                     <span>{targetStep.name}</span>
+                    {conn.isStaged && (
+                      <span className="text-xs italic text-green-700 dark:text-green-300">(pending)</span>
+                    )}
                   </div>
                   <Button
                     size="icon"
@@ -94,7 +129,9 @@ const ConnectionsInlineEditor = ({
                     className="h-6 w-6 hover:bg-green-200 dark:hover:bg-green-700"
                     onClick={() => {
                       onRemoveConnection(currentStep.id, targetStep.id, 'success');
-                      toast.success('Connection removed');
+                      if (!stagedChanges) {
+                        toast.success('Connection removed');
+                      }
                     }}
                     title="Remove connection"
                   >
@@ -122,11 +159,18 @@ const ConnectionsInlineEditor = ({
               return (
                 <div 
                   key={`failure-${conn.toStepId}`}
-                  className="flex items-center justify-between px-2 py-1 bg-red-100 dark:bg-red-800/40 rounded text-sm"
+                  className={`flex items-center justify-between px-2 py-1 rounded text-sm ${
+                    conn.isStaged 
+                      ? 'bg-red-200 dark:bg-red-700/60 border-2 border-red-400 dark:border-red-500'
+                      : 'bg-red-100 dark:bg-red-800/40'
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <XCircle className="h-3 w-3 text-red-600" />
                     <span>{targetStep.name}</span>
+                    {conn.isStaged && (
+                      <span className="text-xs italic text-red-700 dark:text-red-300">(pending)</span>
+                    )}
                   </div>
                   <Button
                     size="icon"
@@ -134,7 +178,9 @@ const ConnectionsInlineEditor = ({
                     className="h-6 w-6 hover:bg-red-200 dark:hover:bg-red-700"
                     onClick={() => {
                       onRemoveConnection(currentStep.id, targetStep.id, 'failure');
-                      toast.success('Connection removed');
+                      if (!stagedChanges) {
+                        toast.success('Connection removed');
+                      }
                     }}
                     title="Remove connection"
                   >
@@ -148,7 +194,7 @@ const ConnectionsInlineEditor = ({
       )}
 
       {/* No connections message */}
-      {existingConnections.length === 0 && !addingConnection && (
+      {effectiveConnections.length === 0 && !addingConnection && (
         <div className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-2 mb-3">
           No connections from this step
         </div>
@@ -290,6 +336,16 @@ ConnectionsInlineEditor.propTypes = {
     toStepId: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['success', 'failure']).isRequired
   })).isRequired,
+  stagedChanges: PropTypes.shape({
+    added: PropTypes.arrayOf(PropTypes.shape({
+      toStepId: PropTypes.string.isRequired,
+      type: PropTypes.oneOf(['success', 'failure']).isRequired
+    })),
+    removed: PropTypes.arrayOf(PropTypes.shape({
+      toStepId: PropTypes.string.isRequired,
+      type: PropTypes.oneOf(['success', 'failure']).isRequired
+    }))
+  }),
   onAddConnection: PropTypes.func.isRequired,
   onRemoveConnection: PropTypes.func.isRequired
 };
