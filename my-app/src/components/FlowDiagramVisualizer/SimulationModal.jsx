@@ -37,10 +37,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SimulationStepCard from './SimulationStepCard';
-import InlineStepCreator from './InlineStepCreator';
-// Old modal overlays - keeping for now as fallback
-// import EditStepOverlay from './EditStepOverlay';
-// import CreateStepOverlay from './CreateStepOverlay';
+import EditStepOverlay from './EditStepOverlay';
+import CreateStepOverlay from './CreateStepOverlay';
 
 /**
  * @typedef {Object} Step
@@ -101,9 +99,9 @@ const SimulationModal = ({
   // View mode state
   const [stairView, setStairView] = useState(false);
   
-  // Inline editing state
-  const [expandedStepId, setExpandedStepId] = useState(null);
-  const [creatorPosition, setCreatorPosition] = useState(null); // null | 'end' | 'before-{stepId}'
+  // Overlay state for editing
+  const [editingStep, setEditingStep] = useState(null);
+  const [showCreateStep, setShowCreateStep] = useState(false);
   
   // Ref for layout container (used for auto-scrolling)
   const simulationContainerRef = useRef(null);
@@ -743,15 +741,27 @@ const SimulationModal = ({
   };
 
   /**
-   * Handlers for inline editing
+   * Handlers for editing overlays
    */
-  const handleToggleExpand = (stepId) => {
-    // Auto-collapse: if expanding a new step, collapse the current one
-    setExpandedStepId(stepId);
+  const handleEditStep = (step) => {
+    if (!onUpdateStep) {
+      toast.error('Edit functionality not available');
+      return;
+    }
+    setEditingStep(step);
+  };
+
+  const handleCreateStep = () => {
+    if (!onAddStep) {
+      toast.error('Create step functionality not available');
+      return;
+    }
+    setShowCreateStep(true);
   };
 
   const handleSaveStep = (stepId, updates) => {
     onUpdateStep(stepId, updates);
+    setEditingStep(null);
     
     // Update simulation path if this step is in it
     const updatedPath = simulationPath.map(item => {
@@ -771,26 +781,9 @@ const SimulationModal = ({
     }
   };
 
-  const handleDeleteStep = (stepId) => {
-    if (onRemoveStep) {
-      onRemoveStep(stepId);
-      
-      // Remove from simulation path if present
-      const updatedPath = simulationPath.filter(item => item.step.id !== stepId);
-      setSimulationPath(updatedPath);
-      
-      // If we deleted the current step, reset
-      if (currentStep?.id === stepId && updatedPath.length > 0) {
-        const lastItem = updatedPath[updatedPath.length - 1];
-        setCurrentStep(lastItem.step);
-        updateNextSteps(lastItem.step);
-      }
-    }
-  };
-
   const handleCreateStepComplete = (stepData) => {
     const newStepId = onAddStep(stepData);
-    setCreatorPosition(null);
+    setShowCreateStep(false);
     return newStepId;
   };
 
@@ -957,14 +950,7 @@ const SimulationModal = ({
                             step={step}
                             status={status}
                             isSubStep={isSubStep}
-                            isExpanded={expandedStepId === step.id}
-                            onToggleExpand={handleToggleExpand}
-                            onSave={handleSaveStep}
-                            onDelete={handleDeleteStep}
-                            allSteps={steps}
-                            connections={connections}
-                            onAddConnection={onAddConnection}
-                            onRemoveConnection={onRemoveConnection}
+                            onEdit={handleEditStep}
                           />
                         </div>
                       );
@@ -1159,9 +1145,9 @@ const SimulationModal = ({
             )}
 
             {/* Floating Add Step Button */}
-            {onAddStep && !isComplete && !creatorPosition && (
+            {onAddStep && !isComplete && (
               <Button
-                onClick={() => setCreatorPosition('end')}
+                onClick={handleCreateStep}
                 className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-10"
                 title="Add new step"
               >
@@ -1169,6 +1155,33 @@ const SimulationModal = ({
               </Button>
             )}
           </div>
+
+          {/* Edit Step Overlay */}
+          {editingStep && (
+            <EditStepOverlay
+              step={editingStep}
+              isOpen={!!editingStep}
+              onClose={() => setEditingStep(null)}
+              onSave={handleSaveStep}
+              allSteps={steps}
+              connections={connections}
+              onRemoveConnection={onRemoveConnection}
+              onAddConnection={onAddConnection}
+              onAddStep={onAddStep}
+            />
+          )}
+
+          {/* Create Step Overlay */}
+          {showCreateStep && (
+            <CreateStepOverlay
+              isOpen={showCreateStep}
+              onClose={() => setShowCreateStep(false)}
+              onCreate={handleCreateStepComplete}
+              allSteps={steps}
+              currentStep={currentStep}
+              onAddConnection={onAddConnection}
+            />
+          )}
         </DialogContent>
       )}
     </Dialog>

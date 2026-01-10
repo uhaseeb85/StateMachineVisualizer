@@ -1,39 +1,25 @@
 /**
- * SimulationStepCard Component (Enhanced with Inline Editing)
- * Expandable step card for simulation mode with full inline editing capabilities
- * Features:
- * - Collapsed view with hover actions
- * - Expanded view with all editing fields inline
- * - No separate modals - everything happens in place
+ * SimulationStepCard Component
+ * Enhanced step card for simulation mode with inline editing capabilities
+ * Features hover actions for quick editing and connection management
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle2,
   XCircle,
   ArrowRight,
   X,
   Edit,
-  Trash2,
-  Save,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
-import { toast } from 'sonner';
-
-// Import inline editor components
-import ConnectionsInlineEditor from './ConnectionsInlineEditor';
-import AssumptionsInlineEditor from './AssumptionsInlineEditor';
-import QuestionsInlineEditor from './QuestionsInlineEditor';
-import ScreenshotsInlineEditor from './ScreenshotsInlineEditor';
 
 /**
  * Returns the appropriate icon component based on step status
+ * @param {'current' | 'success' | 'failure' | 'end'} status - Status of the step
+ * @returns {JSX.Element} Icon component
  */
 const getStatusIcon = (status) => {
   switch (status) {
@@ -52,9 +38,12 @@ const getStatusIcon = (status) => {
 
 /**
  * Generates CSS classes for step cards based on their status and type
+ * @param {'current' | 'success' | 'failure' | 'end'} status - Status of the step
+ * @param {boolean} isSubStep - Whether the step is a sub-step
+ * @returns {string} CSS classes string
  */
-const getStepCardClasses = (status, isSubStep, isExpanded) => {
-  let baseClasses = "p-4 rounded-lg border transition-all duration-300 ";
+const getStepCardClasses = (status, isSubStep) => {
+  let baseClasses = "p-4 rounded-lg border transition-all duration-200 ";
   
   // Status-based styling
   const statusClasses = status === 'current' ? 'ring-2 ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : 
@@ -68,263 +57,67 @@ const getStepCardClasses = (status, isSubStep, isExpanded) => {
     'border-dashed bg-opacity-70 dark:bg-opacity-70' : 
     'border-solid shadow-md';
 
-  // Expanded state styling
-  const expandedClasses = isExpanded ? 
-    'shadow-2xl scale-[1.02] ring-2 ring-blue-500 dark:ring-blue-400' : 
-    'hover:shadow-lg';
-
-  return `${baseClasses} ${statusClasses} ${stepTypeClasses} ${expandedClasses}`;
+  return `${baseClasses} ${statusClasses} ${stepTypeClasses}`;
 };
 
 /**
  * SimulationStepCard Component
+ * @param {Object} props
+ * @param {Object} props.step - The step object
+ * @param {'current' | 'success' | 'failure' | 'end'} props.status - Current status of the step
+ * @param {boolean} props.isSubStep - Whether this is a sub-step
+ * @param {Function} props.onEdit - Callback when edit button is clicked
  */
 const SimulationStepCard = ({ 
   step, 
   status, 
   isSubStep = false,
-  isExpanded = false,
-  onToggleExpand,
-  onSave,
-  onDelete,
-  allSteps = [],
-  connections = [],
-  onAddConnection,
-  onRemoveConnection
+  onEdit
 }) => {
   const [showActions, setShowActions] = useState(false);
-  
-  // Form data for editing
-  const [formData, setFormData] = useState({
-    name: step.name,
-    description: step.description || '',
-    assumptions: step.assumptions || [],
-    questions: step.questions || [],
-    imageUrls: step.imageUrls || [],
-    imageCaptions: step.imageCaptions || []
-  });
 
-  // Sync formData when step prop changes or card expands
-  useEffect(() => {
-    if (isExpanded) {
-      setFormData({
-        name: step.name,
-        description: step.description || '',
-        assumptions: step.assumptions || [],
-        questions: step.questions || [],
-        imageUrls: step.imageUrls || [],
-        imageCaptions: step.imageCaptions || []
-      });
-    }
-  }, [step, isExpanded]);
-
-  const handleSave = () => {
-    if (!formData.name.trim()) {
-      toast.error('Step name cannot be empty');
-      return;
-    }
-
-    onSave(step.id, formData);
-    // Removed toast notification - visual feedback from collapse is sufficient
-    onToggleExpand(null); // Collapse
-  };
-
-  const handleCancel = () => {
-    // Reset form data to original
-    setFormData({
-      name: step.name,
-      description: step.description || '',
-      assumptions: step.assumptions || [],
-      questions: step.questions || [],
-      imageUrls: step.imageUrls || [],
-      imageCaptions: step.imageCaptions || []
-    });
-    onToggleExpand(null); // Collapse
-  };
-
-  const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete "${step.name}"?`)) {
-      onDelete(step.id);
-      // Removed toast notification - the step removal is visually clear
-    }
-  };
-
-  // Collapsed View
-  if (!isExpanded) {
-    return (
-      <Card 
-        className={`
-          ${getStepCardClasses(status, isSubStep, false)}
-          group relative
-        `}
-        onMouseEnter={() => setShowActions(true)}
-        onMouseLeave={() => setShowActions(false)}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`status-icon ${status} transition-all duration-300`}>
-            {getStatusIcon(status)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-lg text-gray-800 dark:text-gray-200">
-              {step.name}
-            </h3>
-            {step.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                {step.description}
-              </p>
-            )}
-          </div>
-          
-          {/* Action buttons - show on hover */}
-          {showActions && status !== 'end' && (
-            <div className="flex gap-1 items-center animate-in fade-in duration-200">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-3 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleExpand(step.id);
-                }}
-                title="Edit step"
-              >
-                <Edit className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1" />
-                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Edit</span>
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 hover:bg-red-100 dark:hover:bg-red-900/50"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-                title="Delete step"
-              >
-                <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </Card>
-    );
-  }
-
-  // Expanded Edit View
   return (
     <Card 
       className={`
-        ${getStepCardClasses(status, isSubStep, true)}
-        animate-in zoom-in-95 duration-300
+        ${getStepCardClasses(status, isSubStep)}
+        group relative
       `}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        <div className={`status-icon ${status} transition-all duration-300`}>
           {getStatusIcon(status)}
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Editing: {step.name}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-lg text-gray-800 dark:text-gray-200">
+            {step.name}
           </h3>
+          {step.description && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {step.description}
+            </p>
+          )}
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleCancel}
-          className="h-8"
-          title="Collapse"
-        >
-          <ChevronUp className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Edit Form */}
-      <div className="space-y-4">
-        {/* Basic Info Section */}
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              📝 Step Name
-            </label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter step name..."
-              className="w-full"
-            />
+        
+        {/* Action button - show on hover */}
+        {showActions && status !== 'end' && (
+          <div className="flex gap-1 items-center animate-fade-in">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-3 hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(step);
+              }}
+              title="Edit step & connections"
+            >
+              <Edit className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Edit</span>
+            </Button>
           </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              📄 Description
-            </label>
-            <Textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Enter step description..."
-              className="w-full min-h-[80px]"
-              rows={3}
-            />
-          </div>
-        </div>
-
-        {/* Connections Section */}
-        {(onAddConnection && onRemoveConnection) && (
-          <ConnectionsInlineEditor
-            currentStep={step}
-            allSteps={allSteps}
-            connections={connections}
-            onAddConnection={onAddConnection}
-            onRemoveConnection={onRemoveConnection}
-          />
         )}
-
-        {/* Assumptions Section */}
-        <AssumptionsInlineEditor
-          assumptions={formData.assumptions}
-          onChange={(assumptions) => setFormData({ ...formData, assumptions })}
-        />
-
-        {/* Questions Section */}
-        <QuestionsInlineEditor
-          questions={formData.questions}
-          onChange={(questions) => setFormData({ ...formData, questions })}
-        />
-
-        {/* Screenshots Section */}
-        <ScreenshotsInlineEditor
-          imageUrls={formData.imageUrls}
-          imageCaptions={formData.imageCaptions}
-          onChange={(imageUrls, imageCaptions) => 
-            setFormData({ ...formData, imageUrls, imageCaptions })
-          }
-        />
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button 
-            variant="destructive" 
-            onClick={handleDelete}
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete Step
-          </Button>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleCancel}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSave}
-              className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Save className="h-4 w-4" />
-              Save Changes
-            </Button>
-          </div>
-        </div>
       </div>
     </Card>
   );
@@ -335,30 +128,11 @@ SimulationStepCard.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
-    parentId: PropTypes.string,
-    assumptions: PropTypes.arrayOf(PropTypes.string),
-    questions: PropTypes.arrayOf(PropTypes.string),
-    imageUrls: PropTypes.arrayOf(PropTypes.string),
-    imageCaptions: PropTypes.arrayOf(PropTypes.string)
+    parentId: PropTypes.string
   }).isRequired,
   status: PropTypes.oneOf(['current', 'success', 'failure', 'end']).isRequired,
   isSubStep: PropTypes.bool,
-  isExpanded: PropTypes.bool,
-  onToggleExpand: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-  allSteps: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    parentId: PropTypes.string
-  })),
-  connections: PropTypes.arrayOf(PropTypes.shape({
-    fromStepId: PropTypes.string.isRequired,
-    toStepId: PropTypes.string.isRequired,
-    type: PropTypes.oneOf(['success', 'failure']).isRequired
-  })),
-  onAddConnection: PropTypes.func,
-  onRemoveConnection: PropTypes.func
+  onEdit: PropTypes.func.isRequired
 };
 
 export default SimulationStepCard;
