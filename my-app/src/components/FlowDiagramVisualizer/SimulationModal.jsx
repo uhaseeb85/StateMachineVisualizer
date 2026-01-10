@@ -105,6 +105,9 @@ const SimulationModal = ({
   
   // Ref for layout container (used for auto-scrolling)
   const simulationContainerRef = useRef(null);
+  
+  // Flag to control when auto-scroll should happen (only during simulation navigation, not editing)
+  const shouldAutoScrollRef = useRef(false);
 
   /**
    * Find the default start step (one with no incoming connections)
@@ -187,11 +190,16 @@ const SimulationModal = ({
   };
   
   /**
-   * Auto-scroll to the latest step when simulation path changes
+   * Conditional auto-scroll - only when shouldAutoScrollRef is true
+   * This prevents jarring scrolls during inline editing
    */
   useEffect(() => {
-    if (simulationContainerRef.current && simulationPath.length > 0) {
-      simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
+    if (shouldAutoScrollRef.current && simulationContainerRef.current && simulationPath.length > 0) {
+      setTimeout(() => {
+        simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
+      }, 100);
+      // Reset the flag after scrolling
+      shouldAutoScrollRef.current = false;
     }
   }, [simulationPath]);
 
@@ -358,18 +366,6 @@ const SimulationModal = ({
   };
 
   /**
-   * Ensures the simulation container scrolls to the bottom when new content is added
-   */
-  useEffect(() => {
-    if (simulationContainerRef.current) {
-      // Use a small timeout to ensure the DOM has updated
-      setTimeout(() => {
-        simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
-      }, 50);
-    }
-  }, [simulationPath, nextSteps]);
-
-  /**
    * Handles selection of a next step in the simulation
    * @param {'success' | 'failure'} type - Type of choice made
    * @param {string} targetStepId - ID of the target step to transition to
@@ -425,6 +421,9 @@ const SimulationModal = ({
       conn => conn.fromStepId === nextStep.id
     );
 
+    // Enable auto-scroll for simulation navigation
+    shouldAutoScrollRef.current = true;
+    
     if (!hasOutgoingConnections) {
       // If no outgoing connections, mark as complete
       updatedPath.push({ 
@@ -993,6 +992,18 @@ const SimulationModal = ({
                   }
                   return null;
                 })}
+
+                {/* Inline Step Creator at End */}
+                {creatorPosition === 'end' && (
+                  <InlineStepCreator
+                    position="end"
+                    currentStep={currentStep}
+                    allSteps={steps}
+                    onCreate={handleCreateStepComplete}
+                    onCancel={() => setCreatorPosition(null)}
+                    onAddConnection={onAddConnection}
+                  />
+                )}
 
                 {/* Render next possible steps */}
                 {!isComplete && currentStep && (
