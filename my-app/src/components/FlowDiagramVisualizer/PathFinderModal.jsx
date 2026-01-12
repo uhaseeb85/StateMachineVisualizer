@@ -8,7 +8,7 @@
  * - Exporting results
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import * as XLSX from 'xlsx-js-style';
 import {
@@ -65,6 +65,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   const [selectedEndStep, setSelectedEndStep] = useState('');
   const [selectedIntermediateStep, setSelectedIntermediateStep] = useState('');
   const [searchMode, setSearchMode] = useState('endSteps');
+  const [selectedRootSteps, setSelectedRootSteps] = useState([]);
 
   // Search state management
   const [paths, setPaths] = useState([]);
@@ -76,6 +77,12 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const pathsPerPage = 250;
 
+  // Calculate root steps (top-level steps without parent) - memoized for performance
+  const rootSteps = useMemo(() => 
+    steps.filter(step => !step.parentId),
+    [steps]
+  );
+
   /**
    * Cleanup effect - cancel ongoing searches when component unmounts
    */
@@ -84,6 +91,16 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       shouldContinueRef.current = false;
     };
   }, []);
+
+  /**
+   * Initialize selected root steps when switching to detectLoops mode
+   */
+  useEffect(() => {
+    if (searchMode === 'detectLoops' && selectedRootSteps.length === 0 && rootSteps.length > 0) {
+      // Select all root steps by default
+      setSelectedRootSteps(rootSteps.map(s => s.id));
+    }
+  }, [searchMode, rootSteps, selectedRootSteps.length]);
 
   /**
    * Handles modal close and triggers parent callback
@@ -355,19 +372,23 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         }
       };
 
-      // Only search from selected start step if provided, otherwise search all
-      if (selectedStartStep) {
-        const startStep = stepMap.get(selectedStartStep);
-        if (startStep) {
-          await dfs(startStep);
-        }
-      } else {
-        // Search from all steps, but track globally to avoid re-starting from visited nodes
-        for (const step of steps) {
-          if (!globalVisited.has(step.id)) {
-            await dfs(step);
-            setProgress((steps.indexOf(step) + 1) / steps.length * 100);
-          }
+      // Only search from selected root steps
+      const stepsToSearch = selectedRootSteps
+        .map(id => stepMap.get(id))
+        .filter(s => s !== undefined);
+      
+      if (stepsToSearch.length === 0) {
+        toast.warning('Please select at least one root step to detect loops.');
+        setIsSearching(false);
+        return;
+      }
+      
+      // Search from selected root steps only
+      for (let i = 0; i < stepsToSearch.length; i++) {
+        const step = stepsToSearch[i];
+        if (!globalVisited.has(step.id)) {
+          await dfs(step);
+          setProgress((i + 1) / stepsToSearch.length * 100);
         }
       }
 
@@ -924,7 +945,65 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
               </div>
 
               {/* Step Selection */}
-              {searchMode !== 'detectLoops' && (
+              {searchMode === 'detectLoops' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Root Steps to Analyze <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      Select which root steps (top-level, non-substeps) to start loop detection from.
+                    </p>
+                    {rootSteps.length === 0 ? (
+                      <div className="p-4 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                          No root steps found. All steps are sub-steps.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3">
+                        <label className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedRootSteps.length === rootSteps.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRootSteps(rootSteps.map(s => s.id));
+                              } else {
+                                setSelectedRootSteps([]);
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Select All ({rootSteps.length})
+                          </span>
+                        </label>
+                        <div className="border-t border-gray-200 dark:border-gray-600 my-2" />
+                        {rootSteps.map(step => (
+                          <label key={step.id} className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedRootSteps.includes(step.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedRootSteps([...selectedRootSteps, step.id]);
+                                } else {
+                                  setSelectedRootSteps(selectedRootSteps.filter(id => id !== step.id));
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {step.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -1049,7 +1128,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                   <Button
                     onClick={searchMode === 'detectLoops' ? handleDetectLoops : handleFindPaths}
                     disabled={
-                      (searchMode === 'detectLoops' ? false : !selectedStartStep) ||
+                      (searchMode === 'detectLoops' ? selectedRootSteps.length === 0 : !selectedStartStep) ||
                       (searchMode === 'specificStep' && !selectedEndStep) ||
                       (searchMode === 'intermediateStep' && (!selectedEndStep || !selectedIntermediateStep))
                     }
