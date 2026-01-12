@@ -795,289 +795,385 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
           <DialogTitle className="flex justify-between items-center">
-            <span>Find Paths</span>
+            <div className="flex items-center gap-3">
+              <Route className="h-6 w-6 text-blue-500" />
+              <span className="text-xl font-semibold">Path Finder</span>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={exportResults}
                 disabled={currentPaths.length === 0}
                 title="Export as HTML file"
+                className="h-9"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export HTML
+                HTML
               </Button>
               <Button
                 variant="outline"
                 onClick={exportToExcel}
                 disabled={currentPaths.length === 0}
                 title="Export as Excel file for test documentation"
+                className="h-9"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export Excel
+                Excel
               </Button>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-            {/* Mode Selection */}
-            <div className="flex gap-4">
-              <Button
-                onClick={() => handleModeSwitch('endSteps')}
-                variant={searchMode === 'endSteps' ? 'default' : 'outline'}
-                className={searchMode === 'endSteps' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                <Route className="h-4 w-4 mr-2" />
-                Find Paths to End Steps
-              </Button>
-              <Button
-                onClick={() => handleModeSwitch('specificStep')}
-                variant={searchMode === 'specificStep' ? 'default' : 'outline'}
-                className={searchMode === 'specificStep' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Find Paths Between Steps
-              </Button>
-              <Button
-                onClick={() => handleModeSwitch('intermediateStep')}
-                variant={searchMode === 'intermediateStep' ? 'default' : 'outline'}
-                className={searchMode === 'intermediateStep' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Find Paths Through Step
-              </Button>
-              <Button
-                onClick={() => handleModeSwitch('detectLoops')}
-                variant={searchMode === 'detectLoops' ? 'default' : 'outline'}
-                className={searchMode === 'detectLoops' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                <Route className="h-4 w-4 mr-2" />
-                Detect Loops
-              </Button>
-            </div>
-
-            {/* Step Selection */}
-            <div className="flex gap-4 items-center">
-              {searchMode !== 'detectLoops' && (
-                <select
-                  value={selectedStartStep}
-                  onChange={(e) => setSelectedStartStep(e.target.value)}
-                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           text-sm dark:bg-gray-700 dark:text-white px-3"
-                >
-                  <option value="">Select Starting Step</option>
-                
-                {/* Root Steps */}
-                <optgroup label="Root Steps">
-                  {steps
-                    .filter(s => !s.parentId)
-                    .map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                </optgroup>
-                
-                {/* Sub Steps */}
-                {steps.some(s => s.parentId) && (
-                  <optgroup label="Sub Steps">
-                    {steps
-                      .filter(s => s.parentId)
-                      .map(s => {
-                        const parent = steps.find(p => p.id === s.parentId);
-                        return (
-                          <option key={s.id} value={s.id}>
-                            {s.name} (in {parent?.name || 'Unknown'})
-                          </option>
-                        );
-                      })}
-                  </optgroup>
-                )}
-              </select>
-              )}
-
-              {searchMode !== 'detectLoops' && (searchMode === 'specificStep' || searchMode === 'intermediateStep') && (
-                <select
-                  value={selectedEndStep}
-                  onChange={(e) => setSelectedEndStep(e.target.value)}
-                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           text-sm dark:bg-gray-700 dark:text-white px-3"
-                >
-                  <option value="">Select Target Step</option>
-                  
-                  {/* Root Steps */}
-                  <optgroup label="Root Steps">
-                    {steps
-                      .filter(s => !s.parentId)
-                      .map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                  </optgroup>
-                  
-                  {/* Sub Steps */}
-                  {steps.some(s => s.parentId) && (
-                    <optgroup label="Sub Steps">
-                      {steps
-                        .filter(s => s.parentId)
-                        .map(s => {
-                          const parent = steps.find(p => p.id === s.parentId);
-                          return (
-                            <option key={s.id} value={s.id}>
-                              {s.name} (in {parent?.name || 'Unknown'})
-                            </option>
-                          );
-                        })}
-                    </optgroup>
-                  )}
-                </select>
-              )}
-
-              {searchMode !== 'detectLoops' && searchMode === 'intermediateStep' && (
-                <select
-                  value={selectedIntermediateStep}
-                  onChange={(e) => setSelectedIntermediateStep(e.target.value)}
-                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           text-sm dark:bg-gray-700 dark:text-white px-3"
-                >
-                  <option value="">Select Intermediate Step</option>
-                  
-                  {/* Root Steps */}
-                  <optgroup label="Root Steps">
-                    {steps
-                      .filter(s => !s.parentId)
-                      .map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                  </optgroup>
-                  
-                  {/* Sub Steps */}
-                  {steps.some(s => s.parentId) && (
-                    <optgroup label="Sub Steps">
-                      {steps
-                        .filter(s => s.parentId)
-                        .map(s => {
-                          const parent = steps.find(p => p.id === s.parentId);
-                          return (
-                            <option key={s.id} value={s.id}>
-                              {s.name} (in {parent?.name || 'Unknown'})
-                            </option>
-                          );
-                        })}
-                    </optgroup>
-                  )}
-                </select>
-              )}
-
-              <Button
-                onClick={searchMode === 'detectLoops' ? handleDetectLoops : handleFindPaths}
-                disabled={
-                  isSearching ||
-                  (searchMode === 'detectLoops' ? false : !selectedStartStep) ||
-                  (searchMode === 'specificStep' && !selectedEndStep) ||
-                  (searchMode === 'intermediateStep' && (!selectedEndStep || !selectedIntermediateStep))
-                }
-                className="bg-blue-500 hover:bg-blue-600 text-white whitespace-nowrap"
-              >
-                {isSearching ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : searchMode === 'detectLoops' ? (
-                  <Route className="w-4 h-4 mr-2" />
-                ) : (
-                  <Search className="w-4 h-4 mr-2" />
-                )}
-                {searchMode === 'detectLoops' ? 'Detect Loops' : 'Find Paths'}
-              </Button>
-
-              {isSearching && (
-                <Button
-                  onClick={handleCancel}
-                  variant="destructive"
-                  className="whitespace-nowrap"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel
-                </Button>
-              )}
-            </div>
-
-            {/* Progress Bar */}
-            {isSearching && (
-              <div className="space-y-2">
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-500 transition-all duration-300 rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Searching... {Math.round(progress)}%
-                </div>
-              </div>
-            )}
-
-            {/* Results Section */}
-            {paths.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Found {paths.length} possible path{paths.length !== 1 ? 's' : ''}
-                  </div>
-                </div>
-
-                {currentPaths.map((path, index) => {
-                  const pathNumber = indexOfFirstPath + index + 1;
-                  return (
-                    <Card
-                      key={index}
-                      className="p-4 bg-gray-50 dark:bg-gray-700/50"
-                    >
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          Path {pathNumber}
-                        </h3>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Panel - Controls */}
+          <div className="w-[380px] border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-6 overflow-y-auto">
+            <div className="space-y-6">
+              {/* Mode Selection */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  Search Mode
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleModeSwitch('endSteps')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'endSteps'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Route className={`h-5 w-5 flex-shrink-0 ${searchMode === 'endSteps' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'endSteps' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Paths to End Steps
+                        </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {path.steps.length} steps, {path.rules.length} transitions
+                          Find all paths from a start step to any end
                         </div>
                       </div>
-                      {renderPath(path)}
-                    </Card>
-                  );
-                })}
+                    </div>
+                  </button>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="text-sm"
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="text-sm"
-                    >
-                      Next
-                    </Button>
+                  <button
+                    onClick={() => handleModeSwitch('specificStep')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'specificStep'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <ArrowRight className={`h-5 w-5 flex-shrink-0 ${searchMode === 'specificStep' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'specificStep' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Paths Between Steps
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Find paths from start to a specific target
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleModeSwitch('intermediateStep')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'intermediateStep'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Search className={`h-5 w-5 flex-shrink-0 ${searchMode === 'intermediateStep' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'intermediateStep' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Paths Through Step
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Find paths that pass through a specific step
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleModeSwitch('detectLoops')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'detectLoops'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Route className={`h-5 w-5 flex-shrink-0 ${searchMode === 'detectLoops' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'detectLoops' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Detect Loops
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Identify circular paths in the diagram
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
-                )}
-            </div>
-          )}
 
-            {/* No Results Message */}
-            {paths.length === 0 && (selectedStartStep && (searchMode === 'endSteps' || selectedEndStep)) && (
-            <Card className="p-4 bg-muted">
-              <p className="text-sm text-muted-foreground">
-                  No paths found.
-              </p>
-            </Card>
-          )}
+              {/* Step Selection */}
+              {searchMode !== 'detectLoops' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Starting Step <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedStartStep}
+                      onChange={(e) => setSelectedStartStep(e.target.value)}
+                      className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                               text-sm dark:bg-gray-700 dark:text-white px-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select starting step...</option>
+                      
+                      <optgroup label="Root Steps">
+                        {steps
+                          .filter(s => !s.parentId)
+                          .map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                      </optgroup>
+                      
+                      {steps.some(s => s.parentId) && (
+                        <optgroup label="Sub Steps">
+                          {steps
+                            .filter(s => s.parentId)
+                            .map(s => {
+                              const parent = steps.find(p => p.id === s.parentId);
+                              return (
+                                <option key={s.id} value={s.id}>
+                                  {s.name} (in {parent?.name || 'Unknown'})
+                                </option>
+                              );
+                            })}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+
+                  {(searchMode === 'specificStep' || searchMode === 'intermediateStep') && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Target Step <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedEndStep}
+                        onChange={(e) => setSelectedEndStep(e.target.value)}
+                        className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                                 text-sm dark:bg-gray-700 dark:text-white px-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select target step...</option>
+                        
+                        <optgroup label="Root Steps">
+                          {steps
+                            .filter(s => !s.parentId)
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </optgroup>
+                        
+                        {steps.some(s => s.parentId) && (
+                          <optgroup label="Sub Steps">
+                            {steps
+                              .filter(s => s.parentId)
+                              .map(s => {
+                                const parent = steps.find(p => p.id === s.parentId);
+                                return (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} (in {parent?.name || 'Unknown'})
+                                  </option>
+                                );
+                              })}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+                  )}
+
+                  {searchMode === 'intermediateStep' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Intermediate Step <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedIntermediateStep}
+                        onChange={(e) => setSelectedIntermediateStep(e.target.value)}
+                        className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                                 text-sm dark:bg-gray-700 dark:text-white px-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select intermediate step...</option>
+                        
+                        <optgroup label="Root Steps">
+                          {steps
+                            .filter(s => !s.parentId)
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </optgroup>
+                        
+                        {steps.some(s => s.parentId) && (
+                          <optgroup label="Sub Steps">
+                            {steps
+                              .filter(s => s.parentId)
+                              .map(s => {
+                                const parent = steps.find(p => p.id === s.parentId);
+                                return (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} (in {parent?.name || 'Unknown'})
+                                  </option>
+                                );
+                              })}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2">
+                {!isSearching ? (
+                  <Button
+                    onClick={searchMode === 'detectLoops' ? handleDetectLoops : handleFindPaths}
+                    disabled={
+                      (searchMode === 'detectLoops' ? false : !selectedStartStep) ||
+                      (searchMode === 'specificStep' && !selectedEndStep) ||
+                      (searchMode === 'intermediateStep' && (!selectedEndStep || !selectedIntermediateStep))
+                    }
+                    className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white font-medium text-base"
+                  >
+                    <Search className="w-5 h-5 mr-2" />
+                    {searchMode === 'detectLoops' ? 'Detect Loops' : 'Find Paths'}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleCancel}
+                    variant="destructive"
+                    className="w-full h-11 font-medium text-base"
+                  >
+                    <X className="w-5 h-5 mr-2" />
+                    Cancel Search
+                  </Button>
+                )}
+              </div>
+
+              {/* Progress Bar */}
+              {isSearching && (
+                <div className="space-y-2">
+                  <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400 text-center">
+                    Searching... {Math.round(progress)}%
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Panel - Results */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {paths.length === 0 && !isSearching ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <Route className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  No Results Yet
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                  {searchMode === 'detectLoops' 
+                    ? 'Click "Detect Loops" to scan for circular paths in your flow diagram.'
+                    : 'Configure your search parameters and click "Find Paths" to see results.'}
+                </p>
+              </div>
+            ) : paths.length > 0 ? (
+              <div className="space-y-4">
+                {/* Results Header */}
+                <div className="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {paths.length} Path{paths.length !== 1 ? 's' : ''} Found
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      Showing {indexOfFirstPath + 1}-{Math.min(indexOfFirstPath + pathsPerPage, paths.length)} of {paths.length}
+                    </p>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Results List */}
+                <div className="space-y-3">
+                  {currentPaths.map((path, index) => {
+                    const pathNumber = indexOfFirstPath + index + 1;
+                    return (
+                      <Card
+                        key={index}
+                        className="p-5 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow"
+                      >
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-sm font-bold">
+                              {pathNumber}
+                            </span>
+                            Path {pathNumber}
+                          </h4>
+                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                              {path.steps.length} steps
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <ArrowRight className="w-3 h-3" />
+                              {path.rules.length} transitions
+                            </span>
+                          </div>
+                        </div>
+                        {renderPath(path)}
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </DialogContent>
