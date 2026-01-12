@@ -40,6 +40,7 @@ const ConnectionsInlineEditor = ({
   // New step creation form data
   const [newStepName, setNewStepName] = useState('');
   const [newStepDescription, setNewStepDescription] = useState('');
+  const [parentStepId, setParentStepId] = useState(currentStep?.id || '');
 
   // Calculate effective connections (accounting for staged changes)
   const existingConnections = connections.filter(c => c.fromStepId === currentStep.id);
@@ -113,7 +114,7 @@ const ConnectionsInlineEditor = ({
     const stepData = {
       name: newStepName.trim(),
       description: newStepDescription.trim(),
-      parentId: null, // New steps created from connections are root steps
+      parentId: parentStepId || null,
       assumptions: [],
       questions: [],
       imageUrls: [],
@@ -428,6 +429,45 @@ const ConnectionsInlineEditor = ({
                 />
               </div>
 
+              <div>
+                <label className="text-xs font-medium mb-1 block">
+                  Parent Step <span className="text-gray-400 text-xs">(optional)</span>
+                </label>
+                <select
+                  value={parentStepId}
+                  onChange={(e) => setParentStepId(e.target.value)}
+                  className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                           bg-white dark:bg-gray-700 px-2 text-sm"
+                >
+                  <option value="">None (Root step)</option>
+                  
+                  {/* Root Steps */}
+                  <optgroup label="Root Steps">
+                    {allSteps
+                      .filter(s => !s.parentId)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </optgroup>
+                  
+                  {/* Sub Steps */}
+                  {allSteps.some(s => s.parentId) && (
+                    <optgroup label="Sub Steps">
+                      {allSteps
+                        .filter(s => s.parentId)
+                        .map(s => {
+                          const parent = allSteps.find(p => p.id === s.parentId);
+                          return (
+                            <option key={s.id} value={s.id}>
+                              {s.name} (under {parent?.name || 'Unknown'})
+                            </option>
+                          );
+                        })}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -445,6 +485,7 @@ const ConnectionsInlineEditor = ({
                     setAddingConnection(false);
                     setNewStepName('');
                     setNewStepDescription('');
+                    setParentStepId(currentStep?.id || '');
                     setConnectionMode('existing');
                   }}
                 >
