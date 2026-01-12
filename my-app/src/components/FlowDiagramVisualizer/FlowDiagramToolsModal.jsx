@@ -7,7 +7,7 @@
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Route, GitBranch, X, ListX, ClipboardList, HelpCircle } from 'lucide-react'; // Updated icons
+import { Route, GitBranch, X, ListX, ClipboardList, HelpCircle, Clock, GitCompare } from 'lucide-react'; // Updated icons
 import { useState, useEffect } from 'react';
 
 // Root Element Selection Modal Component
@@ -39,28 +39,64 @@ const RootElementSelectionModal = ({
         </DialogHeader>
         
         <div className="py-4">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Select Root Element</h4>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Select Starting Step</h4>
           
           <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md">
             {rootElements && rootElements.length > 0 ? (
               <div className="p-1">
-                {rootElements.map(element => (
-                  <div 
-                    key={element.id} 
-                    className={`p-2 cursor-pointer rounded-md transition-colors ${
-                      selectedRootElement?.id === element.id 
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
-                    }`}
-                    onClick={() => setSelectedRootElement(element)}
-                  >
-                    {element.name}
-                  </div>
-                ))}
+                {/* Root Steps Section */}
+                {rootElements.some(element => !element.parentId) && (
+                  <>
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 py-1 bg-gray-100 dark:bg-gray-800">
+                      Root Steps
+                    </div>
+                    {rootElements.filter(element => !element.parentId).map(element => (
+                      <div 
+                        key={element.id} 
+                        className={`p-2 cursor-pointer rounded-md transition-colors ml-1 ${
+                          selectedRootElement?.id === element.id 
+                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                        }`}
+                        onClick={() => setSelectedRootElement(element)}
+                      >
+                        {element.name}
+                      </div>
+                    ))}
+                  </>
+                )}
+                
+                {/* Sub Steps Section */}
+                {rootElements.some(element => element.parentId) && (
+                  <>
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 py-1 bg-gray-100 dark:bg-gray-800 mt-2">
+                      Sub Steps
+                    </div>
+                    {rootElements.filter(element => element.parentId).map(element => {
+                      const parent = rootElements.find(p => p.id === element.parentId);
+                      return (
+                        <div 
+                          key={element.id} 
+                          className={`p-2 cursor-pointer rounded-md transition-colors ml-1 ${
+                            selectedRootElement?.id === element.id 
+                              ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                              : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                          }`}
+                          onClick={() => setSelectedRootElement(element)}
+                        >
+                          <div>{element.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            (in {parent?.name || 'Unknown'})
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             ) : (
               <div className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-                No root elements found. Add a root step first.
+                No steps found. Add steps first.
               </div>
             )}
           </div>
@@ -99,6 +135,9 @@ const FlowDiagramToolsModal = ({
   onFindPath,
   onShowMissingConnections,
   onShowAllAssumptionsQuestions,
+  onShowActionHistory,
+  onShowComparer,
+  actionHistoryCount = 0,
   steps,
   // Props for Generate Flow Diagram
   rootElements,
@@ -139,7 +178,7 @@ const FlowDiagramToolsModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[525px] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+        <DialogContent className="sm:max-w-[900px] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
           <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
             <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Analysis Tools</DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400 mt-1">
@@ -147,7 +186,7 @@ const FlowDiagramToolsModal = ({
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-6 space-y-6">
+          <div className="py-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Pathfinder Tool Option */}
             <div 
               className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
@@ -215,6 +254,47 @@ const FlowDiagramToolsModal = ({
                 </p>
               </div>
             </div>
+
+            {/* Action History Tool Option */}
+            <div 
+              className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
+              onClick={() => handleSelectTool(onShowActionHistory)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectTool(onShowActionHistory); }}
+            >
+              <Clock className="w-8 h-8 text-cyan-600 dark:text-cyan-500 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Action History</h3>
+                  {actionHistoryCount > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-semibold bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 rounded-full">
+                      {actionHistoryCount}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  View, restore, and export the history of all your actions and changes.
+                </p>
+              </div>
+            </div>
+
+            {/* Compare Flow Diagrams Tool Option */}
+            <div 
+              className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
+              onClick={() => handleSelectTool(onShowComparer)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectTool(onShowComparer); }}
+            >
+              <GitCompare className="w-8 h-8 text-teal-600 dark:text-teal-500 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Compare Flow Diagrams</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Compare current flow diagram with another to identify differences.
+                </p>
+              </div>
+            </div>
           </div>
           
           <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -245,6 +325,9 @@ FlowDiagramToolsModal.propTypes = {
   onFindPath: PropTypes.func.isRequired,
   onShowMissingConnections: PropTypes.func.isRequired,
   onShowAllAssumptionsQuestions: PropTypes.func.isRequired,
+  onShowActionHistory: PropTypes.func.isRequired,
+  onShowComparer: PropTypes.func.isRequired,
+  actionHistoryCount: PropTypes.number,
   steps: PropTypes.array,
   // Props for Generate Flow Diagram
   rootElements: PropTypes.array,
@@ -253,4 +336,4 @@ FlowDiagramToolsModal.propTypes = {
   onGenerateFlowDiagram: PropTypes.func.isRequired
 };
 
-export default FlowDiagramToolsModal; 
+export default FlowDiagramToolsModal;

@@ -59,7 +59,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   
   /**
    * State for step selection and search mode
-   * searchMode can be: 'endSteps', 'specificEnd', or 'intermediateStep'
+   * searchMode can be: 'endSteps', 'specificStep', 'intermediateStep', or 'detectLoops'
    */
   const [selectedStartStep, setSelectedStartStep] = useState('');
   const [selectedEndStep, setSelectedEndStep] = useState('');
@@ -77,9 +77,19 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   const pathsPerPage = 250;
 
   /**
+   * Cleanup effect - cancel ongoing searches when component unmounts
+   */
+  useEffect(() => {
+    return () => {
+      shouldContinueRef.current = false;
+    };
+  }, []);
+
+  /**
    * Handles modal close and triggers parent callback
    */
   const handleClose = () => {
+    shouldContinueRef.current = false;
     setIsOpen(false);
     onClose();
   };
@@ -98,10 +108,14 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         return;
       }
 
+      // Create step lookup map for O(1) access
+      const stepMap = new Map(steps.map(s => [s.id, s]));
+
       let allPaths = [];
       let processedSteps = 0;
       const totalSteps = steps.length;
       const maxPathLength = totalSteps * 2; // Prevent infinite loops while allowing for revisits
+      let lastUpdateTime = Date.now();
 
       setPaths([]);
       setIsSearching(true);
@@ -111,10 +125,11 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
        * Recursive DFS function to find all possible paths
        * @param {Step} currentStep - Current step being processed
        * @param {Array} currentPath - Current path being built
+       * @param {Set} visitedInPath - Set of step IDs visited in current path
        * @param {Array} rulePath - Path of rules/connections taken
        * @param {number} depth - Current recursion depth
        */
-      const dfs = async (currentStep, currentPath = [], rulePath = [], depth = 0) => {
+      const dfs = async (currentStep, currentPath = [], visitedInPath = new Set(), rulePath = [], depth = 0) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
         }
@@ -124,19 +139,23 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
           return;
         }
 
-        // Update progress
+        // Update progress periodically (batch updates for performance)
         processedSteps++;
-        const progressValue = Math.min((processedSteps / (totalSteps * 2)) * 100, 99);
-        setProgress(progressValue);
-
-        // Add delay to prevent UI freezing
-        await new Promise(resolve => setTimeout(resolve, 10));
+        const now = Date.now();
+        if (now - lastUpdateTime > 100) { // Update every 100ms instead of every step
+          const progressValue = Math.min((processedSteps / (totalSteps * 2)) * 100, 99);
+          setProgress(progressValue);
+          lastUpdateTime = now;
+          // Add small delay to prevent UI freezing
+          await new Promise(resolve => setTimeout(resolve, 1));
+        }
 
         const newPath = [...currentPath, {
           id: currentStep.id,
           name: currentStep.name,
           isSubStep: !!currentStep.parentId
         }];
+        const newVisitedInPath = new Set(visitedInPath).add(currentStep.id);
 
         // Check if we've reached our target based on search mode
         if (endStepId) {
@@ -146,7 +165,10 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                 steps: newPath,
                 rules: [...rulePath]
               });
-              setPaths([...allPaths]);
+              // Batch state updates - only update every 10 paths
+              if (allPaths.length % 10 === 0) {
+                setPaths([...allPaths]);
+              }
             }
           }
         } else {
@@ -157,7 +179,10 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
               steps: newPath,
               rules: [...rulePath]
             });
-            setPaths([...allPaths]);
+            // Batch state updates - only update every 10 paths
+            if (allPaths.length % 10 === 0) {
+              setPaths([...allPaths]);
+            }
           }
         }
 
@@ -166,16 +191,16 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         
         for (const connection of outgoingConnections) {
           try {
-            const nextStep = steps.find(s => s.id === connection.toStepId);
+            const nextStep = stepMap.get(connection.toStepId);
             if (!nextStep) continue;
 
-            // Check for cycles in the current path
-            const cycleCount = newPath.filter(step => step.id === nextStep.id).length;
-            if (cycleCount >= 2) continue; // Allow revisiting a step once but prevent infinite loops
+            // Check for cycles in the current path - prevent any revisits
+            if (newVisitedInPath.has(nextStep.id)) continue;
 
             await dfs(
               nextStep,
               newPath,
+              newVisitedInPath,
               [...rulePath, { type: connection.type, from: currentStep.name, to: nextStep.name }],
               depth + 1
             );
@@ -187,6 +212,9 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       };
 
       await dfs(startStep);
+      
+      // Final state update with all paths
+      setPaths([...allPaths]);
       setProgress(100);
 
       if (allPaths.length === 0) {
@@ -246,19 +274,23 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       shouldContinueRef.current = true;
       setProgress(0);
 
+      // Create step lookup map for O(1) access
+      const stepMap = new Map(steps.map(s => [s.id, s]));
+
       const loops = [];
-      const visited = new Set();
-      const stack = new Set();
+      const globalVisited = new Set();
+      let lastUpdateTime = Date.now();
 
       /**
        * DFS implementation for loop detection
        * @param {Step} currentStep - Current step being processed
        * @param {Array} path - Current path being explored
        * @param {Array} pathSteps - Array of complete step objects in the path
+       * @param {Set} stack - Set of step IDs in current recursion stack
        * @param {Array} rulePath - Path of rules/connections taken
        * @param {Array} failedRulesPath - Path of failed rules
        */
-      const dfs = async (currentStep, path = [], pathSteps = [], rulePath = [], failedRulesPath = []) => {
+      const dfs = async (currentStep, path = [], pathSteps = [], stack = new Set(), rulePath = [], failedRulesPath = []) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
         }
@@ -282,46 +314,66 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             failedRules: loopFailedRules
           });
           
-          setPaths([...loops]);
+          // Batch state updates - only update every 5 loops
+          if (loops.length % 5 === 0) {
+            setPaths([...loops]);
+          }
           return;
         }
 
-        visited.add(currentStep.id);
-        stack.add(currentStep.id);
+        globalVisited.add(currentStep.id);
+        const newStack = new Set(stack).add(currentStep.id);
         
         // Store both the ID and the full step object
-        path.push(currentStep.id);
-        pathSteps.push({ 
+        const newPath = [...path, currentStep.id];
+        const newPathSteps = [...pathSteps, { 
           id: currentStep.id, 
           name: currentStep.name,
           isSubStep: !!currentStep.parentId 
-        });
+        }];
 
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Batch progress updates
+        const now = Date.now();
+        if (now - lastUpdateTime > 100) {
+          await new Promise(resolve => setTimeout(resolve, 1));
+          lastUpdateTime = now;
+        }
 
         const outgoingConnections = connections.filter(conn => conn.fromStepId === currentStep.id);
         for (const connection of outgoingConnections) {
-          const nextStep = steps.find(s => s.id === connection.toStepId);
+          const nextStep = stepMap.get(connection.toStepId);
           if (nextStep) {
             await dfs(
               nextStep,
-              [...path],
-              [...pathSteps],
+              newPath,
+              newPathSteps,
+              newStack,
               [...rulePath, { type: connection.type }],
               [...failedRulesPath, []]
             );
           }
         }
-
-        stack.delete(currentStep.id);
       };
 
-      for (const step of steps) {
-        visited.clear();
-        stack.clear();
-        await dfs(step);
-        setProgress((steps.indexOf(step) + 1) / steps.length * 100);
+      // Only search from selected start step if provided, otherwise search all
+      if (selectedStartStep) {
+        const startStep = stepMap.get(selectedStartStep);
+        if (startStep) {
+          await dfs(startStep);
+        }
+      } else {
+        // Search from all steps, but track globally to avoid re-starting from visited nodes
+        for (const step of steps) {
+          if (!globalVisited.has(step.id)) {
+            await dfs(step);
+            setProgress((steps.indexOf(step) + 1) / steps.length * 100);
+          }
+        }
       }
+
+      // Final state update with all loops
+      setPaths([...loops]);
+      setProgress(100);
 
       if (loops.length === 0) {
         toast.info('No loops found in the flow diagram.');
@@ -332,12 +384,14 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     } catch (error) {
       if (error.message === 'Search cancelled') {
         console.log('Search was cancelled');
+        toast.info('Search cancelled');
       } else {
         console.error('Error during loop detection:', error);
         toast.error('An error occurred while detecting loops');
       }
     } finally {
       setIsSearching(false);
+      setProgress(0);
     }
   };
 
@@ -797,10 +851,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                 Find Paths Through Step
               </Button>
               <Button
-                    onClick={() => {
-                  handleModeSwitch('detectLoops');
-                  handleDetectLoops();
-                }}
+                onClick={() => handleModeSwitch('detectLoops')}
                 variant={searchMode === 'detectLoops' ? 'default' : 'outline'}
                 className={searchMode === 'detectLoops' ? 'bg-blue-500 hover:bg-blue-600' : ''}
               >
@@ -811,25 +862,43 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
 
             {/* Step Selection */}
             <div className="flex gap-4 items-center">
-              <select
-                value={selectedStartStep}
-                onChange={(e) => setSelectedStartStep(e.target.value)}
-                className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                         text-sm dark:bg-gray-700 dark:text-white px-3"
-              >
-                <option value="">Select Starting Step</option>
-                {steps.map(step => {
-                  // Find parent step if this is a sub-step
-                  const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                  return (
-                    <option key={step.id} value={step.id}>
-                      {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
-                    </option>
-                  );
-                })}
+              {searchMode !== 'detectLoops' && (
+                <select
+                  value={selectedStartStep}
+                  onChange={(e) => setSelectedStartStep(e.target.value)}
+                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
+                           text-sm dark:bg-gray-700 dark:text-white px-3"
+                >
+                  <option value="">Select Starting Step</option>
+                
+                {/* Root Steps */}
+                <optgroup label="Root Steps">
+                  {steps
+                    .filter(s => !s.parentId)
+                    .map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </optgroup>
+                
+                {/* Sub Steps */}
+                {steps.some(s => s.parentId) && (
+                  <optgroup label="Sub Steps">
+                    {steps
+                      .filter(s => s.parentId)
+                      .map(s => {
+                        const parent = steps.find(p => p.id === s.parentId);
+                        return (
+                          <option key={s.id} value={s.id}>
+                            {s.name} (in {parent?.name || 'Unknown'})
+                          </option>
+                        );
+                      })}
+                  </optgroup>
+                )}
               </select>
+              )}
 
-              {(searchMode === 'specificStep' || searchMode === 'intermediateStep') && (
+              {searchMode !== 'detectLoops' && (searchMode === 'specificStep' || searchMode === 'intermediateStep') && (
                 <select
                   value={selectedEndStep}
                   onChange={(e) => setSelectedEndStep(e.target.value)}
@@ -837,19 +906,35 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Target Step</option>
-                  {steps.map(step => {
-                    // Find parent step if this is a sub-step
-                    const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                    return (
-                      <option key={step.id} value={step.id}>
-                        {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
-                      </option>
-                    );
-                  })}
+                  
+                  {/* Root Steps */}
+                  <optgroup label="Root Steps">
+                    {steps
+                      .filter(s => !s.parentId)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </optgroup>
+                  
+                  {/* Sub Steps */}
+                  {steps.some(s => s.parentId) && (
+                    <optgroup label="Sub Steps">
+                      {steps
+                        .filter(s => s.parentId)
+                        .map(s => {
+                          const parent = steps.find(p => p.id === s.parentId);
+                          return (
+                            <option key={s.id} value={s.id}>
+                              {s.name} (in {parent?.name || 'Unknown'})
+                            </option>
+                          );
+                        })}
+                    </optgroup>
+                  )}
                 </select>
               )}
 
-              {searchMode === 'intermediateStep' && (
+              {searchMode !== 'detectLoops' && searchMode === 'intermediateStep' && (
                 <select
                   value={selectedIntermediateStep}
                   onChange={(e) => setSelectedIntermediateStep(e.target.value)}
@@ -857,29 +942,52 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
                            text-sm dark:bg-gray-700 dark:text-white px-3"
                 >
                   <option value="">Select Intermediate Step</option>
-                  {steps.map(step => {
-                    // Find parent step if this is a sub-step
-                    const parentStep = step.parentId ? steps.find(s => s.id === step.parentId) : null;
-                    return (
-                      <option key={step.id} value={step.id}>
-                        {parentStep ? `${parentStep.name} → ${step.name}` : step.name}
-                      </option>
-                    );
-                  })}
+                  
+                  {/* Root Steps */}
+                  <optgroup label="Root Steps">
+                    {steps
+                      .filter(s => !s.parentId)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </optgroup>
+                  
+                  {/* Sub Steps */}
+                  {steps.some(s => s.parentId) && (
+                    <optgroup label="Sub Steps">
+                      {steps
+                        .filter(s => s.parentId)
+                        .map(s => {
+                          const parent = steps.find(p => p.id === s.parentId);
+                          return (
+                            <option key={s.id} value={s.id}>
+                              {s.name} (in {parent?.name || 'Unknown'})
+                            </option>
+                          );
+                        })}
+                    </optgroup>
+                  )}
                 </select>
               )}
 
               <Button
-                onClick={handleFindPaths}
-                disabled={!selectedStartStep || (searchMode === 'specificStep' && !selectedEndStep) || isSearching}
+                onClick={searchMode === 'detectLoops' ? handleDetectLoops : handleFindPaths}
+                disabled={
+                  isSearching ||
+                  (searchMode === 'detectLoops' ? false : !selectedStartStep) ||
+                  (searchMode === 'specificStep' && !selectedEndStep) ||
+                  (searchMode === 'intermediateStep' && (!selectedEndStep || !selectedIntermediateStep))
+                }
                 className="bg-blue-500 hover:bg-blue-600 text-white whitespace-nowrap"
               >
                 {isSearching ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : searchMode === 'detectLoops' ? (
+                  <Route className="w-4 h-4 mr-2" />
                 ) : (
                   <Search className="w-4 h-4 mr-2" />
                 )}
-                Find Paths
+                {searchMode === 'detectLoops' ? 'Detect Loops' : 'Find Paths'}
               </Button>
 
               {isSearching && (
@@ -991,4 +1099,4 @@ PathFinderModal.propTypes = {
   onClose: PropTypes.func.isRequired
 };
 
-export default PathFinderModal; 
+export default PathFinderModal;

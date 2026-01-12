@@ -32,8 +32,15 @@ import {
   Columns,
   AlignRight,
   Play,
+  Plus,
+  Edit3,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import SimulationStepCard from './SimulationStepCard';
+import InlineStepCreator from './InlineStepCreator';
+// Old modal overlays - keeping for now as fallback
+// import EditStepOverlay from './EditStepOverlay';
+// import CreateStepOverlay from './CreateStepOverlay';
 
 /**
  * @typedef {Object} Step
@@ -62,8 +69,22 @@ import { toast } from 'sonner';
  * @param {Step[]} props.steps - Array of steps in the flow diagram
  * @param {Connection[]} props.connections - Array of connections between steps
  * @param {Function} props.onClose - Callback function when modal is closed
+ * @param {Function} props.onAddStep - Callback for adding a new step
+ * @param {Function} props.onUpdateStep - Callback for updating a step
+ * @param {Function} props.onRemoveStep - Callback for removing a step
+ * @param {Function} props.onAddConnection - Callback for adding a connection
+ * @param {Function} props.onRemoveConnection - Callback for removing a connection
  */
-const SimulationModal = ({ steps, connections, onClose }) => {
+const SimulationModal = ({ 
+  steps, 
+  connections, 
+  onClose,
+  onAddStep,
+  onUpdateStep,
+  onRemoveStep,
+  onAddConnection,
+  onRemoveConnection
+}) => {
   // Modal state
   const [isOpen, setIsOpen] = useState(true);
   const [showStartSelector, setShowStartSelector] = useState(true);
@@ -80,8 +101,15 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   // View mode state
   const [stairView, setStairView] = useState(false);
   
+  // Inline editing state
+  const [expandedStepId, setExpandedStepId] = useState(null);
+  const [creatorPosition, setCreatorPosition] = useState(null); // null | 'end' | 'before-{stepId}'
+  
   // Ref for layout container (used for auto-scrolling)
   const simulationContainerRef = useRef(null);
+  
+  // Flag to control when auto-scroll should happen (only during simulation navigation, not editing)
+  const shouldAutoScrollRef = useRef(false);
 
   /**
    * Find the default start step (one with no incoming connections)
@@ -164,13 +192,57 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   };
   
   /**
-   * Auto-scroll to the latest step when simulation path changes
+   * Conditional auto-scroll - only when shouldAutoScrollRef is true
+   * This prevents jarring scrolls during inline editing
    */
   useEffect(() => {
-    if (simulationContainerRef.current && simulationPath.length > 0) {
-      simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
+    if (shouldAutoScrollRef.current && simulationContainerRef.current && simulationPath.length > 0) {
+      setTimeout(() => {
+        simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
+      }, 100);
+      // Reset the flag after scrolling
+      shouldAutoScrollRef.current = false;
     }
   }, [simulationPath]);
+
+  /**
+   * Update next steps when steps or connections change (for real-time updates during editing)
+   */
+  useEffect(() => {
+    if (currentStep) {
+      updateNextSteps(currentStep);
+    }
+    
+    // If simulation is complete but we've just added connections to the last real step,
+    // we need to un-complete the simulation and remove the END marker
+    if (isComplete && simulationPath.length > 0) {
+      // Find the last real step (not the END marker)
+      const lastRealStepIndex = simulationPath.findIndex(item => item.step.id === 'end') - 1;
+      
+      if (lastRealStepIndex >= 0) {
+        const lastRealStep = simulationPath[lastRealStepIndex].step;
+        
+        // Check if this step now has outgoing connections
+        const hasOutgoingConnections = connections.some(
+          conn => conn.fromStepId === lastRealStep.id
+        );
+        
+        if (hasOutgoingConnections) {
+          // Remove the END marker and restore the simulation state
+          const newPath = simulationPath.slice(0, -1); // Remove END marker
+          const lastItem = newPath[newPath.length - 1];
+          
+          // Update the last item's status to 'current'
+          newPath[newPath.length - 1] = { ...lastItem, status: 'current' };
+          
+          setSimulationPath(newPath);
+          setCurrentStep(lastRealStep);
+          setIsComplete(false);
+          updateNextSteps(lastRealStep);
+        }
+      }
+    }
+  }, [steps, connections]);
 
   // Add animation styles
   useEffect(() => {
@@ -326,18 +398,6 @@ const SimulationModal = ({ steps, connections, onClose }) => {
   };
 
   /**
-   * Ensures the simulation container scrolls to the bottom when new content is added
-   */
-  useEffect(() => {
-    if (simulationContainerRef.current) {
-      // Use a small timeout to ensure the DOM has updated
-      setTimeout(() => {
-        simulationContainerRef.current.scrollTop = simulationContainerRef.current.scrollHeight;
-      }, 50);
-    }
-  }, [simulationPath, nextSteps]);
-
-  /**
    * Handles selection of a next step in the simulation
    * @param {'success' | 'failure'} type - Type of choice made
    * @param {string} targetStepId - ID of the target step to transition to
@@ -393,6 +453,9 @@ const SimulationModal = ({ steps, connections, onClose }) => {
       conn => conn.fromStepId === nextStep.id
     );
 
+    // Enable auto-scroll for simulation navigation
+    shouldAutoScrollRef.current = true;
+    
     if (!hasOutgoingConnections) {
       // If no outgoing connections, mark as complete
       updatedPath.push({ 
@@ -709,6 +772,58 @@ const SimulationModal = ({ steps, connections, onClose }) => {
     return index;
   };
 
+  /**
+   * Handlers for inline editing
+   */
+  const handleToggleExpand = (stepId) => {
+    // Auto-collapse: if expanding a new step, collapse the current one
+    setExpandedStepId(stepId);
+  };
+
+  const handleSaveStep = (stepId, updates) => {
+    onUpdateStep(stepId, updates);
+    
+    // Update simulation path if this step is in it
+    const updatedPath = simulationPath.map(item => {
+      if (item.step.id === stepId) {
+        return {
+          ...item,
+          step: { ...item.step, ...updates }
+        };
+      }
+      return item;
+    });
+    setSimulationPath(updatedPath);
+    
+    // Update current step if it's the one being edited
+    if (currentStep?.id === stepId) {
+      setCurrentStep({ ...currentStep, ...updates });
+    }
+  };
+
+  const handleDeleteStep = (stepId) => {
+    if (onRemoveStep) {
+      onRemoveStep(stepId);
+      
+      // Remove from simulation path if present
+      const updatedPath = simulationPath.filter(item => item.step.id !== stepId);
+      setSimulationPath(updatedPath);
+      
+      // If we deleted the current step, reset
+      if (currentStep?.id === stepId && updatedPath.length > 0) {
+        const lastItem = updatedPath[updatedPath.length - 1];
+        setCurrentStep(lastItem.step);
+        updateNextSteps(lastItem.step);
+      }
+    }
+  };
+
+  const handleCreateStepComplete = (stepData) => {
+    const newStepId = onAddStep(stepData);
+    setCreatorPosition(null);
+    return newStepId;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       {showStartSelector ? (
@@ -860,6 +975,33 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                   
                   // Only render if this is a main step or if its parent was already rendered
                   if (!isSubStep || simulationPath.some(item => item.step.id === step.parentId)) {
+                    // Use enhanced step card if editing is enabled
+                    if (onUpdateStep && onAddConnection && status !== 'end') {
+                      return (
+                        <div 
+                          key={`${step.id}-${index}`} 
+                          className={`step-item ${isSubStep ? "sub-step-container" : ""} ${stairView ? 'stair-step' : ''}`}
+                          style={stairView ? {'--step-level': stepLevel} : {}}
+                        >
+                          <SimulationStepCard
+                            step={step}
+                            status={status}
+                            isSubStep={isSubStep}
+                            isExpanded={expandedStepId === step.id}
+                            onToggleExpand={handleToggleExpand}
+                            onSave={handleSaveStep}
+                            onDelete={handleDeleteStep}
+                            allSteps={steps}
+                            connections={connections}
+                            onAddConnection={onAddConnection}
+                            onRemoveConnection={onRemoveConnection}
+                            onAddStep={onAddStep}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback to static card
                     return (
                       <div 
                         key={`${step.id}-${index}`} 
@@ -895,6 +1037,18 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                   }
                   return null;
                 })}
+
+                {/* Inline Step Creator at End */}
+                {creatorPosition === 'end' && (
+                  <InlineStepCreator
+                    position="end"
+                    currentStep={currentStep}
+                    allSteps={steps}
+                    onCreate={handleCreateStepComplete}
+                    onCancel={() => setCreatorPosition(null)}
+                    onAddConnection={onAddConnection}
+                  />
+                )}
 
                 {/* Render next possible steps */}
                 {!isComplete && currentStep && (
@@ -1034,6 +1188,17 @@ const SimulationModal = ({ steps, connections, onClose }) => {
                 </div>
               </Card>
             )}
+
+            {/* Floating Add Step Button */}
+            {onAddStep && !isComplete && !creatorPosition && (
+              <Button
+                onClick={() => setCreatorPosition('end')}
+                className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-10"
+                title="Add new step"
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            )}
           </div>
         </DialogContent>
       )}
@@ -1053,7 +1218,12 @@ SimulationModal.propTypes = {
     toStepId: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['success', 'failure']).isRequired
   })).isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  onAddStep: PropTypes.func,
+  onUpdateStep: PropTypes.func,
+  onRemoveStep: PropTypes.func,
+  onAddConnection: PropTypes.func,
+  onRemoveConnection: PropTypes.func
 };
 
-export default SimulationModal; 
+export default SimulationModal;
