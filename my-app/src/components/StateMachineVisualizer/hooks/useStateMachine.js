@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { parseExcelFile, validateExcelData, generateId, sortRulesByPriority } from '../utils';
 import * as XLSX from 'xlsx-js-style';
 import { toast } from 'sonner';
+import storage from '@/utils/storageWrapper';
 
 /**
  * @typedef {Object} Rule
@@ -39,18 +40,12 @@ import { toast } from 'sonner';
  */
 export default function useStateMachine() {
   // Core state management
-  const [states, setStates] = useState(() => {
-    try {
-      const savedFlow = localStorage.getItem('ivrFlow');
-      if (!savedFlow) return [];
-      const parsedFlow = JSON.parse(savedFlow);
-      return Array.isArray(parsedFlow) ? parsedFlow : [];
-    } catch (error) {
-      console.error('Error initializing states:', error);
-      return [];
-    }
-  });
+  const [states, setStates] = useState([]);
   const [selectedState, setSelectedState] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Track current filename for display and export
+  const [currentFileName, setCurrentFileName] = useState(null);
   
   // Theme management
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -59,79 +54,78 @@ export default function useStateMachine() {
   const [showSaveNotification, setShowSaveNotification] = useState(false);
   
   // Change logging
-  const [changeLog, setChangeLog] = useState(() => {
-    // Initialize changeLog from localStorage with robust error handling
-    try {
-      const savedChangeLog = localStorage.getItem('changeLog');
-      if (!savedChangeLog) return [];
-      
-      const parsedLog = JSON.parse(savedChangeLog);
-      if (!Array.isArray(parsedLog)) {
-        console.error('Stored changeLog is not an array, resetting');
-        localStorage.removeItem('changeLog');
-        return [];
-      }
-      
-      // Validate each entry has the required structure
-      return parsedLog.filter(entry => 
-        entry && typeof entry === 'object' && 
-        typeof entry.timestamp === 'string' && 
-        typeof entry.message === 'string'
-      );
-    } catch (error) {
-      console.error('Error parsing changeLog from localStorage:', error);
-      // If there's an error, clear the corrupted data
-      localStorage.removeItem('changeLog');
-      return [];
-    }
-  });
+  const [changeLog, setChangeLog] = useState([]);
 
   /** Maximum number of entries to keep in change log */
-  const MAX_HISTORY_ENTRIES = 2000;
+  const MAX_HISTORY_ENTRIES = 20;
 
   /**
-   * Persist change log to localStorage on updates
+   * Load saved states, filename, changelog, and theme preference on initialization
    */
   useEffect(() => {
-    if (!Array.isArray(changeLog)) {
-      console.error('changeLog is not an array, not saving to localStorage');
+    const loadData = async () => {
+      try {
+        // Load states
+        const savedFlow = await storage.getItem('ivrFlow');
+        if (savedFlow) {
+          const parsedFlow = Array.isArray(savedFlow) ? savedFlow : [];
+          setStates(parsedFlow);
+        }
+
+        // Load filename
+        const savedFileName = await storage.getItem('stateMachineCurrentFileName');
+        if (savedFileName) {
+          setCurrentFileName(savedFileName);
+        }
+
+        // Load changeLog
+        const savedChangeLog = await storage.getItem('changeLog');
+        if (savedChangeLog && Array.isArray(savedChangeLog)) {
+          // Validate each entry has the required structure
+          const validLog = savedChangeLog.filter(entry => 
+            entry && typeof entry === 'object' && 
+            typeof entry.timestamp === 'string' && 
+            typeof entry.message === 'string'
+          );
+          setChangeLog(validLog);
+        }
+
+        // Load theme preference
+        const darkModePreference = await storage.getItem('darkMode');
+        if (darkModePreference === 'true' || darkModePreference === true) {
+          setIsDarkMode(true);
+        }
+      } catch (error) {
+        console.error('Error loading state machine data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  /**
+   * Persist change log to IndexedDB on updates
+   */
+  useEffect(() => {
+    if (!Array.isArray(changeLog) || changeLog.length === 0) {
       return;
     }
     
-    try {
-      localStorage.setItem('changeLog', JSON.stringify(changeLog));
-    } catch (error) {
-      console.error('Error saving changeLog to localStorage:', error);
-    }
+    storage.setItem('changeLog', changeLog).catch(error => {
+      console.error('Error saving changeLog to storage:', error);
+    });
   }, [changeLog]);
-
-  /**
-   * Load saved states and theme preference on initialization
-   */
-  useEffect(() => {
-    try {
-      const savedFlow = localStorage.getItem('ivrFlow');
-      if (savedFlow) {
-        const parsedFlow = JSON.parse(savedFlow);
-        setStates(Array.isArray(parsedFlow) ? parsedFlow : []);
-      } else {
-        setStates([]);
-      }
-    } catch (error) {
-      console.error('Error loading saved states:', error);
-      setStates([]);
-    }
-
-    const darkModePreference = localStorage.getItem('darkMode');
-    setIsDarkMode(darkModePreference === null ? false : darkModePreference === 'true');
-  }, []);
 
   /**
    * Update theme and persist preference
    */
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('darkMode', isDarkMode);
+    storage.setItem('darkMode', isDarkMode).catch(error => {
+      console.error('Error saving theme preference:', error);
+    });
   }, [isDarkMode]);
 
   /**
@@ -167,14 +161,19 @@ export default function useStateMachine() {
   };
 
   /**
-   * Saves current state machine configuration to localStorage
+   * Saves current state machine configuration to IndexedDB
    * Shows a temporary success notification
    */
-  const saveFlow = () => {
-    localStorage.setItem('ivrFlow', JSON.stringify(states));
-    setShowSaveNotification(true);
-    setTimeout(() => setShowSaveNotification(false), 2000);
-    addToChangeLog('Saved state machine configuration');
+  const saveFlow = async () => {
+    try {
+      await storage.setItem('ivrFlow', states);
+      setShowSaveNotification(true);
+      setTimeout(() => setShowSaveNotification(false), 2000);
+      addToChangeLog('Saved state machine configuration');
+    } catch (error) {
+      console.error('Error saving flow:', error);
+      toast.error('Failed to save state machine');
+    }
   };
 
   /**
@@ -242,23 +241,25 @@ export default function useStateMachine() {
     addToChangeLog(`Renamed state: ${oldName} → ${newName}`);
     
     // Also update any references in the state dictionary if it exists
-    const stateDictionary = localStorage.getItem('stateDictionary');
-    if (stateDictionary) {
-      try {
-        const dictionary = JSON.parse(stateDictionary);
-        if (dictionary[oldName]) {
+    storage.getItem('stateDictionary').then(stateDictionary => {
+      if (stateDictionary && stateDictionary[oldName]) {
+        try {
           // Create a new dictionary with the updated key
-          const newDictionary = { ...dictionary };
+          const newDictionary = { ...stateDictionary };
           newDictionary[newName] = newDictionary[oldName];
           delete newDictionary[oldName];
           
-          // Save back to localStorage
-          localStorage.setItem('stateDictionary', JSON.stringify(newDictionary));
+          // Save back to IndexedDB
+          storage.setItem('stateDictionary', newDictionary).catch(error => {
+            console.error('Error saving state dictionary:', error);
+          });
+        } catch (error) {
+          console.error('Error updating state dictionary:', error);
         }
-      } catch (error) {
-        console.error('Error updating state dictionary:', error);
       }
-    }
+    }).catch(error => {
+      console.error('Error loading state dictionary:', error);
+    });
   };
 
   /**
@@ -292,7 +293,12 @@ export default function useStateMachine() {
 
       const rows = await parseExcelFile(file);
       
-      // Store complete original data with file name as key
+      // Store filename for display and export
+      const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+      setCurrentFileName(fileName);
+      await storage.setItem('stateMachineCurrentFileName', fileName);
+      
+      // Store complete original data for export functionality
       const headers = rows[0];
       const jsonData = rows.slice(1).map(row => {
         const obj = {};
@@ -302,12 +308,10 @@ export default function useStateMachine() {
         return obj;
       });
       
-      // Store data both in the legacy key and a new file-specific key
-      localStorage.setItem('lastImportedCSV', JSON.stringify(jsonData));
-      
-      // Also store data with filename as key for multiple file exports
-      const fileKey = `importedCSV_${file.name}`;
-      localStorage.setItem(fileKey, JSON.stringify(jsonData));
+      // Store data in localStorage for export functionality
+      storage.setItem('lastImportedCSV', jsonData).catch(error => {
+        console.error('Error saving CSV cache:', error);
+      });
 
       // Process data and create states
       const stateMap = new Map();
@@ -477,25 +481,17 @@ export default function useStateMachine() {
    * Clears all states and rules from the state machine
    * This resets the entire configuration to an empty state
    */
-  const clearData = () => {
+  const clearData = async () => {
     // Reset states to empty array
     setStates([]);
     // Reset selected state
     setSelectedState(null);
     
-    // Clear state machine data from localStorage
-    localStorage.removeItem('ivrFlow');
+    // Clear state machine data from IndexedDB
+    await storage.removeItem('ivrFlow');
     
     // Clear imported CSV data
-    localStorage.removeItem('lastImportedCSV');
-    
-    // Clear any file-specific CSV data by finding and removing keys that start with 'importedCSV_'
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('importedCSV_')) {
-        localStorage.removeItem(key);
-      }
-    }
+    await storage.removeItem('lastImportedCSV');
     
     addToChangeLog('Cleared all state machine data');
     toast.success('State machine data has been cleared');
@@ -590,6 +586,7 @@ export default function useStateMachine() {
     setStates,
     selectedState,
     setSelectedState,
+    currentFileName,
     isDarkMode,
     showSaveNotification,
     changeLog,
@@ -604,6 +601,7 @@ export default function useStateMachine() {
     handleExcelImport,
     exportConfiguration,
     handleRuleDictionaryImport,
-    clearData
+    clearData,
+    isLoading
   };
 }

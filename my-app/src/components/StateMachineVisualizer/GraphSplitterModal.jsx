@@ -19,6 +19,7 @@ import { X, Download, Scissors, CheckCircle, ArrowLeftRight, FileBox } from 'luc
 import * as XLSX from 'xlsx-js-style';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import storage from '@/utils/storageWrapper';
 
 /**
  * Utility function to identify connected components in a graph
@@ -242,9 +243,9 @@ const createSubgraph = (originalStates, stateIds) => {
  * @param {Array} states - Array of state objects in the subgraph
  * @param {string} graphName - Name to use for the exported file
  * @param {Array} allStates - All states in the original graph (used to look up boundary state names)
- * @returns {void}
+ * @returns {Promise<void>}
  */
-const exportSubgraphToCSV = (states, graphName, allStates) => {
+const exportSubgraphToCSV = async (states, graphName, allStates) => {
   if (!states || states.length === 0) return;
   
   // Get all external references (outgoing boundaries)
@@ -278,18 +279,18 @@ const exportSubgraphToCSV = (states, graphName, allStates) => {
   // Try to get the original imported data specific to this file
   let baseData = [];
   if (sourceFile) {
-    const fileSpecificData = localStorage.getItem(`importedCSV_${sourceFile}`);
+    const fileSpecificData = await storage.getItem(`importedCSV_${sourceFile}`);
     if (fileSpecificData) {
-      baseData = JSON.parse(fileSpecificData);
+      baseData = fileSpecificData;
     } else {
       // Fall back to the legacy storage if file-specific data not found
-      const lastImportedData = localStorage.getItem('lastImportedCSV');
-      baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+      const lastImportedData = await storage.getItem('lastImportedCSV');
+      baseData = lastImportedData || [];
     }
   } else {
     // Fall back to the legacy storage if no source file is found
-    const lastImportedData = localStorage.getItem('lastImportedCSV');
-    baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+    const lastImportedData = await storage.getItem('lastImportedCSV');
+    baseData = lastImportedData || [];
   }
   
   // Basic rules from states
@@ -504,10 +505,10 @@ const GraphSplitterModal = ({ onClose, states }) => {
    * 
    * @param {string} subgraphId - ID of the subgraph to download
    */
-  const handleDownloadSubgraph = (subgraphId) => {
+  const handleDownloadSubgraph = async (subgraphId) => {
     const subgraph = subgraphs.find(sg => sg.id === subgraphId);
     if (subgraph) {
-      exportSubgraphToCSV(subgraph.states, subgraph.name, states);
+      await exportSubgraphToCSV(subgraph.states, subgraph.name, states);
     }
   };
   
@@ -552,18 +553,18 @@ const GraphSplitterModal = ({ onClose, states }) => {
       // Try to get the original imported data specific to this file
       let baseData = [];
       if (sourceFile) {
-        const fileSpecificData = localStorage.getItem(`importedCSV_${sourceFile}`);
+        const fileSpecificData = await storage.getItem(`importedCSV_${sourceFile}`);
         if (fileSpecificData) {
-          baseData = JSON.parse(fileSpecificData);
+          baseData = fileSpecificData;
         } else {
           // Fall back to the legacy storage if file-specific data not found
-          const lastImportedData = localStorage.getItem('lastImportedCSV');
-          baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+          const lastImportedData = await storage.getItem('lastImportedCSV');
+          baseData = lastImportedData || [];
         }
       } else {
         // Fall back to the legacy storage if no source file is found
-        const lastImportedData = localStorage.getItem('lastImportedCSV');
-        baseData = lastImportedData ? JSON.parse(lastImportedData) : [];
+        const lastImportedData = await storage.getItem('lastImportedCSV');
+        baseData = lastImportedData || [];
       }
       
       // Create a CSV for this subgraph - normal rules

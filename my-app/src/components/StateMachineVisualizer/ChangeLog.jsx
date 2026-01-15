@@ -8,7 +8,7 @@
  * - Clearing history
  * - Responsive design with dark mode support
  * 
- * The component maintains a list of up to 2000 most recent actions,
+ * The component maintains a list of up to 20 most recent actions,
  * providing users with a detailed audit trail of their modifications.
  */
 
@@ -16,6 +16,7 @@ import PropTypes from 'prop-types';
 import { X, ArrowUpFromLine, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
+import storage from '@/utils/storageWrapper';
 
 const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
   // Early return if modal is not open
@@ -57,10 +58,10 @@ const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
   /**
    * Resets the change history after user confirmation
    */
-  const resetHistory = () => {
+  const resetHistory = async () => {
     try {
       if (window.confirm('Are you sure you want to clear the local history? This cannot be undone.')) {
-        localStorage.removeItem('changeLog');
+        await storage.removeItem('changeLog');
         setChangeLog([]);
         toast.success('History cleared successfully');
       }
@@ -78,7 +79,7 @@ const ChangeLog = ({ changeLog, isOpen, onClose, setChangeLog }) => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Local History</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Stores up to 2000 most recent actions
+              Stores up to 20 most recent actions
             </p>
           </div>
           <div className="flex items-center gap-2">

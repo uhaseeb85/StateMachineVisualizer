@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { sortRulesByPriority } from "./utils";
+import storage from '@/utils/storageWrapper';
 
 const RulesPanel = ({
   states,
@@ -49,18 +50,21 @@ const RulesPanel = ({
   const currentState = states.find(state => state.id === selectedState);
 
   /**
-   * Initialize rule dictionary from localStorage on component mount
+   * Initialize rule dictionary from IndexedDB on component mount
    */
   useEffect(() => {
-    const savedDictionary = localStorage.getItem('ruleDictionary');
-    if (savedDictionary) {
-      setLoadedDictionary(JSON.parse(savedDictionary));
-    }
+    const loadDictionary = async () => {
+      const savedDictionary = await storage.getItem('ruleDictionary');
+      if (savedDictionary) {
+        setLoadedDictionary(savedDictionary);
+      }
+    };
+    loadDictionary();
   }, [setLoadedDictionary]);
 
   /**
    * Handles the import of rule descriptions from Excel file
-   * Updates both state and localStorage with the imported dictionary
+   * Updates both state and IndexedDB with the imported dictionary
    */
   const handleDictionaryImport = async (event) => {
     try {
@@ -68,7 +72,7 @@ const RulesPanel = ({
       if (result?.dictionary) {
         const dictionary = result.dictionary;
         setLoadedDictionary(dictionary);
-        localStorage.setItem('ruleDictionary', JSON.stringify(dictionary));
+        await storage.setItem('ruleDictionary', dictionary);
       }
     } catch (error) {
       console.error('Error importing dictionary:', error);

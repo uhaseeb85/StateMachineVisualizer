@@ -31,7 +31,8 @@ const TopActionBar = ({
   onChangeMode,
   onClearData,
   onSplitGraph,
-  onCompareStateMachines
+  onCompareStateMachines,
+  currentFileName
 }) => {
 
   // State for controlling the confirmation dialog
@@ -106,6 +107,22 @@ const TopActionBar = ({
 
           {/* Core Actions Group */}
           <div className="flex flex-wrap gap-4">
+            {/* Current File Name Display (if imported) */}
+            {currentFileName && (
+              <Button 
+                title="Current imported file"
+                className="bg-gray-900 text-white text-sm
+                         dark:bg-gray-800 dark:text-gray-100
+                         border border-gray-800 dark:border-gray-700
+                         flex items-center gap-2 px-3 py-1.5 rounded-md
+                         cursor-default opacity-90"
+                disabled
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {currentFileName}
+              </Button>
+            )}
+
             {/* Save Button */}
             <Button 
               onClick={onSave}
@@ -131,11 +148,11 @@ const TopActionBar = ({
                 title="Export your state machine as a CSV file"
                 className="export-csv-button bg-gray-900 text-white text-sm
                          dark:bg-gray-800 dark:text-gray-100
-                         hover:bg-blue-600 hover:scale-105
-                         dark:hover:bg-blue-600
+                         hover:bg-green-600 hover:scale-105
+                         dark:hover:bg-green-600
                          transform transition-all duration-200 ease-in-out
                          border border-gray-800 dark:border-gray-700
-                         hover:border-blue-500 dark:hover:border-blue-500
+                         hover:border-green-500 dark:hover:border-green-500
                          flex items-center gap-2 px-3 py-1.5 rounded-md"
               >
                 <FileSpreadsheet className="w-4 h-4" />
@@ -298,7 +315,10 @@ TopActionBar.propTypes = {
   onSplitGraph: PropTypes.func.isRequired,
   
   // State machine comparison prop
-  onCompareStateMachines: PropTypes.func.isRequired
+  onCompareStateMachines: PropTypes.func.isRequired,
+
+  // Current file name (optional)
+  currentFileName: PropTypes.string
 };
 
 export default TopActionBar;

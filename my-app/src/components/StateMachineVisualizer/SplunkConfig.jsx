@@ -18,7 +18,9 @@
  * @property {string} index - Splunk index name
  */
 
-import { useState } from 'react';
+import storage from '@/utils/storageWrapper';
+
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,15 +40,25 @@ const PORT_PATTERN = /^([1-9][0-9]{0,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9
 
 const SplunkConfig = ({ onClose, onSave }) => {
   // Form state
-  const [config, setConfig] = useState(() => {
-    try {
-      const savedConfig = localStorage.getItem('splunkConfig');
-      return savedConfig ? JSON.parse(savedConfig) : DEFAULT_CONFIG;
-    } catch (error) {
-      console.error('Error loading Splunk config:', error);
-      return DEFAULT_CONFIG;
-    }
-  });
+  const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load config from IndexedDB on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const savedConfig = await storage.getItem('splunkConfig');
+        if (savedConfig) {
+          setConfig(savedConfig);
+        }
+      } catch (error) {
+        console.error('Error loading Splunk config:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // Validation state
   const [errors, setErrors] = useState({
@@ -121,14 +133,14 @@ const SplunkConfig = ({ onClose, onSave }) => {
    * Handles the configuration save operation
    * Validates input, persists to localStorage, and notifies parent
    */
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) {
       toast.error('Please correct the errors in the form');
       return;
     }
 
     try {
-      localStorage.setItem('splunkConfig', JSON.stringify(config));
+      await storage.setItem('splunkConfig', config);
       toast.success('Splunk configuration saved successfully');
       onSave(config);
       onClose();

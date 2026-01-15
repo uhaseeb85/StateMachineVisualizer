@@ -16,11 +16,30 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import * as XLSX from 'xlsx-js-style';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { Card } from "@/components/ui/card";
+import {
+  Route,
+  ArrowRight,
+  Search,
+  X,
+  Loader2,
+  Download,
+  FileSpreadsheet
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 const PathFinderModal = ({ states, onClose }) => {
+  // Modal state
+  const [isOpen, setIsOpen] = useState(true);
+  
   // State Selection
   const [selectedStartState, setSelectedStartState] = useState('');
   const [selectedEndState, setSelectedEndState] = useState('');
@@ -38,109 +57,167 @@ const PathFinderModal = ({ states, onClose }) => {
   const pathsPerPage = 250;
 
   /**
+   * Cleanup effect - cancel ongoing searches when component unmounts
+   */
+  useEffect(() => {
+    return () => {
+      shouldContinueRef.current = false;
+    };
+  }, []);
+
+  /**
+   * Handles modal close and triggers parent callback
+   */
+  const handleClose = () => {
+    shouldContinueRef.current = false;
+    setIsOpen(false);
+    onClose();
+  };
+
+  /**
    * Core path finding algorithm using depth-first search
    * Supports finding paths to end states, between states, and through intermediate states
    */
   const findPaths = useCallback(async (startStateId, endStateId = null, intermediateStateId = null) => {
-    const startState = states.find(s => s.id === startStateId);
-    if (!startState) {
-      toast.error('Start state not found');
-      return;
-    }
-
-    let allPaths = [];
-    let visited = new Set();
-    let totalStates = states.length;
-    let processedStates = 0;
-
-    /**
-     * Recursive DFS function for path finding
-     * @param {Object} currentState - Current state in the traversal
-     * @param {Array} currentPath - Current path being explored
-     * @param {Array} rulePath - Rules used in the current path
-     * @param {Array} failedRulesPath - Failed rules at each step
-     * @param {boolean} foundIntermediate - Whether intermediate state was found (if required)
-     */
-    const dfs = async (currentState, currentPath = [], rulePath = [], failedRulesPath = [], foundIntermediate = false) => {
-      if (!shouldContinueRef.current) {
-        throw new Error('Search cancelled');
-      }
-
-      currentPath.push(currentState.name);
-      visited.add(currentState.id);
-      
-      processedStates++;
-      setProgress(Math.min((processedStates / (totalStates * 2)) * 100, 99));
-
-      // Add delay to prevent UI freezing
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Check if current path is valid based on search mode
-      if (intermediateStateId) {
-        if (currentState.id === endStateId && foundIntermediate) {
-          const newPath = {
-            states: [...currentPath],
-            rules: [...rulePath],
-            failedRules: [...failedRulesPath]
-          };
-          allPaths.push(newPath);
-          setPaths([...allPaths]);
-        }
-      } else if (endStateId) {
-        if (currentState.id === endStateId) {
-          const newPath = {
-            states: [...currentPath],
-            rules: [...rulePath],
-            failedRules: [...failedRulesPath]
-          };
-          allPaths.push(newPath);
-          setPaths([...allPaths]);
-        }
-      } else {
-        if (currentState.rules.length === 0) {
-          const newPath = {
-            states: [...currentPath],
-            rules: [...rulePath],
-            failedRules: [...failedRulesPath]
-          };
-          allPaths.push(newPath);
-          setPaths([...allPaths]);
-        }
-      }
-
-      // Explore next states
-      for (let i = 0; i < currentState.rules.length; i++) {
-        const rule = currentState.rules[i];
-        const nextState = states.find(s => s.id === rule.nextState);
-        if (nextState && !currentPath.includes(nextState.name)) {
-          const hasFoundIntermediate = foundIntermediate || nextState.id === intermediateStateId;
-          await dfs(
-            nextState, 
-            [...currentPath], 
-            [...rulePath, rule.condition],
-            [...failedRulesPath, currentState.rules.slice(0, i).map(r => r.condition)],
-            hasFoundIntermediate
-          );
-        }
-      }
-
-      visited.delete(currentState.id);
-    };
-
     try {
+      const startState = states.find(s => s.id === startStateId);
+      if (!startState) {
+        toast.error('Start state not found');
+        return;
+      }
+
+      // Create state lookup map for O(1) access - PERFORMANCE FIX
+      const stateMap = new Map(states.map(s => [s.id, s]));
+
+      let allPaths = [];
+      let processedStates = 0;
+      const totalStates = states.length;
+      const maxPathLength = totalStates * 2; // Prevent infinite loops - DEPTH PROTECTION
+      let lastUpdateTime = Date.now();
+
       setPaths([]);
       setIsSearching(true);
+      setProgress(0);
+
+      /**
+       * Recursive DFS function for path finding
+       * @param {Object} currentState - Current state in the traversal
+       * @param {Array} currentPath - Current path being explored
+       * @param {Set} visitedInPath - Set of state IDs visited in current path (SCOPE FIX)
+       * @param {Array} rulePath - Rules used in the current path
+       * @param {Array} failedRulesPath - Failed rules at each step
+       * @param {boolean} foundIntermediate - Whether intermediate state was found (if required)
+       * @param {number} depth - Current recursion depth (DEPTH PROTECTION)
+       */
+      const dfs = async (currentState, currentPath = [], visitedInPath = new Set(), rulePath = [], failedRulesPath = [], foundIntermediate = false, depth = 0) => {
+        if (!shouldContinueRef.current) {
+          throw new Error('Search cancelled');
+        }
+
+        // Prevent infinite loops by limiting path length - DEPTH PROTECTION
+        if (depth > maxPathLength) {
+          return;
+        }
+
+        // Update progress periodically (batch updates for performance) - PERFORMANCE FIX
+        processedStates++;
+        const now = Date.now();
+        if (now - lastUpdateTime > 100) { // Update every 100ms instead of every 50ms
+          const progressValue = Math.min((processedStates / (totalStates * 2)) * 100, 99);
+          setProgress(progressValue);
+          lastUpdateTime = now;
+          // Add small delay to prevent UI freezing
+          await new Promise(resolve => setTimeout(resolve, 1));
+        }
+
+        const newPath = [...currentPath, currentState.name];
+        const newVisitedInPath = new Set(visitedInPath).add(currentState.id);
+
+        // Check if current path is valid based on search mode
+        if (intermediateStateId) {
+          if (currentState.id === endStateId && foundIntermediate) {
+            const newPathObj = {
+              states: [...newPath],
+              rules: [...rulePath],
+              failedRules: [...failedRulesPath]
+            };
+            allPaths.push(newPathObj);
+            // Batch state updates - only update every 10 paths - PERFORMANCE FIX
+            if (allPaths.length % 10 === 0) {
+              setPaths([...allPaths]);
+            }
+          }
+        } else if (endStateId) {
+          if (currentState.id === endStateId) {
+            const newPathObj = {
+              states: [...newPath],
+              rules: [...rulePath],
+              failedRules: [...failedRulesPath]
+            };
+            allPaths.push(newPathObj);
+            // Batch state updates - only update every 10 paths - PERFORMANCE FIX
+            if (allPaths.length % 10 === 0) {
+              setPaths([...allPaths]);
+            }
+          }
+        } else {
+          if (currentState.rules.length === 0) {
+            const newPathObj = {
+              states: [...newPath],
+              rules: [...rulePath],
+              failedRules: [...failedRulesPath]
+            };
+            allPaths.push(newPathObj);
+            // Batch state updates - only update every 10 paths - PERFORMANCE FIX
+            if (allPaths.length % 10 === 0) {
+              setPaths([...allPaths]);
+            }
+          }
+        }
+
+        // Explore next states
+        for (let i = 0; i < currentState.rules.length; i++) {
+          const rule = currentState.rules[i];
+          const nextState = stateMap.get(rule.nextState); // O(1) lookup - PERFORMANCE FIX
+          
+          // Check for cycles using Set.has() - O(1) lookup - ALGORITHM FIX
+          if (nextState && !newVisitedInPath.has(nextState.id)) {
+            const hasFoundIntermediate = foundIntermediate || nextState.id === intermediateStateId;
+            await dfs(
+              nextState,
+              newPath,
+              newVisitedInPath, // Pass per-path visited set - ALGORITHM FIX
+              [...rulePath, rule.condition],
+              [...failedRulesPath, currentState.rules.slice(0, i).map(r => r.condition)],
+              hasFoundIntermediate,
+              depth + 1 // Increment depth - DEPTH PROTECTION
+            );
+          }
+        }
+      };
+
       await dfs(startState);
+      
+      // Final state update with all paths - PERFORMANCE FIX
+      setPaths([...allPaths]);
       setProgress(100);
+
+      if (allPaths.length === 0) {
+        toast.info('No paths found for the selected criteria.');
+      } else {
+        toast.success(`Found ${allPaths.length} possible path${allPaths.length === 1 ? '' : 's'}.`);
+      }
     } catch (error) {
       if (error.message === 'Search cancelled') {
         console.log('Search was cancelled');
+        toast.info('Search cancelled');
       } else {
         console.error('Error during search:', error);
-        toast.error('An error occurred during path finding');
+        toast.error(`An error occurred during path finding: ${error.message}`);
       }
     } finally {
       setIsSearching(false);
+      setProgress(0);
     }
   }, [states]);
 
@@ -165,22 +242,13 @@ const PathFinderModal = ({ states, onClose }) => {
 
   /**
    * Cancels the current search operation
+  /**
+   * Cancels the current search operation
    */
   const handleCancel = () => {
     shouldContinueRef.current = false;
     setIsSearching(false);
   };
-
-  // Calculate pagination values
-  const indexOfLastPath = currentPage * pathsPerPage;
-  const indexOfFirstPath = indexOfLastPath - pathsPerPage;
-  const currentPaths = paths.slice(indexOfFirstPath, indexOfLastPath);
-  const totalPages = Math.ceil(paths.length / pathsPerPage);
-
-  // Reset pagination when paths change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [paths]);
 
   /**
    * Detects loops in the state machine using DFS with cycle detection
@@ -192,80 +260,80 @@ const PathFinderModal = ({ states, onClose }) => {
       shouldContinueRef.current = true;
       setProgress(0);
 
+      // Create state lookup map for O(1) access - PERFORMANCE FIX
+      const stateMap = new Map(states.map(s => [s.id, s]));
+
       const loops = [];
-      const visited = new Set();
-      const stack = new Set();
+      const globalVisited = new Set(); // Track globally visited states to avoid duplicates - ALGORITHM FIX
+      let lastUpdateTime = Date.now();
 
       /**
        * DFS function for loop detection
        */
-      const dfs = async (currentState, path = [], rulePath = [], failedRulesPath = []) => {
+      const dfs = async (currentState, path = [], pathIds = [], stack = new Set(), rulePath = []) => {
         if (!shouldContinueRef.current) {
           throw new Error('Search cancelled');
         }
 
+        // Check if we've found a loop - ALGORITHM FIX
         if (stack.has(currentState.id)) {
-          const loopStartIndex = path.findIndex(p => p === currentState.name);
+          const loopStartIndex = pathIds.findIndex(id => id === currentState.id);
           
           // Create the complete loop cycle
           const loopStates = [...path.slice(loopStartIndex), currentState.name];
           const loopRules = [...rulePath.slice(loopStartIndex)];
-          const loopFailedRules = [...failedRulesPath.slice(loopStartIndex)];
-
-          // Find rules that complete the loop
-          const lastState = states.find(s => s.name === path[path.length - 1]);
-          if (lastState) {
-            const rulesBackToStart = lastState.rules
-              .filter(rule => rule.nextState === states.find(s => s.name === loopStates[0])?.id)
-              .map(rule => rule.condition);
-            
-            if (rulesBackToStart.length > 0) {
-              loopRules.push(rulesBackToStart[0]);
-              loopFailedRules.push(lastState.rules
-                .slice(0, lastState.rules.findIndex(r => rulesBackToStart.includes(r.condition)))
-                .map(r => r.condition)
-              );
-            }
-          }
 
           loops.push({
             states: loopStates,
             rules: loopRules,
-            failedRules: loopFailedRules
+            failedRules: [] // Simplified for loops
           });
           
-          setPaths([...loops]);
+          // Batch state updates - only update every 5 loops - PERFORMANCE FIX
+          if (loops.length % 5 === 0) {
+            setPaths([...loops]);
+          }
           return;
         }
 
-        visited.add(currentState.id);
-        stack.add(currentState.id);
-        path.push(currentState.name);
+        globalVisited.add(currentState.id); // Mark as globally visited - ALGORITHM FIX
+        const newStack = new Set(stack).add(currentState.id);
+        const newPath = [...path, currentState.name];
+        const newPathIds = [...pathIds, currentState.id];
 
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Batch progress updates - PERFORMANCE FIX
+        const now = Date.now();
+        if (now - lastUpdateTime > 100) {
+          await new Promise(resolve => setTimeout(resolve, 1));
+          lastUpdateTime = now;
+        }
 
         for (const rule of currentState.rules) {
-          const nextState = states.find(s => s.id === rule.nextState);
+          const nextState = stateMap.get(rule.nextState); // O(1) lookup - PERFORMANCE FIX
           if (nextState) {
             await dfs(
               nextState,
-              [...path],
-              [...rulePath, rule.condition],
-              [...failedRulesPath, []]
+              newPath,
+              newPathIds,
+              newStack,
+              [...rulePath, rule.condition]
             );
           }
         }
-
-        stack.delete(currentState.id);
       };
 
-      // Search for loops starting from each state
-      for (const state of states) {
-        visited.clear();
-        stack.clear();
-        await dfs(state);
-        setProgress((states.indexOf(state) + 1) / states.length * 100);
+      // Search for loops starting from each state - ALGORITHM FIX: skip already visited
+      for (let i = 0; i < states.length; i++) {
+        const state = states[i];
+        if (!globalVisited.has(state.id)) { // Skip if already visited - ALGORITHM FIX
+          await dfs(state);
+        }
+        setProgress((i + 1) / states.length * 100);
       }
+
+      // Final state update - PERFORMANCE FIX
+      setPaths([...loops]);
+      setProgress(100);
 
       if (loops.length === 0) {
         toast.info('No loops found in the state machine.');
@@ -276,13 +344,14 @@ const PathFinderModal = ({ states, onClose }) => {
     } catch (error) {
       if (error.message === 'Search cancelled') {
         console.log('Search was cancelled');
+        toast.info('Search cancelled');
       } else {
         console.error('Error during loop detection:', error);
         toast.error('An error occurred while detecting loops');
       }
     } finally {
       setIsSearching(false);
-      setProgress(100);
+      setProgress(0);
     }
   };
 
@@ -296,11 +365,10 @@ const PathFinderModal = ({ states, onClose }) => {
     setPaths([]);
     setIsSearching(false);
     setProgress(0);
-    shouldContinueRef.current = true;
   };
 
   /**
-   * Exports results to an HTML file with styling
+   * Exports results to an HTML file with styling - FIXED to export all paths
    */
   const exportResults = () => {
     const htmlContent = `
@@ -326,20 +394,22 @@ const PathFinderModal = ({ states, onClose }) => {
             align-items: center;
             gap: 8px;
             position: relative;
+            border: 1px solid #e5e7eb;
           }
           .path-number {
             position: absolute;
             top: -10px;
             left: -10px;
-            background-color: #4b5563;
+            background-color: #3b82f6;
             color: white;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            font-size: 0.9em;
           }
           .state {
             background-color: white;
@@ -379,12 +449,21 @@ const PathFinderModal = ({ states, onClose }) => {
           }
           h1 {
             font-size: 1.5em;
+            color: #1f2937;
+          }
+          .metadata {
+            color: #6b7280;
+            margin-bottom: 20px;
           }
         </style>
       </head>
       <body>
         <h1>State Machine Paths</h1>
-        ${currentPaths.map((path, index) => `
+        <div class="metadata">
+          <p>Total paths found: ${paths.length}</p>
+          <p>Generated on: ${new Date().toLocaleString()}</p>
+        </div>
+        ${paths.map((path, index) => `
           <div class="path">
             <div class="path-number">${index + 1}</div>
             ${path.states.map((state, stateIndex) => `
@@ -426,178 +505,449 @@ const PathFinderModal = ({ states, onClose }) => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    toast.success('Paths exported successfully');
   };
 
+  /**
+   * Generates step-by-step instructions for a path
+   */
+  const generateStepInstructions = (path) => {
+    if (!path.states || path.states.length === 0) {
+      return 'No states available';
+    }
+
+    let instructions = [];
+    
+    for (let i = 0; i < path.states.length; i++) {
+      const state = path.states[i];
+      
+      if (i === 0) {
+        instructions.push(`${i + 1}. Start at "${state}"`);
+      } else {
+        instructions.push(`${i + 1}. Navigate to "${state}"`);
+      }
+    }
+    
+    return instructions.join('\n');
+  };
+
+  /**
+   * Exports the found paths as an Excel file with test documentation format
+   */
+  const exportToExcel = () => {
+    try {
+      // Prepare data for Excel export
+      const excelData = paths.map((path, index) => ({
+        'Path ID': `Path ${index + 1}`,
+        'Step-by-Step Instructions': generateStepInstructions(path),
+        'Expected Result': `Successfully navigate from "${path.states[0]}" to "${path.states[path.states.length - 1]}"`,
+        'Generated On': new Date().toLocaleString()
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths for better readability
+      const columnWidths = [
+        { wch: 10 },  // Path ID
+        { wch: 80 },  // Step-by-Step Instructions
+        { wch: 40 },  // Expected Result
+        { wch: 20 }   // Generated On
+      ];
+      ws['!cols'] = columnWidths;
+
+      // Add styling to the header row
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (ws[cellAddress]) {
+          ws[cellAddress].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: 'E3F2FD' } },
+            border: {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: 'thin' },
+              right: { style: 'thin' }
+            }
+          };
+        }
+      }
+
+      // Add borders to all cells
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (ws[cellAddress]) {
+            if (!ws[cellAddress].s) ws[cellAddress].s = {};
+            ws[cellAddress].s.border = {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, 'State Machine Paths');
+
+      // Generate filename
+      const defaultName = `state-machine-test-paths-${new Date().toISOString().slice(0, 10)}`;
+      const fileName = window.prompt('Enter Excel file name:', defaultName);
+      
+      if (!fileName) {
+        return;
+      }
+      
+      const finalFileName = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
+      
+      // Save the file
+      XLSX.writeFile(wb, finalFileName);
+      
+      toast.success(`Excel file "${finalFileName}" exported successfully`);
+      
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export Excel file');
+    }
+  };
+
+  // Calculate pagination values
+  const indexOfLastPath = currentPage * pathsPerPage;
+  const indexOfFirstPath = indexOfLastPath - pathsPerPage;
+  const paginatedPaths = paths.slice(indexOfFirstPath, indexOfLastPath);
+  const totalPages = Math.ceil(paths.length / pathsPerPage);
+
+  // Reset pagination when paths change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [paths]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-[1200px] max-h-[80vh] overflow-hidden flex flex-col">
-        {/* Header Section */}
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Find Paths</h2>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-[90vw] w-[90vw] h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <DialogTitle className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <Route className="h-6 w-6 text-blue-500" />
+              <span className="text-xl font-semibold">Path Finder</span>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={exportResults}
-                disabled={currentPaths.length === 0}
+                disabled={paths.length === 0}
+                title="Export as HTML file"
+                className="h-9"
               >
-                Export Results
+                <Download className="h-4 w-4 mr-2" />
+                HTML
               </Button>
-              <Button variant="outline" onClick={onClose}>
-                Close
+              <Button
+                variant="outline"
+                onClick={exportToExcel}
+                disabled={paths.length === 0}
+                title="Export as Excel file for test documentation"
+                className="h-9"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
               </Button>
             </div>
-          </div>
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="mb-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⚠️ Experimental Feature: Find all possible paths between states.
-            </p>
-          </div>
-        </div>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Panel - Controls */}
+          <div className="w-[380px] border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-6 overflow-y-auto">
+            <div className="space-y-6">
+              {/* Mode Selection */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  Search Mode
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleModeSwitch('endStates')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'endStates'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Route className={`h-5 w-5 flex-shrink-0 ${searchMode === 'endStates' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'endStates' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Paths to End States
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Find all paths from a start state to any end
+                        </div>
+                      </div>
+                    </div>
+                  </button>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-6 pt-0">
-          <div className="space-y-6">
-            {/* Mode Selection */}
-            <div className="flex gap-4">
-              <Button
-                onClick={() => handleModeSwitch('endStates')}
-                variant={searchMode === 'endStates' ? 'default' : 'outline'}
-                className={searchMode === 'endStates' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                Find Paths to End States
-              </Button>
-              <Button
-                onClick={() => handleModeSwitch('specificState')}
-                variant={searchMode === 'specificState' ? 'default' : 'outline'}
-                className={searchMode === 'specificState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                Find Paths Between States
-              </Button>
-              <Button
-                onClick={() => handleModeSwitch('intermediateState')}
-                variant={searchMode === 'intermediateState' ? 'default' : 'outline'}
-                className={searchMode === 'intermediateState' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                Find Paths Through State
-              </Button>
-              <Button
-                onClick={() => {
-                  handleModeSwitch('detectLoops');
-                  handleDetectLoops();
-                }}
-                variant={searchMode === 'detectLoops' ? 'default' : 'outline'}
-                className={searchMode === 'detectLoops' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-              >
-                Detect Loops
-              </Button>
-            </div>
+                  <button
+                    onClick={() => handleModeSwitch('specificState')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'specificState'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <ArrowRight className={`h-5 w-5 flex-shrink-0 ${searchMode === 'specificState' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'specificState' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Paths Between States
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Find paths from start to a specific target
+                        </div>
+                      </div>
+                    </div>
+                  </button>
 
-            {/* State Selection */}
-            <div className="flex gap-4 items-center">
-              <select
-                value={selectedStartState}
-                onChange={(e) => setSelectedStartState(e.target.value)}
-                className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                         text-sm dark:bg-gray-700 dark:text-white px-3"
-              >
-                <option value="">Select Starting State</option>
-                {states.map(state => (
-                  <option key={state.id} value={state.id}>
-                    {state.name}
-                  </option>
-                ))}
-              </select>
+                  <button
+                    onClick={() => handleModeSwitch('intermediateState')}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'intermediateState'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Search className={`h-5 w-5 flex-shrink-0 ${searchMode === 'intermediateState' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'intermediateState' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Paths Through State
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Find paths passing through a specific state
+                        </div>
+                      </div>
+                    </div>
+                  </button>
 
-              {(searchMode === 'specificState' || searchMode === 'intermediateState') && (
-                <select
-                  value={selectedEndState}
-                  onChange={(e) => setSelectedEndState(e.target.value)}
-                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           text-sm dark:bg-gray-700 dark:text-white px-3"
-                >
-                  <option value="">Select Target State</option>
-                  {states.map(state => (
-                    <option key={state.id} value={state.id}>
-                      {state.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {searchMode === 'intermediateState' && (
-                <select
-                  value={selectedIntermediateState}
-                  onChange={(e) => setSelectedIntermediateState(e.target.value)}
-                  className="flex-1 h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           text-sm dark:bg-gray-700 dark:text-white px-3"
-                >
-                  <option value="">Select Intermediate State</option>
-                  {states.map(state => (
-                    <option key={state.id} value={state.id}>
-                      {state.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <Button
-                onClick={handleFindPaths}
-                disabled={!selectedStartState || (searchMode === 'specificState' && !selectedEndState) || isSearching}
-                className="bg-blue-500 hover:bg-blue-600 text-white whitespace-nowrap"
-              >
-                {isSearching ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : null}
-                Find Paths
-              </Button>
-
-              {isSearching && (
-                <Button
-                  onClick={handleCancel}
-                  variant="destructive"
-                  className="whitespace-nowrap"
-                >
-                  Cancel
-                </Button>
-              )}
-            </div>
-
-            {/* Progress Bar */}
-            {isSearching && (
-              <div className="space-y-2">
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-500 transition-all duration-300 rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  Searching... {Math.round(progress)}%
+                  <button
+                    onClick={() => {
+                      handleModeSwitch('detectLoops');
+                      handleDetectLoops();
+                    }}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                      searchMode === 'detectLoops'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Route className={`h-5 w-5 flex-shrink-0 ${searchMode === 'detectLoops' ? 'text-blue-500' : 'text-gray-500'}`} />
+                      <div>
+                        <div className={`font-medium text-sm ${searchMode === 'detectLoops' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                          Detect Loops
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Find all loops in the state machine
+                        </div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
-            )}
 
-            {/* Results Section */}
-            {paths.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Found {paths.length} possible path{paths.length !== 1 ? 's' : ''}
+              {/* State Selection */}
+              {searchMode !== 'detectLoops' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Starting State <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedStartState}
+                      onChange={(e) => setSelectedStartState(e.target.value)}
+                      className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                               text-sm dark:bg-gray-700 dark:text-white px-3 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Starting State</option>
+                      {states.map(state => (
+                        <option key={state.id} value={state.id}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {(searchMode === 'specificState' || searchMode === 'intermediateState') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Target State <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedEndState}
+                        onChange={(e) => setSelectedEndState(e.target.value)}
+                        className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                                 text-sm dark:bg-gray-700 dark:text-white px-3 focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Target State</option>
+                        {states.map(state => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {searchMode === 'intermediateState' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Intermediate State
+                      </label>
+                      <select
+                        value={selectedIntermediateState}
+                        onChange={(e) => setSelectedIntermediateState(e.target.value)}
+                        className="w-full h-10 rounded-lg border border-gray-300 dark:border-gray-600 
+                                 text-sm dark:bg-gray-700 dark:text-white px-3 focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Intermediate State</option>
+                        {states.map(state => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {searchMode !== 'detectLoops' && (
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleFindPaths}
+                    disabled={!selectedStartState || (searchMode === 'specificState' && !selectedEndState) || isSearching}
+                    className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white font-semibold"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 mr-2" />
+                        Find Paths
+                      </>
+                    )}
+                  </Button>
+
+                  {isSearching && (
+                    <Button
+                      onClick={handleCancel}
+                      variant="outline"
+                      className="w-full h-11 font-semibold"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Progress Bar */}
+              {isSearching && (
+                <div className="space-y-2">
+                  <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="text-sm font-medium text-center text-gray-600 dark:text-gray-400">
+                    {Math.round(progress)}%
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
 
-                {currentPaths.map((path, index) => (
-                  <div 
+          {/* Right Panel - Results */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {paths.length > 0 ? (
+              <div className="space-y-4">
+                {/* Results Header */}
+                <div className="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Found {paths.length} Path{paths.length !== 1 ? 's' : ''}
+                    </h3>
+                    {totalPages > 1 && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Showing {indexOfFirstPath + 1}-{Math.min(indexOfLastPath, paths.length)} of {paths.length}
+                      </p>
+                    )}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Path Cards */}
+                {paginatedPaths.map((path, index) => (
+                  <Card 
                     key={index}
-                    className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg space-y-2"
+                    className="p-4 hover:shadow-lg transition-shadow"
                   >
+                    <div className="flex justify-between items-start mb-4">
+                      <h4 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                        <span className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 
+                                       flex items-center justify-center text-sm font-bold">
+                          {indexOfFirstPath + index + 1}
+                        </span>
+                        Path {indexOfFirstPath + index + 1}
+                      </h4>
+                      <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          {path.states.length} states
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ArrowRight className="w-3 h-3" />
+                          {path.rules.length} transitions
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       {path.states.map((state, stateIndex) => (
                         <React.Fragment key={stateIndex}>
-                          <span className="px-3 py-1.5 bg-white dark:bg-gray-700 rounded-md
-                                       border border-gray-200 dark:border-gray-600">
+                          <span className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md
+                                       border border-blue-200 dark:border-blue-700">
                             {state}
                           </span>
                           {stateIndex < path.states.length - 1 && (
@@ -608,14 +958,14 @@ const PathFinderModal = ({ states, onClose }) => {
                                   <div className="space-y-1">
                                     {path.failedRules[stateIndex].map((rule, ruleIndex) => (
                                       <span key={ruleIndex} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 
-                                                       text-red-700 dark:text-red-300 rounded block">
+                                                       text-red-700 dark:text-red-300 rounded text-xs block">
                                         ❌ {rule}
                                       </span>
                                     ))}
                                   </div>
                                 )}
                                 <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 
-                                              text-green-700 dark:text-green-300 rounded block">
+                                              text-green-700 dark:text-green-300 rounded text-xs block">
                                   ✓ {path.rules[stateIndex]}
                                 </span>
                               </div>
@@ -625,46 +975,50 @@ const PathFinderModal = ({ states, onClose }) => {
                         </React.Fragment>
                       ))}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Path length: {path.states.length} states, {path.rules.length} transitions
-                    </div>
-                  </div>
+                  </Card>
                 ))}
 
-                {/* Pagination */}
+                {/* Bottom Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center gap-2 mt-4">
+                  <div className="flex justify-center gap-2 pt-4">
                     <Button
                       variant="outline"
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
-                      className="text-sm"
                     >
                       Previous
                     </Button>
+                    <span className="flex items-center px-4 text-sm text-gray-600 dark:text-gray-400">
+                      Page {currentPage} of {totalPages}
+                    </span>
                     <Button
                       variant="outline"
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
-                      className="text-sm"
                     >
                       Next
                     </Button>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* No Results Message */}
-            {paths.length === 0 && (selectedStartState && (searchMode === 'endStates' || selectedEndState)) && (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-                No paths found.
+            ) : (
+              /* Empty State */
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <Route className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  No Paths Found
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                  {searchMode === 'detectLoops' 
+                    ? 'No loops detected in the state machine.' 
+                    : 'Select a search mode and configure the parameters to find paths between states.'}
+                </p>
               </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

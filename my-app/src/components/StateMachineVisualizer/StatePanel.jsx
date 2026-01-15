@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Trash2, Upload, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style';
+import storage from '@/utils/storageWrapper';
 
 const StatePanel = ({ 
   states, 
@@ -162,7 +163,7 @@ const StatePanel = ({
       }
 
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           // Parse Excel file
           const data = new Uint8Array(e.target.result);
@@ -198,9 +199,9 @@ const StatePanel = ({
             return;
           }
 
-          // Update state and persist to localStorage
+          // Update state and persist to IndexedDB
           setLoadedStateDictionary(stateDictionary);
-          localStorage.setItem('stateDictionary', JSON.stringify(stateDictionary));
+          await storage.setItem('stateDictionary', stateDictionary);
           toast.success(`State dictionary imported successfully! Loaded ${statesUpdated} state descriptions.`);
 
         } catch (error) {

@@ -23,6 +23,7 @@ import FlowDiagramComparer from './FlowDiagramComparer';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
 import { TourProvider } from './TourProvider';
+import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 
 /** Key used for localStorage persistence of flow diagram data */
 const STORAGE_KEY = 'flowDiagramData';
@@ -44,10 +45,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   const [showAllAssumptionsQuestions, setShowAllAssumptionsQuestions] = useState(false);
   const [showActionHistory, setShowActionHistory] = useState(false);
   const [showComparer, setShowComparer] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportFileName, setExportFileName] = useState('');
 
   // Initialize flow diagram hook with storage key
   const {
     steps,
+    isLoading,
     addStep,
     updateStep,
     removeStep,
@@ -59,13 +63,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     exportData,
     saveFlow,
     showSaveNotification,
-    // File history functionality
     currentFileName,
-    fileHistory,
-    loadFileFromHistory,
-    checkFileExists,
-    removeFileFromHistory,
-    clearFileHistory,
     // Action history functionality
     actionHistory,
     clearActionHistory,
@@ -73,6 +71,20 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     getEventCount,
     restoreFromHistory
   } = useFlowDiagram(STORAGE_KEY);
+
+  /**
+   * Run one-time migration from localStorage to IndexedDB on mount
+   */
+  useEffect(() => {
+    const runMigration = async () => {
+      try {
+        await migrateFromLocalStorage();
+      } catch (error) {
+        console.error('Migration error:', error);
+      }
+    };
+    runMigration();
+  }, []); // Run once on mount
 
   /**
    * Debug logging for steps and connections changes
@@ -92,14 +104,6 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     const stepId = addStep(stepData);
     console.log('Added step with ID:', stepId);
     return stepId;
-  };
-
-  /**
-   * Handles selection of a file from history
-   * @param {string} fileName - Name of the file to load
-   */
-  const handleSelectFile = (fileName) => {
-    loadFileFromHistory(fileName);
   };
 
   /**
@@ -130,10 +134,50 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     setShowComparer(true);
   };
 
+  /**
+   * Handles export button click - prepares filename and shows dialog
+   */
+  const handleExportClick = () => {
+    const timestamp = new Date().toISOString().split('T')[0];
+    let defaultName;
+    
+    if (currentFileName) {
+      // Remove any existing version suffix (e.g., "_v2026-01-15") before adding new one
+      const baseNameWithoutVersion = currentFileName.replace(/_v\d{4}-\d{2}-\d{2}(?:_v\d{4}-\d{2}-\d{2})*/g, '');
+      defaultName = `${baseNameWithoutVersion}_v${timestamp}`;
+    } else {
+      defaultName = `flow_diagram_${timestamp}`;
+    }
+    
+    setExportFileName(defaultName);
+    setShowExportDialog(true);
+  };
+
+  /**
+   * Confirms export with user-specified filename
+   */
+  const confirmExport = () => {
+    if (exportFileName.trim()) {
+      // Pass the filename to exportData function
+      exportData(exportFileName.trim());
+      setShowExportDialog(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200 relative">
       {/* Toast notifications */}
       <Toaster richColors />
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading diagram...</p>
+          </div>
+        </div>
+      )}
 
       {/* Save success notification overlay */}
       {showSaveNotification && (
@@ -175,17 +219,11 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           actionHistoryCount={getEventCount()}
           onClear={clearAll}
           onImport={importData}
-          onExport={exportData}
+          onExport={handleExportClick}
           onSave={saveFlow}
           steps={steps}
           connections={connections}
-          // File history props
           currentFileName={currentFileName}
-          fileHistory={fileHistory}
-          onSelectFile={handleSelectFile}
-          onFileExists={checkFileExists}
-          onRemoveFile={removeFileFromHistory}
-          onClearHistory={clearFileHistory}
         />
 
         {/* Main step panel for diagram editing */}
@@ -259,6 +297,58 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             steps={steps}
             connections={connections}
           />
+        )}
+
+        {/* Export Dialog */}
+        {showExportDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+                Export Flow Diagram
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Enter a name for the exported file:
+              </p>
+              <input
+                type="text"
+                value={exportFileName}
+                onChange={(e) => setExportFileName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmExport();
+                  } else if (e.key === 'Escape') {
+                    setShowExportDialog(false);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 
+                         rounded-md bg-white dark:bg-gray-700 
+                         text-gray-900 dark:text-gray-100 
+                         focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                         mb-4"
+                placeholder="flow_diagram"
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowExportDialog(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 
+                           hover:bg-gray-100 dark:hover:bg-gray-700 
+                           rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmExport}
+                  disabled={!exportFileName.trim()}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md 
+                           hover:bg-green-700 disabled:bg-gray-400 
+                           disabled:cursor-not-allowed transition-colors"
+                >
+                  Export
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

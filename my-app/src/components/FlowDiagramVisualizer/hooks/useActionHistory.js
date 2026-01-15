@@ -1,7 +1,7 @@
 /**
  * Custom hook for managing action history in the Flow Diagram Builder
  * Tracks all user actions (add/edit/delete steps and connections)
- * Stores last 2000 events in localStorage with restore capability
+ * Stores last 20 events in IndexedDB with restore capability
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,9 +9,10 @@ import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
+import storage from '@/utils/storageWrapper';
 
 const HISTORY_STORAGE_KEY = 'flowDiagramActionHistory';
-const MAX_HISTORY_SIZE = 2000;
+const MAX_HISTORY_SIZE = 20;
 
 /**
  * Event types that can be tracked
@@ -35,32 +36,37 @@ const useActionHistory = () => {
   const [history, setHistory] = useState([]);
 
   /**
-   * Load history from localStorage on mount
+   * Load history from IndexedDB on mount
    */
   useEffect(() => {
-    const savedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (savedHistory) {
+    const loadHistory = async () => {
       try {
-        const parsedHistory = JSON.parse(savedHistory);
-        setHistory(parsedHistory);
+        const savedHistory = await storage.getItem(HISTORY_STORAGE_KEY);
+        if (savedHistory) {
+          setHistory(savedHistory);
+        }
       } catch (error) {
         console.error('Error loading action history:', error);
         setHistory([]);
       }
-    }
+    };
+    loadHistory();
   }, []);
 
   /**
-   * Save history to localStorage whenever it changes
+   * Save history to IndexedDB whenever it changes
    */
   useEffect(() => {
-    if (history.length > 0) {
-      try {
-        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
-      } catch (error) {
-        console.error('Error saving action history:', error);
+    const saveHistory = async () => {
+      if (history.length > 0) {
+        try {
+          await storage.setItem(HISTORY_STORAGE_KEY, history);
+        } catch (error) {
+          console.error('Error saving action history:', error);
+        }
       }
-    }
+    };
+    saveHistory();
   }, [history]);
 
   /**
@@ -99,9 +105,9 @@ const useActionHistory = () => {
   /**
    * Clear all history
    */
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
     setHistory([]);
-    localStorage.removeItem(HISTORY_STORAGE_KEY);
+    await storage.removeItem(HISTORY_STORAGE_KEY);
     toast.success('Action history cleared');
   }, []);
 

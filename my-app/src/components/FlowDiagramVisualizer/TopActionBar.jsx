@@ -18,7 +18,6 @@ import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
 import FlowDiagramToolsModal from './FlowDiagramToolsModal';
-import FileHistoryDropdown from './FileHistoryDropdown';
 
 const TopActionBar = ({
   onChangeMode,
@@ -35,13 +34,7 @@ const TopActionBar = ({
   onSave,
   steps,
   connections,
-  // File history props
-  currentFileName,
-  fileHistory,
-  onSelectFile,
-  onFileExists,
-  onRemoveFile,
-  onClearHistory
+  currentFileName
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -149,21 +142,27 @@ const TopActionBar = ({
             )}
           </Button>
 
-          {/* File History Dropdown */}
-          <FileHistoryDropdown
-            currentFileName={currentFileName}
-            fileHistory={fileHistory}
-            onSelectFile={onSelectFile}
-            onFileExists={onFileExists}
-            onRemoveFile={onRemoveFile}
-            onClearHistory={onClearHistory}
-          />
-
           {/* Visual Separator */}
           <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
 
           {/* Core Actions Group */}
           <div className="flex flex-wrap gap-4">
+            {/* Current File Name Display (if imported) */}
+            {currentFileName && (
+              <Button 
+                title="Current imported file"
+                className="bg-gray-900 text-white text-sm
+                         dark:bg-gray-800 dark:text-gray-100
+                         border border-gray-800 dark:border-gray-700
+                         flex items-center gap-2 px-3 py-1.5 rounded-md
+                         cursor-default opacity-90"
+                disabled
+              >
+                <Upload className="w-4 h-4" />
+                {currentFileName}
+              </Button>
+            )}
+
             {/* Save Button */}
             <Button 
               onClick={() => onSave()}
@@ -341,13 +340,7 @@ TopActionBar.propTypes = {
   onSave: PropTypes.func.isRequired,
   steps: PropTypes.array,
   connections: PropTypes.array,
-  // File history props
-  currentFileName: PropTypes.string,
-  fileHistory: PropTypes.array,
-  onSelectFile: PropTypes.func,
-  onFileExists: PropTypes.func,
-  onRemoveFile: PropTypes.func,
-  onClearHistory: PropTypes.func
+  currentFileName: PropTypes.string
 };
 
 export default TopActionBar;

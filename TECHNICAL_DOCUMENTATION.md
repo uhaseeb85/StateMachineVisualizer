@@ -179,7 +179,7 @@ my-app/
 
 **Persistence**:
 - Saves state machine to localStorage
-- Maintains a change log in localStorage (max 2000 entries)
+- Maintains a change log in localStorage (max 20 entries)
 
 ### 5.2 Simulation Hook (`useSimulation.js`)
 
