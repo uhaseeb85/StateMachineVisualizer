@@ -270,7 +270,7 @@ const ActionHistoryModal = ({
                           variant="ghost"
                           size="sm"
                           className="flex items-center gap-1"
-                          title="Restore to this point"
+                          title="Restore to before this action"
                         >
                           <RotateCcw className="w-4 h-4" />
                           Restore

@@ -117,6 +117,7 @@ const useFlowDiagram = (storageKey) => {
     console.log('Created step with ID:', newStep.id);
     
     setSteps((prev) => {
+      const snapshotBefore = { steps: prev, connections };
       const newSteps = [...prev, newStep];
       console.log('Updated steps array:', newSteps);
       
@@ -131,7 +132,7 @@ const useFlowDiagram = (storageKey) => {
           EVENT_TYPES.STEP_ADDED,
           `Added step "${newStep.name}"`,
           `Created new step with ID: ${newStep.id}`,
-          { steps: newSteps, connections }
+          snapshotBefore
         );
       }
       
@@ -157,6 +158,7 @@ const useFlowDiagram = (storageKey) => {
     }
 
     setSteps((prev) => {
+      const snapshotBefore = { steps: prev, connections };
       // Find the step to update
       const stepToUpdate = prev.find(step => step.id === id);
       if (!stepToUpdate) {
@@ -195,7 +197,7 @@ const useFlowDiagram = (storageKey) => {
           EVENT_TYPES.STEP_UPDATED,
           `Updated step "${stepToUpdate.name}"`,
           changeDetails,
-          { steps: newSteps, connections }
+          snapshotBefore
         );
       }
 
@@ -212,6 +214,7 @@ const useFlowDiagram = (storageKey) => {
     console.log('Removing step:', id);
     
     setSteps((prevSteps) => {
+      const snapshotBefore = { steps: prevSteps, connections };
       const stepToRemove = prevSteps.find(step => step.id === id);
       const newSteps = prevSteps.filter((step) => step.id !== id);
       
@@ -242,7 +245,7 @@ const useFlowDiagram = (storageKey) => {
           EVENT_TYPES.STEP_DELETED,
           `Deleted step "${stepToRemove.name}"`,
           `Removed step and ${removedConnections} associated connection(s)`,
-          { steps: newSteps, connections: newConnections }
+          snapshotBefore
         );
       }
       
@@ -314,6 +317,7 @@ const useFlowDiagram = (storageKey) => {
     console.log('Adding new connection with ID:', newConnection.id);
 
     setConnections((prev) => {
+      const snapshotBefore = { steps, connections: prev };
       console.log('Previous connections count:', prev.length);
       const newConnections = [...prev, newConnection];
       console.log('New connections count:', newConnections.length);
@@ -331,7 +335,7 @@ const useFlowDiagram = (storageKey) => {
           EVENT_TYPES.CONNECTION_ADDED,
           `Added ${type} connection`,
           `Connected "${fromStep?.name || fromStepId}" to "${toStep?.name || toStepId}"`,
-          { steps, connections: newConnections }
+          snapshotBefore
         );
       }
       
@@ -353,6 +357,7 @@ const useFlowDiagram = (storageKey) => {
   const removeConnection = (fromStepId, toStepId, type, skipHistory = false) => {
     console.log('Removing connection:', { fromStepId, toStepId, type });
     setConnections((prev) => {
+      const snapshotBefore = { steps, connections: prev };
       const newConnections = prev.filter(
         (conn) =>
           !(
@@ -375,7 +380,7 @@ const useFlowDiagram = (storageKey) => {
           EVENT_TYPES.CONNECTION_DELETED,
           `Removed ${type} connection`,
           `Disconnected "${fromStep?.name || fromStepId}" from "${toStep?.name || toStepId}"`,
-          { steps, connections: newConnections }
+          snapshotBefore
         );
       }
       
@@ -392,6 +397,7 @@ const useFlowDiagram = (storageKey) => {
     
     const stepCount = steps.length;
     const connectionCount = connections.length;
+    const snapshotBefore = { steps, connections };
     
     // Revoke all blob URLs to prevent memory leaks
     steps.forEach(step => {
@@ -429,7 +435,7 @@ const useFlowDiagram = (storageKey) => {
         EVENT_TYPES.FLOW_CLEARED,
         'Cleared all data',
         `Removed ${stepCount} step(s) and ${connectionCount} connection(s)`,
-        { steps: [], connections: [] }
+        snapshotBefore
       );
     }
   };
@@ -607,6 +613,8 @@ const useFlowDiagram = (storageKey) => {
           return step;
         });
         
+        const snapshotBefore = { steps, connections };
+
         // Update the flow diagram
         setSteps(processedSteps);
         setConnections(flowData.connections || []);
@@ -618,7 +626,7 @@ const useFlowDiagram = (storageKey) => {
           EVENT_TYPES.FLOW_IMPORTED,
           `Imported flow from ${file.name}`,
           `Loaded ${processedSteps.length} step(s) and ${(flowData.connections || []).length} connection(s) from JSON`,
-          { steps: processedSteps, connections: flowData.connections || [] }
+          snapshotBefore
         );
         
         toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections from JSON`);
@@ -683,6 +691,8 @@ const useFlowDiagram = (storageKey) => {
         return step;
       }));
       
+      const snapshotBefore = { steps, connections };
+
       // Update the flow diagram
       setSteps(processedSteps);
       setConnections(flowData.connections || []);
@@ -694,7 +704,7 @@ const useFlowDiagram = (storageKey) => {
         EVENT_TYPES.FLOW_IMPORTED,
         `Imported flow from ${file.name}`,
         `Loaded ${processedSteps.length} step(s) and ${(flowData.connections || []).length} connection(s) from ZIP`,
-        { steps: processedSteps, connections: flowData.connections || [] }
+        snapshotBefore
       );
       
       toast.success(`Imported ${processedSteps.length} steps and ${(flowData.connections || []).length} connections from ZIP`);
@@ -837,6 +847,8 @@ const useFlowDiagram = (storageKey) => {
               return;
             }
 
+            const snapshotBefore = { steps, connections };
+
             setSteps(newSteps);
             setConnections(newConnections);
 
@@ -845,7 +857,7 @@ const useFlowDiagram = (storageKey) => {
               EVENT_TYPES.FLOW_IMPORTED,
               'Imported flow from CSV',
               `Loaded ${newSteps.length} step(s) and ${newConnections.length} connection(s)`,
-              { steps: newSteps, connections: newConnections }
+              snapshotBefore
             );
 
             toast.success(`Imported ${newSteps.length} steps and ${newConnections.length} connections`);
@@ -877,6 +889,8 @@ const useFlowDiagram = (storageKey) => {
     }
 
     try {
+      const snapshotBefore = { steps, connections };
+
       // Restore the snapshot
       setSteps(event.snapshot.steps);
       setConnections(event.snapshot.connections);
@@ -890,7 +904,7 @@ const useFlowDiagram = (storageKey) => {
         EVENT_TYPES.FLOW_RESTORED,
         `Restored to previous state`,
         `Restored to checkpoint from ${restoreTime}`,
-        event.snapshot
+        snapshotBefore
       );
 
       toast.success('Flow diagram restored successfully');

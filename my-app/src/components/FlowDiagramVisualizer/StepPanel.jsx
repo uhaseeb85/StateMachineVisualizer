@@ -1405,11 +1405,8 @@ const StepPanel = ({
                 <Textarea
                   key={selectedStep.id}
                   placeholder="Step description..."
-                  value={selectedStep.description || ''}
-                  onChange={(e) => {
-                    console.log('Textarea onChange event:', e.target.value);
-                    handleUpdateStep(selectedStep.id, { description: e.target.value });
-                  }}
+                  defaultValue={selectedStep.description || ''}
+                  onBlur={(e) => handleUpdateStep(selectedStep.id, { description: e.target.value })}
                   className="min-h-[80px] w-full resize-y bg-background text-foreground"
                   rows={4}
                   disabled={false}

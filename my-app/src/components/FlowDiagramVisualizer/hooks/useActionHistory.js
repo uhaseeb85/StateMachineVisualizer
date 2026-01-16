@@ -4,7 +4,7 @@
  * Stores last 20 events in IndexedDB with restore capability
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -34,6 +34,12 @@ export const EVENT_TYPES = {
  */
 const useActionHistory = () => {
   const [history, setHistory] = useState([]);
+  const lastEventRef = useRef({
+    type: null,
+    action: null,
+    changeDetails: null,
+    timestamp: 0
+  });
 
   /**
    * Load history from IndexedDB on mount
@@ -77,6 +83,25 @@ const useActionHistory = () => {
    * @param {Object} snapshot - Full diagram state { steps, connections }
    */
   const addEvent = useCallback((type, action, changeDetails, snapshot) => {
+    // Deduplicate rapid identical events (helps with Strict Mode double-invoke and rapid repeats)
+    const now = Date.now();
+    const last = lastEventRef.current;
+    if (
+      last.type === type &&
+      last.action === action &&
+      last.changeDetails === changeDetails &&
+      now - last.timestamp < 500
+    ) {
+      return;
+    }
+
+    lastEventRef.current = {
+      type,
+      action,
+      changeDetails,
+      timestamp: now
+    };
+
     const newEvent = {
       id: uuidv4(),
       timestamp: new Date().toISOString(),
