@@ -68,8 +68,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     actionHistory,
     clearActionHistory,
     exportHistoryToExcel,
-    getEventCount,
-    restoreFromHistory
+    getEventCount
   } = useFlowDiagram(STORAGE_KEY);
 
   /**
@@ -284,7 +283,6 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             isOpen={showActionHistory}
             onClose={() => setShowActionHistory(false)}
             history={actionHistory}
-            onRestore={restoreFromHistory}
             onExportToExcel={exportHistoryToExcel}
             onClearHistory={clearActionHistory}
           />

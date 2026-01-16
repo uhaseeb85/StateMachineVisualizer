@@ -1,7 +1,7 @@
 /**
  * Custom hook for managing action history in the Flow Diagram Builder
  * Tracks all user actions (add/edit/delete steps and connections)
- * Stores last 20 events in IndexedDB with restore capability
+ * Stores last 20 events in IndexedDB
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -24,8 +24,7 @@ export const EVENT_TYPES = {
   CONNECTION_ADDED: 'CONNECTION_ADDED',
   CONNECTION_DELETED: 'CONNECTION_DELETED',
   FLOW_IMPORTED: 'FLOW_IMPORTED',
-  FLOW_CLEARED: 'FLOW_CLEARED',
-  FLOW_RESTORED: 'FLOW_RESTORED'
+  FLOW_CLEARED: 'FLOW_CLEARED'
 };
 
 /**

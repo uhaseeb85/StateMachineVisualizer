@@ -877,45 +877,6 @@ const useFlowDiagram = (storageKey) => {
     });
   };
 
-  /**
-   * Restores the diagram to a previous state from history
-   * @param {string} eventId - ID of the history event to restore to
-   */
-  const restoreFromHistory = async (eventId) => {
-    const event = actionHistory.find(e => e.id === eventId);
-    if (!event || !event.snapshot) {
-      toast.error('Cannot restore: event not found');
-      return false;
-    }
-
-    try {
-      const snapshotBefore = { steps, connections };
-
-      // Restore the snapshot
-      setSteps(event.snapshot.steps);
-      setConnections(event.snapshot.connections);
-
-      // Save to IndexedDB
-      await storage.setItem(storageKey, event.snapshot);
-
-      // Add a restore event to history
-      const restoreTime = new Date(event.timestamp).toLocaleString();
-      addHistoryEvent(
-        EVENT_TYPES.FLOW_RESTORED,
-        `Restored to previous state`,
-        `Restored to checkpoint from ${restoreTime}`,
-        snapshotBefore
-      );
-
-      toast.success('Flow diagram restored successfully');
-      return true;
-    } catch (error) {
-      console.error('Error restoring from history:', error);
-      toast.error('Failed to restore: ' + error.message);
-      return false;
-    }
-  };
-
   // Return the hook's public interface
   return {
     steps,
@@ -938,8 +899,7 @@ const useFlowDiagram = (storageKey) => {
     exportHistoryToExcel,
     getEventCount,
     filterByType,
-    searchHistory,
-    restoreFromHistory
+    searchHistory
   };
 };
 

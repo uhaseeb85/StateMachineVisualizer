@@ -1,6 +1,6 @@
 /**
  * ActionHistoryModal Component
- * Displays the history of user actions with search, filter, restore, and export capabilities
+ * Displays the history of user actions with search, filter, and export capabilities
  */
 
 import PropTypes from 'prop-types';
@@ -10,7 +10,6 @@ import {
   Search, 
   Download, 
   Trash2, 
-  RotateCcw,
   Clock,
   Filter,
   ChevronDown,
@@ -31,7 +30,6 @@ const ActionHistoryModal = ({
   isOpen,
   onClose,
   history,
-  onRestore,
   onExportToExcel,
   onClearHistory
 }) => {
@@ -81,12 +79,6 @@ const ActionHistoryModal = ({
     setCurrentPage(1);
   };
 
-  const handleRestore = (eventId) => {
-    if (window.confirm('Are you sure you want to restore to this point? This will replace your current diagram.')) {
-      onRestore(eventId);
-    }
-  };
-
   const handleClearHistory = () => {
     if (window.confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
       onClearHistory();
@@ -113,8 +105,6 @@ const ActionHistoryModal = ({
         return { color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: '📥' };
       case EVENT_TYPES.FLOW_CLEARED:
         return { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', icon: '🧹' };
-      case EVENT_TYPES.FLOW_RESTORED:
-        return { color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/20', icon: '↩️' };
       default:
         return { color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/20', icon: '•' };
     }
@@ -189,7 +179,6 @@ const ActionHistoryModal = ({
                 <SelectItem value={EVENT_TYPES.CONNECTION_DELETED}>Connection Deleted</SelectItem>
                 <SelectItem value={EVENT_TYPES.FLOW_IMPORTED}>Flow Imported</SelectItem>
                 <SelectItem value={EVENT_TYPES.FLOW_CLEARED}>Flow Cleared</SelectItem>
-                <SelectItem value={EVENT_TYPES.FLOW_RESTORED}>Flow Restored</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -265,16 +254,6 @@ const ActionHistoryModal = ({
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button
-                          onClick={() => handleRestore(event.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                          title="Restore to before this action"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                          Restore
-                        </Button>
                         <Button
                           onClick={() => toggleExpand(event.id)}
                           variant="ghost"
@@ -354,7 +333,6 @@ ActionHistoryModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   history: PropTypes.array.isRequired,
-  onRestore: PropTypes.func.isRequired,
   onExportToExcel: PropTypes.func.isRequired,
   onClearHistory: PropTypes.func.isRequired
 };

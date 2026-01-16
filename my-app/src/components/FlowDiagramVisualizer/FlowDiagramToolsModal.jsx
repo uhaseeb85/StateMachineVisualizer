@@ -274,7 +274,7 @@ const FlowDiagramToolsModal = ({
                   )}
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  View, restore, and export the history of all your actions and changes.
+                  View and export the history of all your actions and changes.
                 </p>
               </div>
             </div>
