@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Check, BarChart, List, GitCompare, FileUp, Database, X, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseExcelFile, validateExcelData, generateId, sortRulesByPriority } from './utils';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 
 const StateMachineComparer = ({ isOpen, onClose, states }) => {
   // Store the current state machine as a baseline
@@ -444,7 +444,7 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
   };
 
   // Export comparison results to Excel
-  const exportComparisonResults = () => {
+  const exportComparisonResults = async () => {
     if (results.stateComparison.length === 0) {
       toast.error('No comparison results to export');
       return;
@@ -452,11 +452,35 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
 
     try {
       // Create a new workbook
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
+      
+      // Create a summary worksheet
+      const summarySheet = workbook.addWorksheet('Summary');
+      summarySheet.addRows([
+        ['Comparison Summary'],
+        [''],
+        ['State Changes'],
+        ['Added States', results.summary.addedStates],
+        ['Removed States', results.summary.removedStates],
+        ['Modified States', results.summary.modifiedStates],
+        [''],
+        ['Rule Changes'],
+        ['Added Rules', results.summary.addedRules],
+        ['Removed Rules', results.summary.removedRules],
+        ['Modified Rules', results.summary.modifiedRules],
+        [''],
+        ['Baseline State Machine', baseStateMachine?.name || 'Current State Machine'],
+        ['Comparison State Machine', compareStateMachine?.name || 'Imported State Machine'],
+        ['Comparison Date', new Date().toLocaleString()]
+      ]);
       
       // Create a unified comparison worksheet
-      const unifiedData = [
-        ['Type', 'Name', 'Status', 'Details']
+      const diffSheet = workbook.addWorksheet('Differences');
+      diffSheet.columns = [
+        { header: 'Type', key: 'type', width: 10 },
+        { header: 'Name', key: 'name', width: 40 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'Details', key: 'details', width: 60 }
       ];
       
       // Add state differences
@@ -472,12 +496,12 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             details = `Contains ${state.baseRules} rules`;
           }
           
-          unifiedData.push([
-            'State',
-            state.name,
-            state.status,
-            details
-          ]);
+          diffSheet.addRow({
+            type: 'State',
+            name: state.name,
+            status: state.status,
+            details: details
+          });
         });
       
       // Add rule differences
@@ -502,79 +526,59 @@ const StateMachineComparer = ({ isOpen, onClose, states }) => {
             details = parts.join('; ');
           }
           
-          unifiedData.push([
-            'Rule',
-            `${rule.condition} (in state "${rule.stateName}")`,
-            rule.status,
-            details
-          ]);
+          diffSheet.addRow({
+            type: 'Rule',
+            name: `${rule.condition} (in state "${rule.stateName}")`,
+            status: rule.status,
+            details: details
+          });
         });
       
-      const unifiedWs = XLSX.utils.aoa_to_sheet(unifiedData);
-      
-      // Apply styles to the worksheet
-      unifiedData.forEach((_, index) => {
-        const rowIndex = index + 1; // Excel is 1-indexed
+      // Apply styles to the differences worksheet
+      diffSheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
         
-        if (index > 0) { // Skip header row
-          const type = unifiedData[index][0];
-          const status = unifiedData[index][2];
-          let fillColor = null;
-          
-          switch (status) {
-            case 'added':
-              fillColor = { fgColor: { rgb: "F8D7DA" } }; // Light red
-              break;
-            case 'removed':
-              fillColor = { fgColor: { rgb: "D4EDDA" } }; // Light green
-              break;
-            case 'modified':
-              fillColor = { fgColor: { rgb: "FFF3CD" } }; // Light yellow
-              break;
-            default:
-              fillColor = { fgColor: { rgb: "E9ECEF" } }; // Light gray
-          }
-          
-          // Apply fill to each cell in the row
-          ['A', 'B', 'C', 'D'].forEach(col => {
-            const cellRef = `${col}${rowIndex}`;
-            if (!unifiedWs[cellRef]) unifiedWs[cellRef] = {};
-            unifiedWs[cellRef].s = { fill: fillColor };
-          });
+        const status = row.getCell(3).value;
+        let fillColor = null;
+        
+        switch (status) {
+          case 'added':
+            fillColor = 'FFF8D7DA'; // Light red
+            break;
+          case 'removed':
+            fillColor = 'FFD4EDDA'; // Light green
+            break;
+          case 'modified':
+            fillColor = 'FFFFF3CD'; // Light yellow
+            break;
+          default:
+            fillColor = 'FFE9ECEF'; // Light gray
         }
+        
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: fillColor }
+          };
+        });
       });
-      
-      // Create a summary worksheet
-      const summaryData = [
-        ['Comparison Summary'],
-        [''],
-        ['State Changes'],
-        ['Added States', results.summary.addedStates],
-        ['Removed States', results.summary.removedStates],
-        ['Modified States', results.summary.modifiedStates],
-        [''],
-        ['Rule Changes'],
-        ['Added Rules', results.summary.addedRules],
-        ['Removed Rules', results.summary.removedRules],
-        ['Modified Rules', results.summary.modifiedRules],
-        [''],
-        ['Baseline State Machine', baseStateMachine?.name || 'Current State Machine'],
-        ['Comparison State Machine', compareStateMachine?.name || 'Imported State Machine'],
-        ['Comparison Date', new Date().toLocaleString()]
-      ];
-      
-      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-      
-      // Add worksheets to workbook
-      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
-      XLSX.utils.book_append_sheet(wb, unifiedWs, 'Differences');
       
       // Generate a filename based on the comparison
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `state_machine_comparison_${timestamp}.xlsx`;
       
       // Write and download the file
-      XLSX.writeFile(wb, filename);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       toast.success('Comparison results exported successfully');
     } catch (error) {

@@ -10,7 +10,7 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 import {
   Dialog,
   DialogContent,
@@ -657,7 +657,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     /**
    * Exports the found paths as an Excel file with meaningful descriptions for test documentation
    */
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       // Prepare data for Excel export - create separate rows for each section
       const excelData = [];
@@ -703,54 +703,53 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         });
       });
 
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
+      // Create workbook and worksheet with ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Flow Diagram Paths');
 
-             // Set column widths for better readability
-       const columnWidths = [
-         { wch: 10 },  // Path ID
-         { wch: 80 },  // Step-by-Step Instructions
-         { wch: 40 },  // Expected Result
-         { wch: 20 }   // Generated On
-       ];
-      ws['!cols'] = columnWidths;
+      // Set column definitions with widths
+      worksheet.columns = [
+        { header: 'Path ID', key: 'Path ID', width: 10 },
+        { header: 'Step-by-Step Instructions', key: 'Step-by-Step Instructions', width: 80 },
+        { header: 'Expected Result', key: 'Expected Result', width: 40 },
+        { header: 'Generated On', key: 'Generated On', width: 20 }
+      ];
 
-      // Add some basic styling to the header row
-      const range = XLSX.utils.decode_range(ws['!ref']);
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-        if (ws[cellAddress]) {
-          ws[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'E3F2FD' } },
-            border: {
-              top: { style: 'thin' },
-              bottom: { style: 'thin' },
-              left: { style: 'thin' },
-              right: { style: 'thin' }
-            }
-          };
-        }
-      }
+      // Add rows
+      excelData.forEach(row => {
+        worksheet.addRow(row);
+      });
+
+      // Style the header row
+      const headerRow = worksheet.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE3F2FD' }
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
 
       // Add borders to all cells
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          if (ws[cellAddress]) {
-            if (!ws[cellAddress].s) ws[cellAddress].s = {};
-            ws[cellAddress].s.border = {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          row.eachCell((cell) => {
+            cell.border = {
               top: { style: 'thin' },
               bottom: { style: 'thin' },
               left: { style: 'thin' },
               right: { style: 'thin' }
             };
-          }
+          });
         }
-      }
-
-      XLSX.utils.book_append_sheet(wb, ws, 'Flow Diagram Paths');
+      });
 
       // Generate filename
       const defaultName = `flow-diagram-test-paths-${new Date().toISOString().slice(0, 10)}`;
@@ -762,8 +761,17 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       
       const finalFileName = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
       
-      // Save the file
-      XLSX.writeFile(wb, finalFileName);
+      // Generate and save the file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = finalFileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
       
       toast.success(`Excel file "${finalFileName}" exported successfully`);
       

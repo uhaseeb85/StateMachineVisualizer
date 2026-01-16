@@ -16,7 +16,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { X, Download, Scissors, CheckCircle, ArrowLeftRight, FileBox } from 'lucide-react';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import storage from '@/utils/storageWrapper';
@@ -374,38 +374,33 @@ const exportSubgraphToCSV = async (states, graphName, allStates) => {
     csvData = [...currentData, ...externalStateRules];
   }
   
-  // Create a new workbook
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(csvData);
+  // Create a new workbook with ExcelJS
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('State Machine');
   
-  // Find the column index for Priority and ensure it has the right type
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  let priorityCol = -1;
-  
-  // Look for the Priority column
-  for (let C = range.s.c; C <= range.e.c; ++C) {
-    const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
-    if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
-      priorityCol = C;
-      break;
-    }
-  }
-  
-  // If we found the Priority column, explicitly set cell types for all values
-  if (priorityCol !== -1) {
-    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-      const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
-      if (ws[cellAddress]) {
-        const value = ws[cellAddress].v;
-        
-        // Force numeric type for priority values
-        ws[cellAddress] = {
-          t: 'n',  // numeric type
-          v: value === 0 || value === '0' ? 0 : (value || 50),
-          w: value === 0 || value === '0' ? '0' : (value || '50').toString()
-        };
-      }
-    }
+  // Get column names from first row of data
+  if (csvData.length > 0) {
+    const columns = Object.keys(csvData[0]).map(key => ({
+      header: key,
+      key: key,
+      width: key === 'Priority' ? 10 : key === 'Operation / Edge Effect' ? 40 : 20
+    }));
+    worksheet.columns = columns;
+    
+    // Add rows
+    csvData.forEach(row => {
+      const rowData = {};
+      Object.keys(row).forEach(key => {
+        if (key === 'Priority') {
+          // Force numeric type for priority values
+          const value = row[key];
+          rowData[key] = value === 0 || value === '0' ? 0 : (typeof value === 'number' ? value : (parseInt(value) || 50));
+        } else {
+          rowData[key] = row[key];
+        }
+      });
+      worksheet.addRow(rowData);
+    });
   }
   
   // Generate a clean filename
@@ -413,9 +408,10 @@ const exportSubgraphToCSV = async (states, graphName, allStates) => {
   const cleanName = graphName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   const filename = `${cleanName}_${timestamp}.csv`;
   
-  // Add the worksheet to the workbook and generate the file
-  XLSX.utils.book_append_sheet(wb, ws, "State Machine");
-  XLSX.writeFile(wb, filename, { bookType: 'csv', rawNumbers: true });
+  // Write to CSV buffer and download
+  const buffer = await workbook.csv.writeBuffer();
+  const blob = new Blob([buffer], { type: 'text/csv' });
+  saveAs(blob, filename);
 };
 
 /**
@@ -648,52 +644,45 @@ const GraphSplitterModal = ({ onClose, states }) => {
         csvData = [...currentData, ...externalStateRules];
       }
       
-      // Convert to XLSX format
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(csvData);
+      // Convert to Excel format using ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('State Machine');
       
-      // Find the column index for Priority and ensure it has the right type
-      const range = XLSX.utils.decode_range(ws['!ref']);
-      let priorityCol = -1;
-      
-      // Look for the Priority column
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
-        if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
-          priorityCol = C;
-          break;
-        }
+      // Get column names from first row of data
+      if (csvData.length > 0) {
+        const columns = Object.keys(csvData[0]).map(key => ({
+          header: key,
+          key: key,
+          width: key === 'Priority' ? 10 : key === 'Operation / Edge Effect' ? 40 : 20
+        }));
+        worksheet.columns = columns;
+        
+        // Add rows
+        csvData.forEach(row => {
+          const rowData = {};
+          Object.keys(row).forEach(key => {
+            if (key === 'Priority') {
+              // Force numeric type for priority values
+              const value = row[key];
+              rowData[key] = value === 0 || value === '0' ? 0 : (typeof value === 'number' ? value : (parseInt(value) || 50));
+            } else {
+              rowData[key] = row[key];
+            }
+          });
+          worksheet.addRow(rowData);
+        });
       }
-      
-      // If we found the Priority column, explicitly set cell types for all values
-      if (priorityCol !== -1) {
-        for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-          const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
-          if (ws[cellAddress]) {
-            const value = ws[cellAddress].v;
-            
-            // Force numeric type for priority values
-            ws[cellAddress] = {
-              t: 'n',  // numeric type
-              v: value === 0 || value === '0' ? 0 : (value || 50),
-              w: value === 0 || value === '0' ? '0' : (value || '50').toString()
-            };
-          }
-        }
-      }
-      
-      XLSX.utils.book_append_sheet(wb, ws, "State Machine");
       
       // Generate a clean filename
       const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const cleanName = subgraph.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const filename = `${cleanName}_${timestamp}.csv`;
       
-      // Get the binary data for the Excel file - use csv format for consistency
-      const excelData = XLSX.write(wb, { bookType: 'csv', type: 'array' });
+      // Get the binary data for the CSV file
+      const csvBuffer = await workbook.csv.writeBuffer();
       
       // Add the file to the zip
-      zip.file(filename, excelData);
+      zip.file(filename, csvBuffer);
     }
     
     // Add a JSON file with the partitioning metadata

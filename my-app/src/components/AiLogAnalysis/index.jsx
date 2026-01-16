@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { AlertTriangle, X, FileText, Brain, ArrowLeft, Download, Info, CheckCircle2, BookOpen, Upload, HelpCircle, Settings } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import LlmAnalysis from './LlmAnalysis';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 
 // Sample patterns for the dictionary
 const SAMPLE_PATTERNS = [
@@ -74,28 +74,70 @@ const AiLogAnalysis = ({ onChangeMode }) => {
   // Dictionary Management Functions
   const handleDictionaryUpload = async (event) => {
     const file = event.target.files[0];
-    const reader = new FileReader();
     
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      
+      const firstSheet = workbook.worksheets[0];
+      const jsonData = [];
+      
+      // Get headers from first row
+      const headers = [];
+      firstSheet.getRow(1).eachCell((cell) => {
+        headers.push(cell.value);
+      });
+      
+      // Convert rows to JSON
+      firstSheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header row
+          const rowData = {};
+          row.eachCell((cell, colNumber) => {
+            rowData[headers[colNumber - 1]] = cell.value;
+          });
+          jsonData.push(rowData);
+        }
+      });
       
       sessionStorage.removeItem('logDictionary');
       setLogDictionary(jsonData);
       event.target.value = '';
       toast.success(`Log dictionary loaded with ${jsonData.length} patterns`);
-    };
-    
-    reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('Error loading dictionary:', error);
+      toast.error('Error loading dictionary file');
+    }
   };
 
-  const downloadSampleDictionary = () => {
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(SAMPLE_PATTERNS);
-    XLSX.utils.book_append_sheet(wb, ws, "Sample");
-    XLSX.writeFile(wb, 'log_dictionary_sample.csv');
+  const downloadSampleDictionary = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Sample');
+    
+    // Set columns
+    const columns = Object.keys(SAMPLE_PATTERNS[0]).map(key => ({
+      header: key,
+      key: key,
+      width: 20
+    }));
+    worksheet.columns = columns;
+    
+    // Add rows
+    SAMPLE_PATTERNS.forEach(pattern => {
+      worksheet.addRow(pattern);
+    });
+    
+    // Generate and download CSV
+    const buffer = await workbook.csv.writeBuffer();
+    const blob = new Blob([buffer], { type: 'text/csv' });
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'log_dictionary_sample.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const clearDictionary = () => {

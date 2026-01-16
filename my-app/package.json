@@ -41,8 +41,7 @@
     "sonner": "^1.7.2",
     "tailwind-merge": "^2.6.0",
     "uuid": "^9.0.1",
-    "xlsx": "^0.18.5",
-    "xlsx-js-style": "^1.2.0"
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.56",

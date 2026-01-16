@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 import SplunkConfig from '../StateMachineVisualizer/SplunkConfig';
 import { toast, Toaster } from 'sonner';
 import { searchSplunk } from '@/api/splunk';
@@ -55,21 +55,40 @@ const LogAnalyzer = ({ onChangeMode }) => {
   // Dictionary Management Functions
   const handleDictionaryUpload = async (event) => {
     const file = event.target.files[0];
-    const reader = new FileReader();
     
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      
+      const firstSheet = workbook.worksheets[0];
+      const jsonData = [];
+      
+      // Get headers from first row
+      const headers = [];
+      firstSheet.getRow(1).eachCell((cell) => {
+        headers.push(cell.value);
+      });
+      
+      // Convert rows to JSON
+      firstSheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header row
+          const rowData = {};
+          row.eachCell((cell, colNumber) => {
+            rowData[headers[colNumber - 1]] = cell.value;
+          });
+          jsonData.push(rowData);
+        }
+      });
       
       setResults(null);
       sessionStorage.removeItem('logDictionary');
       setLogDictionary(jsonData);
       event.target.value = '';
-    };
-    
-    reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('Error loading dictionary:', error);
+      toast.error('Error loading dictionary file');
+    }
   };
 
   const clearDictionary = () => {

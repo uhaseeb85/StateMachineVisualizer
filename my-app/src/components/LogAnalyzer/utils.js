@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 
 /**
  * Process logs against patterns dictionary
@@ -58,11 +58,34 @@ export const processLogs = (logs, dictionary) => {
 /**
  * Create a downloadable sample dictionary
  */
-export const downloadSampleDictionary = (samplePatterns) => {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(samplePatterns);
-  XLSX.utils.book_append_sheet(wb, ws, "Sample");
-  XLSX.writeFile(wb, 'log_dictionary_sample.csv');
+export const downloadSampleDictionary = async (samplePatterns) => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Sample');
+  
+  // Set columns
+  const columns = Object.keys(samplePatterns[0]).map(key => ({
+    header: key,
+    key: key,
+    width: 20
+  }));
+  worksheet.columns = columns;
+  
+  // Add rows
+  samplePatterns.forEach(pattern => {
+    worksheet.addRow(pattern);
+  });
+  
+  // Generate and download CSV
+  const buffer = await workbook.csv.writeBuffer();
+  const blob = new Blob([buffer], { type: 'text/csv' });
+  
+  // Create download link
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'log_dictionary_sample.csv';
+  a.click();
+  window.URL.revokeObjectURL(url);
 };
 
 /**

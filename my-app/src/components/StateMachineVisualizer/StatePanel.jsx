@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, Upload, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 import storage from '@/utils/storageWrapper';
 
 const StatePanel = ({ 
@@ -166,10 +166,26 @@ const StatePanel = ({
       reader.onload = async (e) => {
         try {
           // Parse Excel file
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          const buffer = e.target.result;
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(buffer);
+          const firstSheet = workbook.worksheets[0];
+          const jsonData = [];
+          const headers = [];
+          
+          firstSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) {
+              row.eachCell((cell) => {
+                headers.push(cell.value);
+              });
+            } else {
+              const rowData = {};
+              row.eachCell((cell, colNumber) => {
+                rowData[headers[colNumber - 1]] = cell.value;
+              });
+              jsonData.push(rowData);
+            }
+          });
 
           // Validate file content
           if (jsonData.length === 0) {

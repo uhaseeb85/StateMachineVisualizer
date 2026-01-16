@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Check, GitCompare, FileUp, Database, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 
 const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
@@ -330,14 +330,14 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
   };
 
   // Export comparison results to Excel
-  const exportComparisonResults = () => {
+  const exportComparisonResults = async () => {
     if (results.stepComparison.length === 0) {
       toast.error('No comparison results to export');
       return;
     }
 
     try {
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
       
       // Create unified comparison data
       const unifiedData = [
@@ -383,7 +383,24 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
           ]);
         });
       
-      const unifiedWs = XLSX.utils.aoa_to_sheet(unifiedData);
+      // Create unified worksheet
+      const unifiedWs = workbook.addWorksheet('Differences');
+      unifiedWs.columns = [
+        { header: 'Type', key: 'Type', width: 15 },
+        { header: 'Name', key: 'Name', width: 40 },
+        { header: 'Status', key: 'Status', width: 15 },
+        { header: 'Details', key: 'Details', width: 60 }
+      ];
+      
+      // Add data rows (skip header)
+      for (let i = 1; i < unifiedData.length; i++) {
+        unifiedWs.addRow({
+          Type: unifiedData[i][0],
+          Name: unifiedData[i][1],
+          Status: unifiedData[i][2],
+          Details: unifiedData[i][3]
+        });
+      }
       
       // Create summary data
       const summaryData = [
@@ -404,15 +421,26 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
         ['Comparison Date', new Date().toLocaleString()]
       ];
       
-      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-      
-      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
-      XLSX.utils.book_append_sheet(wb, unifiedWs, 'Differences');
+      // Create summary worksheet
+      const summaryWs = workbook.addWorksheet('Summary');
+      summaryData.forEach(row => {
+        summaryWs.addRow(row);
+      });
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `flow_diagram_comparison_${timestamp}.xlsx`;
       
-      XLSX.writeFile(wb, filename);
+      // Generate and save the file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
       
       toast.success('Comparison results exported successfully');
     } catch (error) {

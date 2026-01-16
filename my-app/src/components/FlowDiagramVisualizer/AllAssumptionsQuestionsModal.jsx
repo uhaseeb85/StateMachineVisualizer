@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClipboardList, HelpCircle, FileSpreadsheet, Search, X } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 /**
  * AllAssumptionsQuestionsModal Component
@@ -143,7 +143,7 @@ const AllAssumptionsQuestionsModal = ({ isOpen, onClose, steps }) => {
     }, [filteredItems]);
 
     // Export to Excel
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         // Prepare data for Excel export
         const excelData = [];
 
@@ -159,26 +159,41 @@ const AllAssumptionsQuestionsModal = ({ isOpen, onClose, steps }) => {
             ]);
         });
 
-        // Create workbook and worksheet
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        // Create workbook and worksheet with ExcelJS
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Assumptions & Questions');
 
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 40 }, // Step column
-            { wch: 15 }, // Type column
-            { wch: 60 }  // Content column
+        // Set column definitions with widths
+        worksheet.columns = [
+            { header: 'Step', key: 'Step', width: 40 },
+            { header: 'Type', key: 'Type', width: 15 },
+            { header: 'Content', key: 'Content', width: 60 }
         ];
 
-        // Add worksheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, 'Assumptions & Questions');
+        // Add data rows (skip header since columns already defines headers)
+        for (let i = 1; i < excelData.length; i++) {
+            worksheet.addRow({
+                Step: excelData[i][0],
+                Type: excelData[i][1],
+                Content: excelData[i][2]
+            });
+        }
 
         // Generate filename
         const timestamp = new Date().toISOString().split('T')[0];
         const filename = `flow-diagram-assumptions-questions-${timestamp}.xlsx`;
 
-        // Save the file
-        XLSX.writeFile(wb, filename);
+        // Generate and save the file
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
     };
 
     // Clear search query

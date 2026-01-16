@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import storage from '@/utils/storageWrapper';
@@ -114,7 +114,7 @@ const useActionHistory = () => {
   /**
    * Export history to Excel file
    */
-  const exportToExcel = useCallback(() => {
+  const exportToExcel = useCallback(async () => {
     if (history.length === 0) {
       toast.error('No history to export');
       return;
@@ -129,23 +129,25 @@ const useActionHistory = () => {
         'Details': event.changeDetails
       }));
 
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
+      // Create workbook and worksheet with ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Action History');
 
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 20 }, // Timestamp
-        { wch: 20 }, // Event Type
-        { wch: 40 }, // Action
-        { wch: 60 }  // Details
+      // Set column definitions with widths
+      worksheet.columns = [
+        { header: 'Timestamp', key: 'Timestamp', width: 20 },
+        { header: 'Event Type', key: 'Event Type', width: 20 },
+        { header: 'Action', key: 'Action', width: 40 },
+        { header: 'Details', key: 'Details', width: 60 }
       ];
 
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, 'Action History');
+      // Add rows
+      excelData.forEach(row => {
+        worksheet.addRow(row);
+      });
 
-      // Generate Excel file
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      // Generate Excel buffer
+      const excelBuffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([excelBuffer], { 
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
       });

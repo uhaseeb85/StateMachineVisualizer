@@ -41,7 +41,7 @@ import { TourProvider } from './TourProvider';
 import { Toaster } from 'sonner';
 import { Book, History } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 import storage from '@/utils/storageWrapper';
 
@@ -357,42 +357,41 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     }
 
     // Generate and download the CSV file with special handling for zeros
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(csvData);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Sheet1');
     
-    // Find the column index for Priority
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    let priorityCol = -1;
+    // Add headers and data
+    const headers = Object.keys(csvData[0]);
+    worksheet.addRow(headers);
+    csvData.forEach(row => {
+      const values = headers.map(header => row[header]);
+      worksheet.addRow(values);
+    });
     
-    // Look for the Priority column
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
-      if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
-        priorityCol = C;
-        break;
-      }
-    }
-    
-    // If we found the Priority column, explicitly set cell types for all values
-    if (priorityCol !== -1) {
-      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-        const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
-        if (ws[cellAddress]) {
-          const value = ws[cellAddress].v;
-          
-          // Force numeric type for priority values
-          ws[cellAddress] = {
-            t: 'n',  // numeric type
-            v: value === 0 || value === '0' ? 0 : (value || 50),
-            w: value === 0 || value === '0' ? '0' : (value || '50').toString()
-          };
+    // Find the Priority column and ensure numeric type
+    const priorityColIndex = headers.indexOf('Priority');
+    if (priorityColIndex !== -1) {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header
+          const cell = row.getCell(priorityColIndex + 1);
+          const value = cell.value;
+          cell.value = value === 0 || value === '0' ? 0 : (value || 50);
+          cell.numFmt = '0'; // Ensure zero displays correctly
         }
-      }
+      });
     }
     
-    // Use the modified worksheet and only export CSV
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, filename, { bookType: 'csv', rawNumbers: true });
+    // Export as CSV
+    const buffer = await workbook.csv.writeBuffer();
+    const blob = new Blob([buffer], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   /**

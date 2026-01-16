@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
+import Papa from 'papaparse';
 
 export const generateId = () => {
   return 'id_' + Math.random().toString(36).substr(2, 9);
@@ -17,36 +18,59 @@ export const exportToImage = async (element) => {
 
 export const parseExcelFile = async (file) => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+    const fileExtension = file.name.split('.').pop().toLowerCase();
     
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        
-        if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
-          throw new Error('Invalid file format');
+    if (fileExtension === 'csv') {
+      // Handle CSV files with PapaParse
+      Papa.parse(file, {
+        complete: (results) => {
+          if (results.errors.length > 0) {
+            console.warn('CSV parsing warnings:', results.errors);
+          }
+          resolve(results.data);
+        },
+        error: (error) => {
+          reject(error);
+        },
+        skipEmptyLines: true
+      });
+    } else {
+      // Handle Excel files (xlsx, xls) with ExcelJS
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+        try {
+          const buffer = e.target.result;
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(buffer);
+          
+          if (!workbook.worksheets || workbook.worksheets.length === 0) {
+            throw new Error('Invalid file format');
+          }
+
+          const firstSheet = workbook.worksheets[0];
+          if (!firstSheet) {
+            throw new Error('No data found in the file');
+          }
+
+          const rows = [];
+          firstSheet.eachRow((row) => {
+            const rowData = [];
+            row.eachCell({ includeEmpty: true }, (cell) => {
+              rowData.push(cell.value || '');
+            });
+            rows.push(rowData);
+          });
+
+          resolve(rows);
+        } catch (error) {
+          reject(error);
         }
+      };
 
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!firstSheet) {
-          throw new Error('No data found in the file');
-        }
-
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { 
-          header: 1,
-          raw: false,
-          defval: ''
-        });
-
-        resolve(rows);
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    reader.onerror = (error) => reject(error);
-    reader.readAsArrayBuffer(file);
+      reader.onerror = (error) => reject(error);
+      reader.readAsArrayBuffer(file);
+    }
   });
 };
 

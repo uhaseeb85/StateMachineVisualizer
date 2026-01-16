@@ -16,7 +16,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 import {
   Dialog,
   DialogContent,
@@ -535,7 +535,7 @@ const PathFinderModal = ({ states, onClose }) => {
   /**
    * Exports the found paths as an Excel file with test documentation format
    */
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       // Prepare data for Excel export
       const excelData = paths.map((path, index) => ({
@@ -546,53 +546,39 @@ const PathFinderModal = ({ states, onClose }) => {
       }));
 
       // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('State Machine Paths');
 
-      // Set column widths for better readability
-      const columnWidths = [
-        { wch: 10 },  // Path ID
-        { wch: 80 },  // Step-by-Step Instructions
-        { wch: 40 },  // Expected Result
-        { wch: 20 }   // Generated On
+      // Define columns with widths
+      worksheet.columns = [
+        { header: 'Path ID', key: 'Path ID', width: 10 },
+        { header: 'Step-by-Step Instructions', key: 'Step-by-Step Instructions', width: 80 },
+        { header: 'Expected Result', key: 'Expected Result', width: 40 },
+        { header: 'Generated On', key: 'Generated On', width: 20 }
       ];
-      ws['!cols'] = columnWidths;
 
-      // Add styling to the header row
-      const range = XLSX.utils.decode_range(ws['!ref']);
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-        if (ws[cellAddress]) {
-          ws[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'E3F2FD' } },
-            border: {
-              top: { style: 'thin' },
-              bottom: { style: 'thin' },
-              left: { style: 'thin' },
-              right: { style: 'thin' }
-            }
-          };
-        }
-      }
+      // Add data rows
+      worksheet.addRows(excelData);
+
+      // Style the header row
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE3F2FD' }
+      };
 
       // Add borders to all cells
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          if (ws[cellAddress]) {
-            if (!ws[cellAddress].s) ws[cellAddress].s = {};
-            ws[cellAddress].s.border = {
-              top: { style: 'thin' },
-              bottom: { style: 'thin' },
-              left: { style: 'thin' },
-              right: { style: 'thin' }
-            };
-          }
-        }
-      }
-
-      XLSX.utils.book_append_sheet(wb, ws, 'State Machine Paths');
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
 
       // Generate filename
       const defaultName = `state-machine-test-paths-${new Date().toISOString().slice(0, 10)}`;
@@ -605,7 +591,16 @@ const PathFinderModal = ({ states, onClose }) => {
       const finalFileName = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
       
       // Save the file
-      XLSX.writeFile(wb, finalFileName);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = finalFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       toast.success(`Excel file "${finalFileName}" exported successfully`);
       
