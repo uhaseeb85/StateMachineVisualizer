@@ -610,17 +610,17 @@ const RulesPanel = ({
                   onClick={() => !isEditing && handleRuleClick(rule.id)}
                   className="bg-gray-50 dark:bg-gray-600/50 px-2 py-0.5 rounded-md
                            hover:bg-gray-100 dark:hover:bg-gray-500/50 cursor-pointer
-                           flex items-center justify-between"
+                           flex items-start w-full min-w-0"
                 >
                   {isEditing ? (
                     <Input
                       value={editingRuleCondition}
                       onChange={(e) => setEditingRuleCondition(e.target.value)}
-                      className="text-sm"
+                      className="text-sm w-full"
                       autoFocus
                     />
                   ) : (
-                    <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
+                    <span className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words break-all leading-snug w-full">
                       {rule.condition}
                     </span>
                   )}
