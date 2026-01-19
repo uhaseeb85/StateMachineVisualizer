@@ -81,14 +81,14 @@ const UnconnectedStepsModal = ({ isOpen, onClose, steps, connections }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[70vw] max-w-[90vw] bg-white dark:bg-gray-900 rounded-lg shadow-xl">
+      <DialogContent className="w-[75vw] max-w-[90vw] h-[75vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <X className="h-5 w-5 text-pink-600" />
             Missing Connections
           </DialogTitle>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-4 flex-1 overflow-y-auto min-h-0">
           {unconnectedSteps.length === 0 ? (
             <div className="text-gray-500 dark:text-gray-400 text-center">All steps have both outgoing connections.</div>
           ) : (
