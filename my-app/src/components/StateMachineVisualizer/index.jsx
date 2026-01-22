@@ -31,6 +31,7 @@ import SplunkConfig from './SplunkConfig';
 import GraphSplitterModal from './GraphSplitterModal';
 import ImportConfirmModal from './ImportConfirmModal';
 import StateMachineComparer from './StateMachineComparer';
+import DictionaryManagementModal from './DictionaryManagementModal';
 
 // Custom hooks
 import useStateMachine from './hooks/useStateMachine';
@@ -103,6 +104,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   const [showSplunkConfig, setShowSplunkConfig] = useState(false);
   const [showGraphSplitter, setShowGraphSplitter] = useState(false);
   const [showStateMachineComparer, setShowStateMachineComparer] = useState(false);
+  const [showDictionaryModal, setShowDictionaryModal] = useState(false);
+  const [initialDictionaryTab, setInitialDictionaryTab] = useState('states');
   
   // Export dialog state
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -182,6 +185,15 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
         stateElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
+  };
+
+  /**
+   * Opens the dictionary management modal with a specific tab
+   * @param {string} tab - The tab to show initially ('states' or 'rules')
+   */
+  const openDictionaryModal = (tab = 'states') => {
+    setInitialDictionaryTab(tab);
+    setShowDictionaryModal(true);
   };
 
   // Common button styling for utility buttons
@@ -627,6 +639,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             onStateEdit={editState}
             loadedStateDictionary={loadedStateDictionary}
             setLoadedStateDictionary={setLoadedStateDictionary}
+            onOpenDictionaryModal={() => openDictionaryModal('states')}
           />
 
           <RulesPanel
@@ -639,6 +652,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             setLoadedDictionary={setLoadedDictionary}
             addToChangeLog={addToChangeLog}
             loadedStateDictionary={loadedStateDictionary}
+            onOpenDictionaryModal={() => openDictionaryModal('rules')}
           />
         </div>
 
@@ -835,6 +849,18 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
         onClose={() => setShowStateMachineComparer(false)}
         states={states}
       />
+
+      {showDictionaryModal && (
+        <DictionaryManagementModal
+          isOpen={showDictionaryModal}
+          onClose={() => setShowDictionaryModal(false)}
+          initialTab={initialDictionaryTab}
+          ruleDictionary={loadedDictionary}
+          setRuleDictionary={setLoadedDictionary}
+          stateDictionary={loadedStateDictionary}
+          setStateDictionary={setLoadedStateDictionary}
+        />
+      )}
     </div>
   );
 };
