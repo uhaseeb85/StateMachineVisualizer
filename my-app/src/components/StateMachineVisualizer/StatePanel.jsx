@@ -18,7 +18,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Upload, Edit2, Check, X, FileEdit } from 'lucide-react';
+import { Trash2, Upload, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import storage from '@/utils/storageWrapper';
@@ -31,8 +31,7 @@ const StatePanel = ({
   onStateDelete,
   onStateEdit,
   loadedStateDictionary,
-  setLoadedStateDictionary,
-  onOpenDictionaryModal
+  setLoadedStateDictionary
 }) => {
   // Local state management
   const [newStateName, setNewStateName] = useState('');
@@ -259,7 +258,7 @@ const StatePanel = ({
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center">
             <div className="relative">
               <input
                 type="file"
@@ -285,20 +284,6 @@ const StatePanel = ({
                 )}
               </label>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenDictionaryModal}
-              className="bg-white hover:bg-blue-600 text-gray-900 hover:text-white
-                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                       rounded-md transform transition-all duration-200 hover:scale-110
-                       border border-gray-200 shadow-sm"
-              title="Manage state dictionary (view, edit, delete, export)"
-            >
-              <FileEdit className="w-4 h-4 mr-2" />
-              Manage
-            </Button>
           </div>
         </div>
         
@@ -474,8 +459,7 @@ StatePanel.propTypes = {
   onStateEdit: PropTypes.func.isRequired,
   // State dictionary for descriptions
   loadedStateDictionary: PropTypes.object,
-  setLoadedStateDictionary: PropTypes.func.isRequired,
-  onOpenDictionaryModal: PropTypes.func.isRequired
+  setLoadedStateDictionary: PropTypes.func.isRequired
 };
 
 export default StatePanel;

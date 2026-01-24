@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle, Copy, FileEdit } from "lucide-react";
+import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { sortRulesByPriority } from "./utils";
 import storage from '@/utils/storageWrapper';
@@ -32,8 +32,7 @@ const RulesPanel = ({
   loadedDictionary,
   setLoadedDictionary,
   addToChangeLog = () => {},
-  loadedStateDictionary,
-  onOpenDictionaryModal
+  loadedStateDictionary
 }) => {
   // Rule editing states
   const [newRuleCondition, setNewRuleCondition] = useState("");
@@ -432,7 +431,7 @@ const RulesPanel = ({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Rules for {currentState?.name}
           </h2>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center">
             <div className="relative">
               <input
                 type="file"
@@ -459,20 +458,6 @@ const RulesPanel = ({
                 )}
               </label>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenDictionaryModal}
-              className="bg-white hover:bg-blue-600 text-gray-900 hover:text-white
-                       dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
-                       rounded-md transform transition-all duration-200 hover:scale-110
-                       border border-gray-200 shadow-sm"
-              title="Manage rule dictionary (view, edit, delete, export)"
-            >
-              <FileEdit className="w-4 h-4 mr-2" />
-              Manage
-            </Button>
           </div>
         </div>
         <div className="mt-2 mb-4 border-b border-gray-200 dark:border-gray-700" />
@@ -872,8 +857,7 @@ RulesPanel.propTypes = {
   // Rule dictionary state
   loadedDictionary: PropTypes.object,
   setLoadedDictionary: PropTypes.func.isRequired,
-  loadedStateDictionary: PropTypes.object,
-  onOpenDictionaryModal: PropTypes.func.isRequired
+  loadedStateDictionary: PropTypes.object
 };
 
 export default RulesPanel;
