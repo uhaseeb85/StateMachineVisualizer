@@ -18,10 +18,10 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Upload, Edit2, Check, X } from 'lucide-react';
+import { Trash2, BookOpen, Edit2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
-import ExcelJS from 'exceljs';
 import storage from '@/utils/storageWrapper';
+import DictionaryModal from './DictionaryModal';
 
 const StatePanel = ({ 
   states, 
@@ -38,6 +38,12 @@ const StatePanel = ({
   const [selectedStateId, setSelectedStateId] = useState(null);
   const [editingStateId, setEditingStateId] = useState(null);
   const [editingStateName, setEditingStateName] = useState('');
+  const [showDictionaryModal, setShowDictionaryModal] = useState(false);
+
+  const handleStateDictionaryChange = async (nextDictionary) => {
+    setLoadedStateDictionary(nextDictionary);
+    await storage.setItem('stateDictionary', nextDictionary);
+  };
 
   // Get unique graph sources for coloring
   const graphSources = [...new Set(states.filter(s => s.graphSource).map(s => s.graphSource))];
@@ -146,94 +152,6 @@ const StatePanel = ({
   };
 
   /**
-   * Handles the import of state descriptions from Excel file
-   * Validates file format and content structure
-   * @param {Event} event - File input change event
-   */
-  const handleStateDictionaryImport = async (event) => {
-    try {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      // Validate file extension
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      if (!['xlsx', 'xls'].includes(fileExtension)) {
-        toast.error('Please upload a valid Excel file (.xlsx or .xls)');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          // Parse Excel file
-          const buffer = e.target.result;
-          const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.load(buffer);
-          const firstSheet = workbook.worksheets[0];
-          const jsonData = [];
-          const headers = [];
-          
-          firstSheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1) {
-              row.eachCell((cell) => {
-                headers.push(cell.value);
-              });
-            } else {
-              const rowData = {};
-              row.eachCell((cell, colNumber) => {
-                rowData[headers[colNumber - 1]] = cell.value;
-              });
-              jsonData.push(rowData);
-            }
-          });
-
-          // Validate file content
-          if (jsonData.length === 0) {
-            toast.error('The Excel file is empty');
-            return;
-          }
-
-          const firstRow = jsonData[0];
-          if (!('state' in firstRow) || !('description' in firstRow)) {
-            toast.error('Excel file must contain "state" and "description" columns');
-            return;
-          }
-
-          // Process state descriptions
-          const stateDictionary = {};
-          let statesUpdated = 0;
-
-          jsonData.forEach(row => {
-            if (row.state && row.description) {
-              stateDictionary[row.state] = row.description;
-              statesUpdated++;
-            }
-          });
-
-          if (statesUpdated === 0) {
-            toast.error('No valid states found in the Excel file');
-            return;
-          }
-
-          // Update state and persist to IndexedDB
-          setLoadedStateDictionary(stateDictionary);
-          await storage.setItem('stateDictionary', stateDictionary);
-          toast.success(`State dictionary imported successfully! Loaded ${statesUpdated} state descriptions.`);
-
-        } catch (error) {
-          toast.error('Error processing Excel file: ' + error.message);
-        }
-      };
-
-      reader.readAsArrayBuffer(file);
-
-    } catch (error) {
-      console.error('Error importing state dictionary:', error);
-      toast.error(`Error importing state dictionary: ${error.message}`);
-    }
-  };
-
-  /**
    * Handles state selection and description toggle
    * Cancels any ongoing edit operation
    * @param {string} stateId - ID of the selected state
@@ -252,37 +170,32 @@ const StatePanel = ({
   };
 
   return (
-    <div className="w-full lg:w-1/4 border border-gray-200/20 dark:border-gray-700/20 
-                    rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
+    <>
+      <div className="w-full lg:w-1/4 border border-gray-200/20 dark:border-gray-700/20 
+                      rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl">
       {/* Header Section */}
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">States</h2>
           <div className="flex items-center">
             <div className="relative">
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleStateDictionaryImport}
-                className="hidden"
-                id="stateDictionaryInput"
-              />
-              <label
-                htmlFor="stateDictionaryInput"
+              <Button
+                type="button"
+                onClick={() => setShowDictionaryModal(true)}
                 className="load-state-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
                          bg-white hover:bg-blue-600 text-gray-900 hover:text-white
                          dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          rounded-md transform transition-all duration-200 hover:scale-110
                          border border-gray-200 shadow-sm"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Load State Dictionary
+                <BookOpen className="w-4 h-4 mr-2" />
+                State Dictionary
                 {loadedStateDictionary && (
                   <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
                     {Object.keys(loadedStateDictionary).length}
                   </span>
                 )}
-              </label>
+              </Button>
             </div>
           </div>
         </div>
@@ -439,7 +352,19 @@ const StatePanel = ({
           </div>
         ))}
       </div>
-    </div>
+      </div>
+      <DictionaryModal
+        isOpen={showDictionaryModal}
+        onClose={() => setShowDictionaryModal(false)}
+        title="State Dictionary"
+        dictionary={loadedStateDictionary || {}}
+        onDictionaryChange={handleStateDictionaryChange}
+        entryLabel="State"
+        keyField="state"
+        valueField="description"
+        requiredHeaders={["state", "description"]}
+      />
+    </>
   );
 };
 

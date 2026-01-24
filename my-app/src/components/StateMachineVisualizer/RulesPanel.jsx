@@ -14,21 +14,21 @@
  * negations (using ! prefix). Each rule defines a transition to a target state.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, ArrowRight, Upload, Edit2, Check, X, PlusCircle, Copy } from "lucide-react";
+import { Trash2, ArrowRight, BookOpen, Edit2, Check, X, PlusCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { sortRulesByPriority } from "./utils";
 import storage from '@/utils/storageWrapper';
+import DictionaryModal from "./DictionaryModal";
 
 const RulesPanel = ({
   states,
   selectedState,
   onStateSelect,
   setStates,
-  onRuleDictionaryImport,
   loadedDictionary,
   setLoadedDictionary,
   addToChangeLog = () => {},
@@ -46,37 +46,14 @@ const RulesPanel = ({
   const [newRulePriority, setNewRulePriority] = useState(50);
   const [newRuleOperation, setNewRuleOperation] = useState("");
 
+  const [showDictionaryModal, setShowDictionaryModal] = useState(false);
+
   // Get current state details
   const currentState = states.find(state => state.id === selectedState);
 
-  /**
-   * Initialize rule dictionary from IndexedDB on component mount
-   */
-  useEffect(() => {
-    const loadDictionary = async () => {
-      const savedDictionary = await storage.getItem('ruleDictionary');
-      if (savedDictionary) {
-        setLoadedDictionary(savedDictionary);
-      }
-    };
-    loadDictionary();
-  }, [setLoadedDictionary]);
-
-  /**
-   * Handles the import of rule descriptions from Excel file
-   * Updates both state and IndexedDB with the imported dictionary
-   */
-  const handleDictionaryImport = async (event) => {
-    try {
-      const result = await onRuleDictionaryImport(event);
-      if (result?.dictionary) {
-        const dictionary = result.dictionary;
-        setLoadedDictionary(dictionary);
-        await storage.setItem('ruleDictionary', dictionary);
-      }
-    } catch (error) {
-      console.error('Error importing dictionary:', error);
-    }
+  const handleRuleDictionaryChange = async (nextDictionary) => {
+    setLoadedDictionary(nextDictionary);
+    await storage.setItem('ruleDictionary', nextDictionary);
   };
 
   /**
@@ -422,9 +399,10 @@ const RulesPanel = ({
   }
 
   return (
-    <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
-                    rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
-                    rules-section">
+    <>
+      <div className="w-full lg:w-3/4 border border-gray-200/20 dark:border-gray-700/20 
+                      rounded-xl p-6 bg-white/40 dark:bg-gray-800/40 shadow-xl 
+                      rules-section">
       {/* Header Section */}
       <div className="mb-4">
         <div className="flex justify-between items-center">
@@ -433,30 +411,24 @@ const RulesPanel = ({
           </h2>
           <div className="flex items-center">
             <div className="relative">
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleDictionaryImport}
-                className="hidden"
-                id="ruleDictionaryInput"
-              />
-              <label
-                htmlFor="ruleDictionaryInput"
-                title="Import an Excel file containing predefined rules and their descriptions to enhance rule documentation"
-                className="load-rule-dictionary-button cursor-pointer inline-flex items-center px-3 py-1.5 text-sm
+              <Button
+                type="button"
+                onClick={() => setShowDictionaryModal(true)}
+                title="Manage rule dictionary entries"
+                className="load-rule-dictionary-button inline-flex items-center px-3 py-1.5 text-sm
                          bg-white hover:bg-blue-600 text-gray-900 hover:text-white
                          dark:bg-white dark:text-gray-900 dark:hover:bg-blue-600 dark:hover:text-white
                          rounded-md transform transition-all duration-200 hover:scale-110
                          border border-gray-200 shadow-sm"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Load Rule Dictionary
+                <BookOpen className="w-4 h-4 mr-2" />
+                Rule Dictionary
                 {loadedDictionary && (
                   <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-xs">
                     {Object.keys(loadedDictionary).length}
                   </span>
                 )}
-              </label>
+              </Button>
             </div>
           </div>
         </div>
@@ -830,7 +802,20 @@ const RulesPanel = ({
           </div>
         )}
       </div>
-    </div>
+      </div>
+
+      <DictionaryModal
+        isOpen={showDictionaryModal}
+        onClose={() => setShowDictionaryModal(false)}
+        title="Rule Dictionary"
+        dictionary={loadedDictionary || {}}
+        onDictionaryChange={handleRuleDictionaryChange}
+        entryLabel="Rule"
+        keyField="rule name"
+        valueField="rule description"
+        requiredHeaders={["rule name", "rule description"]}
+      />
+    </>
   );
 };
 
@@ -852,7 +837,6 @@ RulesPanel.propTypes = {
   // Callback functions
   onStateSelect: PropTypes.func.isRequired,
   setStates: PropTypes.func.isRequired,
-  onRuleDictionaryImport: PropTypes.func.isRequired,
   addToChangeLog: PropTypes.func.isRequired,
   // Rule dictionary state
   loadedDictionary: PropTypes.object,

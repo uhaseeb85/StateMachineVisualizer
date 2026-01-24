@@ -68,7 +68,6 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     isDarkMode,
     toggleTheme,
     showSaveNotification,
-    handleRuleDictionaryImport: originalHandleRuleDictionaryImport,
     changeLog,
     setChangeLog,
     addToChangeLog,
@@ -151,22 +150,6 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     };
     runMigration();
   }, []); // Run once on mount
-
-  /**
-   * Handles the import of rule dictionaries
-   * Processes the imported file and updates both state and localStorage
-   */
-  const handleRuleDictionaryImport = async (event) => {
-    try {
-      const result = await originalHandleRuleDictionaryImport(event);
-      if (result?.dictionary) {
-        setLoadedDictionary(result.dictionary);
-        await storage.setItem(DICTIONARY_STORAGE_KEY, result.dictionary);
-      }
-    } catch (error) {
-      console.error("Error importing dictionary:", error);
-    }
-  };
 
   /**
    * Handles state selection with optional scrolling
@@ -634,7 +617,6 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             selectedState={selectedState}
             onStateSelect={handleStateSelect}
             setStates={setStates}
-            onRuleDictionaryImport={handleRuleDictionaryImport}
             loadedDictionary={loadedDictionary}
             setLoadedDictionary={setLoadedDictionary}
             addToChangeLog={addToChangeLog}
