@@ -327,16 +327,6 @@ const StepPanel = ({
   };
 
   const handleRemoveStep = (stepId) => {
-    // Check if the step is referenced in any other step's connections
-    const isReferenced = connections.some(
-      conn => conn.toStepId === stepId
-    );
-
-    if (isReferenced) {
-      toast.error('Cannot remove this step as it is referenced in other steps. Remove the connections first.');
-      return;
-    }
-
     // Get all descendant steps (sub-steps and their sub-steps)
     const getAllDescendants = (parentId) => {
       const children = steps.filter(s => s.parentId === parentId);
@@ -348,16 +338,12 @@ const StepPanel = ({
     };
 
     const descendantIds = getAllDescendants(stepId).map(s => s.id);
-    
-    // Check if any descendant is referenced
-    const isDescendantReferenced = descendantIds.some(id => 
-      connections.some(conn => conn.toStepId === id)
-    );
+    const targetIds = [stepId, ...descendantIds];
 
-    if (isDescendantReferenced) {
-      toast.error('Cannot remove this step as one of its sub-steps is referenced in other steps. Remove the connections first.');
-      return;
-    }
+    // Count connections that will be removed
+    const affectedConnections = connections.filter(conn =>
+      targetIds.includes(conn.fromStepId) || targetIds.includes(conn.toStepId)
+    );
     
     // Check if the step or any descendant has screenshots
     const stepToRemove = steps.find(s => s.id === stepId);
@@ -369,20 +355,20 @@ const StepPanel = ({
       step && step.imageUrls && step.imageUrls.length > 0
     );
     
-    // If there are screenshots, show a specific warning
-    if (hasScreenshots || hasDescendantScreenshots) {
-      const warningMessage = hasDescendantScreenshots
-        ? 'This step or its sub-steps contain screenshots that will be permanently deleted. Continue?'
-        : 'This step contains screenshots that will be permanently deleted. Continue?';
-        
-      if (!window.confirm(warningMessage)) {
-        return;
-      }
-    } else {
-      // Generic confirmation for steps without screenshots
-      if (!window.confirm('Are you sure you want to remove this step and all its sub-steps?')) {
-        return;
-      }
+    const screenshotsWarning = hasDescendantScreenshots
+      ? ' This step or its sub-steps contain screenshots that will be permanently deleted.'
+      : hasScreenshots
+        ? ' This step contains screenshots that will be permanently deleted.'
+        : '';
+
+    const connectionWarning = affectedConnections.length > 0
+      ? ` This will also remove ${affectedConnections.length} connection${affectedConnections.length === 1 ? '' : 's'} that reference these steps.`
+      : '';
+
+    const confirmMessage = `Are you sure you want to remove this step and all its sub-steps?${screenshotsWarning}${connectionWarning}`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
     }
     
     // Remove all descendant steps first
@@ -782,25 +768,35 @@ const StepPanel = ({
   };
   
   // Recursive function to clone a step and all its children
-  const cloneStepRecursive = async (sourceStepId, newParentId = null, allClonedIds = []) => {
+  const cloneStepRecursive = async (sourceStepId, newParentId = null, idMap = {}, allClonedIds = []) => {
     // Find the source step
     const sourceStep = steps.find(s => s.id === sourceStepId);
-    if (!sourceStep) return { newStepId: null, clonedIds: allClonedIds };
-    
+    if (!sourceStep) return { newStepId: null, clonedIds: allClonedIds, idMap };
+
+    // Omit identifiers but preserve the rest of the shape
+    const { id: _ignoredId, parentId: _ignoredParentId, ...restOfSource } = sourceStep;
+
     // Create a new step with properties from the source step
     const newStepData = {
+      ...restOfSource,
       name: sourceStep.name, // Use original name without adding "(Clone)"
       description: sourceStep.description || '',
       expectedResponse: sourceStep.expectedResponse || '',
       parentId: newParentId,
-      // Copy any other properties except for the id
+      position: sourceStep.position ? { ...sourceStep.position } : restOfSource.position,
+      assumptions: sourceStep.assumptions ? [...sourceStep.assumptions] : [],
+      questions: sourceStep.questions ? [...sourceStep.questions] : [],
       imageUrls: sourceStep.imageUrls ? [...sourceStep.imageUrls] : [],
-      imageCaptions: sourceStep.imageCaptions ? [...sourceStep.imageCaptions] : []
+      imageCaptions: sourceStep.imageCaptions ? [...sourceStep.imageCaptions] : [],
+      imageUrl: sourceStep.imageUrl || (sourceStep.imageUrls && sourceStep.imageUrls[0]) || restOfSource.imageUrl || null,
     };
     
     // Add the new step
     const newStepId = onAddStep(newStepData);
     
+    // Track mapping so we can clone connections later
+    idMap[sourceStepId] = newStepId;
+
     // Add this ID to our list of all cloned steps
     allClonedIds.push(newStepId);
     
@@ -809,10 +805,48 @@ const StepPanel = ({
     
     // Recursively clone all child steps (sequentially to avoid race conditions)
     for (const childStep of childSteps) {
-      await cloneStepRecursive(childStep.id, newStepId, allClonedIds);
+      await cloneStepRecursive(childStep.id, newStepId, idMap, allClonedIds);
     }
     
-    return { newStepId, clonedIds: allClonedIds };
+    return { newStepId, clonedIds: allClonedIds, idMap };
+  };
+
+  const cloneConnectionsForClonedSteps = (idMap) => {
+    if (!idMap || Object.keys(idMap).length === 0) return 0;
+
+    const clonedSourceIds = new Set(Object.keys(idMap));
+    const pendingConnections = [];
+
+    connections.forEach(conn => {
+      if (!clonedSourceIds.has(conn.fromStepId)) {
+        return;
+      }
+
+      const clonedFrom = idMap[conn.fromStepId];
+      const clonedTo = idMap[conn.toStepId] || conn.toStepId;
+
+      const existsAlready = connections.some(existing =>
+        existing.fromStepId === clonedFrom &&
+        existing.toStepId === clonedTo &&
+        existing.type === conn.type
+      );
+
+      const existsInPending = pendingConnections.some(existing =>
+        existing.fromStepId === clonedFrom &&
+        existing.toStepId === clonedTo &&
+        existing.type === conn.type
+      );
+
+      if (!existsAlready && !existsInPending) {
+        pendingConnections.push({ fromStepId: clonedFrom, toStepId: clonedTo, type: conn.type });
+      }
+    });
+
+    pendingConnections.forEach(({ fromStepId, toStepId, type }) => {
+      onAddConnection(fromStepId, toStepId, type, true);
+    });
+
+    return pendingConnections.length;
   };
   
   // Handle clone target selection
@@ -828,7 +862,8 @@ const StepPanel = ({
     }
     
     // Clone the step and all its children
-    const { newStepId, clonedIds } = await cloneStepRecursive(sourceStepId, targetStepId, []);
+    const { newStepId, clonedIds, idMap } = await cloneStepRecursive(sourceStepId, targetStepId, {}, []);
+    const copiedConnections = cloneConnectionsForClonedSteps(idMap);
     
     if (newStepId) {
       // Auto-expand the target parent if one was specified
@@ -842,9 +877,13 @@ const StepPanel = ({
       // Add to clone history for undo
       addToCloneHistory(clonedIds, sourceStepId);
       
+      const connectionMsg = copiedConnections > 0 
+        ? ` (copied ${copiedConnections} connection${copiedConnections === 1 ? '' : 's'})`
+        : '';
+
       toast.success(targetStepId 
-        ? `Step cloned under "${steps.find(s => s.id === targetStepId)?.name}"` 
-        : 'Step cloned to root level');
+        ? `Step cloned under "${steps.find(s => s.id === targetStepId)?.name}"${connectionMsg}` 
+        : `Step cloned to root level${connectionMsg}`);
         
       // Select the newly created step
       const newStep = steps.find(s => s.id === newStepId);
