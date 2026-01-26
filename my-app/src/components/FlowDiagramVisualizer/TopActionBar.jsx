@@ -11,7 +11,9 @@ import {
   Sun,
   Save,
   GitBranch,
-  Settings
+  Settings,
+  Undo,
+  Redo
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -32,6 +34,10 @@ const TopActionBar = ({
   onImport,
   onExport,
   onSave,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   steps,
   connections,
   currentFileName
@@ -57,6 +63,44 @@ const TopActionBar = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check if user is typing in an input field
+      const isInputField = 
+        e.target.tagName === 'INPUT' || 
+        e.target.tagName === 'TEXTAREA' || 
+        e.target.isContentEditable;
+
+      if (isInputField) {
+        return; // Don't trigger shortcuts when typing
+      }
+
+      // Undo: Ctrl+Z
+      if (e.ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo && onUndo) {
+          onUndo();
+        }
+      }
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
+      else if (
+        (e.ctrlKey && e.key.toLowerCase() === 'y') ||
+        (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        e.preventDefault();
+        if (canRedo && onRedo) {
+          onRedo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [canUndo, canRedo, onUndo, onRedo]);
 
   // Include all steps (both root and sub-steps) for flow diagram generation
   const rootElements = steps || [];
@@ -162,6 +206,42 @@ const TopActionBar = ({
                 {currentFileName}
               </Button>
             )}
+
+            {/* Undo/Redo buttons */}
+            <Button
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-900
+                       dark:disabled:hover:bg-gray-800
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Undo className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={onRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Y)"
+              className="bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-900
+                       dark:disabled:hover:bg-gray-800
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Redo className="w-4 h-4" />
+            </Button>
 
             {/* Save Button */}
             <Button 
@@ -338,6 +418,10 @@ TopActionBar.propTypes = {
   onImport: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  onUndo: PropTypes.func.isRequired,
+  onRedo: PropTypes.func.isRequired,
+  canUndo: PropTypes.bool.isRequired,
+  canRedo: PropTypes.bool.isRequired,
   steps: PropTypes.array,
   connections: PropTypes.array,
   currentFileName: PropTypes.string

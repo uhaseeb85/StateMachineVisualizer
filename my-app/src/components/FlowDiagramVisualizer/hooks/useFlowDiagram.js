@@ -26,6 +26,11 @@ const useFlowDiagram = (storageKey) => {
   // Track the currently imported file name
   const [currentFileName, setCurrentFileName] = useState(null);
 
+  // Undo/Redo state
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const MAX_UNDO_STACK_SIZE = 50;
+
   // Initialize action history tracking
   const {
     history: actionHistory,
@@ -66,6 +71,16 @@ const useFlowDiagram = (storageKey) => {
         if (savedFileName) {
           setCurrentFileName(savedFileName);
         }
+
+        // Load undo/redo stacks
+        const savedUndoStack = await storage.getItem(`${storageKey}_undoStack`);
+        const savedRedoStack = await storage.getItem(`${storageKey}_redoStack`);
+        if (savedUndoStack) {
+          setUndoStack(savedUndoStack);
+        }
+        if (savedRedoStack) {
+          setRedoStack(savedRedoStack);
+        }
       } catch (error) {
         console.error('[useFlowDiagram] Error loading saved data:', error);
         // Initialize with empty arrays if there's an error
@@ -79,6 +94,147 @@ const useFlowDiagram = (storageKey) => {
     
     loadData();
   }, [storageKey]);
+
+  /**
+   * Save undo stack to IndexedDB
+   */
+  const saveUndoStackToIndexedDB = async (stack) => {
+    try {
+      await storage.setItem(`${storageKey}_undoStack`, stack);
+    } catch (error) {
+      console.error('Error saving undo stack to IndexedDB:', error);
+    }
+  };
+
+  /**
+   * Save redo stack to IndexedDB
+   */
+  const saveRedoStackToIndexedDB = async (stack) => {
+    try {
+      await storage.setItem(`${storageKey}_redoStack`, stack);
+    } catch (error) {
+      console.error('Error saving redo stack to IndexedDB:', error);
+    }
+  };
+
+  /**
+   * Captures the current state for undo/redo
+   */
+  const captureSnapshot = () => {
+    return {
+      steps: JSON.parse(JSON.stringify(steps)),
+      connections: JSON.parse(JSON.stringify(connections))
+    };
+  };
+
+  /**
+   * Pushes current state to undo stack
+   */
+  const pushToUndoStack = (snapshot) => {
+    setUndoStack(prev => {
+      const newStack = [...prev, snapshot];
+      // Limit stack size
+      if (newStack.length > MAX_UNDO_STACK_SIZE) {
+        newStack.shift();
+      }
+      saveUndoStackToIndexedDB(newStack);
+      return newStack;
+    });
+    // Clear redo stack when new action is taken
+    setRedoStack([]);
+    saveRedoStackToIndexedDB([]);
+  };
+
+  /**
+   * Clears undo/redo history
+   */
+  const clearUndoHistory = () => {
+    setUndoStack([]);
+    setRedoStack([]);
+    saveUndoStackToIndexedDB([]);
+    saveRedoStackToIndexedDB([]);
+  };
+
+  /**
+   * Undo the last action
+   */
+  const undo = () => {
+    if (undoStack.length === 0) {
+      toast.info('Nothing to undo');
+      return;
+    }
+
+    const currentState = captureSnapshot();
+    const previousState = undoStack[undoStack.length - 1];
+
+    // Update redo stack
+    setRedoStack(prev => {
+      const newStack = [...prev, currentState];
+      saveRedoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Update undo stack
+    setUndoStack(prev => {
+      const newStack = prev.slice(0, -1);
+      saveUndoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Restore previous state
+    setSteps(previousState.steps);
+    setConnections(previousState.connections);
+    
+    // Save to IndexedDB
+    storage.setItem(storageKey, {
+      steps: previousState.steps,
+      connections: previousState.connections
+    });
+
+    toast.success('Undo successful');
+  };
+
+  /**
+   * Redo the last undone action
+   */
+  const redo = () => {
+    if (redoStack.length === 0) {
+      toast.info('Nothing to redo');
+      return;
+    }
+
+    const currentState = captureSnapshot();
+    const nextState = redoStack[redoStack.length - 1];
+
+    // Update undo stack
+    setUndoStack(prev => {
+      const newStack = [...prev, currentState];
+      if (newStack.length > MAX_UNDO_STACK_SIZE) {
+        newStack.shift();
+      }
+      saveUndoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Update redo stack
+    setRedoStack(prev => {
+      const newStack = prev.slice(0, -1);
+      saveRedoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Restore next state
+    setSteps(nextState.steps);
+    setConnections(nextState.connections);
+    
+    // Save to IndexedDB
+    storage.setItem(storageKey, {
+      steps: nextState.steps,
+      connections: nextState.connections
+    });
+
+    toast.success('Redo successful');
+  };
 
   /**
    * Saves the current flow diagram state to IndexedDB
@@ -109,6 +265,10 @@ const useFlowDiagram = (storageKey) => {
    */
   const addStep = (stepData, skipHistory = false) => {
     console.log('Adding new step:', stepData);
+    
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
+    
     const newStep = {
       id: uuidv4(),
       ...stepData,
@@ -156,6 +316,9 @@ const useFlowDiagram = (storageKey) => {
       console.error('Invalid id or updates:', { id, updates });
       return;
     }
+
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
 
     setSteps((prev) => {
       const snapshotBefore = { steps: prev, connections };
@@ -212,6 +375,9 @@ const useFlowDiagram = (storageKey) => {
    */
   const removeStep = (id, skipHistory = false) => {
     console.log('Removing step:', id);
+    
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
     
     setSteps((prevSteps) => {
       const snapshotBefore = { steps: prevSteps, connections };
@@ -306,6 +472,9 @@ const useFlowDiagram = (storageKey) => {
       return false;
     }
 
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
+
     // Add a unique ID to each connection
     const newConnection = { 
       id: uuidv4(), 
@@ -356,6 +525,10 @@ const useFlowDiagram = (storageKey) => {
    */
   const removeConnection = (fromStepId, toStepId, type, skipHistory = false) => {
     console.log('Removing connection:', { fromStepId, toStepId, type });
+    
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
+    
     setConnections((prev) => {
       const snapshotBefore = { steps, connections: prev };
       const newConnections = prev.filter(
@@ -428,6 +601,9 @@ const useFlowDiagram = (storageKey) => {
     
     setSteps([]);
     setConnections([]);
+
+    // Clear undo/redo history
+    clearUndoHistory();
 
     // Track in history
     if (!skipHistory) {
@@ -697,6 +873,9 @@ const useFlowDiagram = (storageKey) => {
       setSteps(processedSteps);
       setConnections(flowData.connections || []);
       
+      // Clear undo/redo history on import
+      clearUndoHistory();
+      
       saveFlow();
 
       // Track in history
@@ -893,6 +1072,11 @@ const useFlowDiagram = (storageKey) => {
     saveFlow,
     showSaveNotification,
     currentFileName,
+    // Undo/Redo functionality
+    undo,
+    redo,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
     // Action history functionality
     actionHistory,
     clearActionHistory,

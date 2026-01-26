@@ -13,10 +13,10 @@
  * through hover states and transitions.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
-import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2, Scissors, Settings } from 'lucide-react';
+import { Save, FileSpreadsheet, Play, Moon, Sun, HelpCircle, Route, Search, SwitchCamera, Trash2, Scissors, Settings, Undo, Redo } from 'lucide-react';
 import GraphToolsModal from './GraphToolsModal';
 
 const TopActionBar = ({ 
@@ -32,7 +32,11 @@ const TopActionBar = ({
   onClearData,
   onSplitGraph,
   onCompareStateMachines,
-  currentFileName
+  currentFileName,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo
 }) => {
 
   // State for controlling the confirmation dialog
@@ -44,6 +48,40 @@ const TopActionBar = ({
   const handleClearDataClick = () => {
     setShowClearConfirmation(true);
   };
+
+  // Add keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check if user is typing in an input field
+      const isInputField = e.target.tagName === 'INPUT' || 
+                          e.target.tagName === 'TEXTAREA' || 
+                          e.target.isContentEditable;
+      
+      // Don't trigger shortcuts when typing in input fields
+      if (isInputField) {
+        return;
+      }
+
+      // Ctrl+Z for undo (case-insensitive)
+      if (e.ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo && onUndo) {
+          onUndo();
+        }
+      }
+      // Ctrl+Y or Ctrl+Shift+Z for redo (case-insensitive)
+      if ((e.ctrlKey && e.key.toLowerCase() === 'y') || 
+          (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
+        e.preventDefault();
+        if (canRedo && onRedo) {
+          onRedo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo, onUndo, onRedo]);
 
   // Handle confirmation dialog
   const handleConfirmClear = () => {
@@ -101,6 +139,47 @@ const TopActionBar = ({
             <HelpCircle className="w-4 h-4" />
             Getting Started
           </Button>
+
+          {/* Visual Separator */}
+          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+
+          {/* Undo/Redo Button Group */}
+          <div className="flex gap-2">
+            <Button
+              onClick={onUndo}
+              disabled={!canUndo}
+              title={canUndo ? "Undo last action (Ctrl+Z)" : "Nothing to undo"}
+              className="bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-gray-900
+                       dark:disabled:hover:bg-gray-800
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Undo className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={onRedo}
+              disabled={!canRedo}
+              title={canRedo ? "Redo last action (Ctrl+Y)" : "Nothing to redo"}
+              className="bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-gray-900
+                       dark:disabled:hover:bg-gray-800
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <Redo className="w-4 h-4" />
+            </Button>
+          </div>
 
           {/* Visual Separator */}
           <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
@@ -318,7 +397,13 @@ TopActionBar.propTypes = {
   onCompareStateMachines: PropTypes.func.isRequired,
 
   // Current file name (optional)
-  currentFileName: PropTypes.string
+  currentFileName: PropTypes.string,
+
+  // Undo/Redo props
+  onUndo: PropTypes.func.isRequired,
+  onRedo: PropTypes.func.isRequired,
+  canUndo: PropTypes.bool.isRequired,
+  canRedo: PropTypes.bool.isRequired
 };
 
 export default TopActionBar;

@@ -74,7 +74,13 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     handleDeleteState,
     editState,
     clearData,
-    isLoading
+    isLoading,
+    // Undo/Redo functionality
+    undo: stateMachineUndo,
+    redo: stateMachineRedo,
+    canUndo: stateMachineCanUndo,
+    canRedo: stateMachineCanRedo,
+    withUndoCapture
   } = useStateMachine();
 
   // Simulation functionality from custom hook
@@ -597,6 +603,10 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           onClearData={handleClearAll}
           onSplitGraph={() => setShowGraphSplitter(true)}
           onCompareStateMachines={handleCompareStateMachines}
+          onUndo={stateMachineUndo}
+          onRedo={stateMachineRedo}
+          canUndo={stateMachineCanUndo}
+          canRedo={stateMachineCanRedo}
         />
 
         {/* Main Panels */}
@@ -621,6 +631,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             setLoadedDictionary={setLoadedDictionary}
             addToChangeLog={addToChangeLog}
             loadedStateDictionary={loadedStateDictionary}
+            withUndoCapture={withUndoCapture}
           />
         </div>
 
@@ -636,6 +647,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
             onClose={() => setShowSimulation(false)}
             onUndo={undo}
             canUndo={canUndo}
+            loadedDictionary={loadedDictionary}
+            loadedStateDictionary={loadedStateDictionary}
           />
         )}
 

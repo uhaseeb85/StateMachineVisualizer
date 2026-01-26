@@ -64,6 +64,11 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     saveFlow,
     showSaveNotification,
     currentFileName,
+    // Undo/Redo functionality
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     // Action history functionality
     actionHistory,
     clearActionHistory,
@@ -220,6 +225,10 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onImport={importData}
           onExport={handleExportClick}
           onSave={saveFlow}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
           steps={steps}
           connections={connections}
           currentFileName={currentFileName}

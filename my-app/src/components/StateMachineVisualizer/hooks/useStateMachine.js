@@ -59,6 +59,13 @@ export default function useStateMachine() {
   /** Maximum number of entries to keep in change log */
   const MAX_HISTORY_ENTRIES = 20;
 
+  // Undo/Redo state management
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  
+  /** Maximum number of undo operations to keep */
+  const MAX_UNDO_STACK_SIZE = 50;
+
   /**
    * Load saved states, filename, changelog, and theme preference on initialization
    */
@@ -94,6 +101,17 @@ export default function useStateMachine() {
         const darkModePreference = await storage.getItem('darkMode');
         if (darkModePreference === 'true' || darkModePreference === true) {
           setIsDarkMode(true);
+        }
+
+        // Load undo/redo stacks
+        const savedUndoStack = await storage.getItem('stateMachine_undoStack');
+        if (savedUndoStack && Array.isArray(savedUndoStack)) {
+          setUndoStack(savedUndoStack);
+        }
+
+        const savedRedoStack = await storage.getItem('stateMachine_redoStack');
+        if (savedRedoStack && Array.isArray(savedRedoStack)) {
+          setRedoStack(savedRedoStack);
         }
       } catch (error) {
         console.error('Error loading state machine data:', error);
@@ -161,6 +179,152 @@ export default function useStateMachine() {
   };
 
   /**
+   * Saves undo stack to IndexedDB
+   * @param {Array} stack - Undo stack to save
+   */
+  const saveUndoStackToIndexedDB = async (stack) => {
+    try {
+      await storage.setItem('stateMachine_undoStack', stack);
+    } catch (error) {
+      console.error('Error saving undo stack to IndexedDB:', error);
+      // Check if it's a quota exceeded error
+      if (error.name === 'QuotaExceededError') {
+        toast.error('Storage quota exceeded. Undo history may not be saved.');
+      }
+    }
+  };
+
+  /**
+   * Saves redo stack to IndexedDB
+   * @param {Array} stack - Redo stack to save
+   */
+  const saveRedoStackToIndexedDB = async (stack) => {
+    try {
+      await storage.setItem('stateMachine_redoStack', stack);
+    } catch (error) {
+      console.error('Error saving redo stack to IndexedDB:', error);
+      if (error.name === 'QuotaExceededError') {
+        toast.error('Storage quota exceeded. Redo history may not be saved.');
+      }
+    }
+  };
+
+  /**
+   * Captures a snapshot of the current state for undo functionality
+   * @returns {Object} Snapshot containing states and selectedState
+   */
+  const captureSnapshot = () => {
+    return {
+      states: JSON.parse(JSON.stringify(states)), // Deep clone
+      selectedState: selectedState,
+      timestamp: Date.now()
+    };
+  };
+
+  /**
+   * Pushes a snapshot to the undo stack and clears redo stack
+   * @param {Object} snapshot - Snapshot to push
+   */
+  const pushToUndoStack = (snapshot) => {
+    setUndoStack(prev => {
+      const newStack = [...prev, snapshot];
+      const trimmedStack = newStack.slice(-MAX_UNDO_STACK_SIZE);
+      // Save to IndexedDB asynchronously
+      saveUndoStackToIndexedDB(trimmedStack);
+      return trimmedStack;
+    });
+    
+    // Clear redo stack when new action is performed
+    setRedoStack([]);
+    saveRedoStackToIndexedDB([]);
+  };
+
+  /**
+   * Clears both undo and redo stacks
+   * Called after import or clear operations
+   */
+  const clearUndoHistory = () => {
+    setUndoStack([]);
+    setRedoStack([]);
+    saveUndoStackToIndexedDB([]);
+    saveRedoStackToIndexedDB([]);
+  };
+
+  /**
+   * Undoes the last operation
+   */
+  const undo = () => {
+    if (undoStack.length === 0) {
+      toast.info('Nothing to undo');
+      return;
+    }
+
+    // Save current state to redo stack
+    const currentSnapshot = captureSnapshot();
+    setRedoStack(prev => {
+      const newStack = [...prev, currentSnapshot];
+      saveRedoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Pop from undo stack and restore
+    const previousSnapshot = undoStack[undoStack.length - 1];
+    setUndoStack(prev => {
+      const newStack = prev.slice(0, -1);
+      saveUndoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Restore state
+    setStates(previousSnapshot.states);
+    setSelectedState(previousSnapshot.selectedState);
+    
+    addToChangeLog('Undo: Restored previous state');
+  };
+
+  /**
+   * Redoes the last undone operation
+   */
+  const redo = () => {
+    if (redoStack.length === 0) {
+      toast.info('Nothing to redo');
+      return;
+    }
+
+    // Save current state to undo stack
+    const currentSnapshot = captureSnapshot();
+    setUndoStack(prev => {
+      const newStack = [...prev, currentSnapshot];
+      const trimmedStack = newStack.slice(-MAX_UNDO_STACK_SIZE);
+      saveUndoStackToIndexedDB(trimmedStack);
+      return trimmedStack;
+    });
+
+    // Pop from redo stack and restore
+    const nextSnapshot = redoStack[redoStack.length - 1];
+    setRedoStack(prev => {
+      const newStack = prev.slice(0, -1);
+      saveRedoStackToIndexedDB(newStack);
+      return newStack;
+    });
+
+    // Restore state
+    setStates(nextSnapshot.states);
+    setSelectedState(nextSnapshot.selectedState);
+    
+    addToChangeLog('Redo: Restored next state');
+  };
+
+  /**
+   * Wrapper function for RulesPanel to capture snapshots before setStates calls
+   * @param {Function} updateFn - Function that updates states
+   */
+  const withUndoCapture = (updateFn) => {
+    pushToUndoStack(captureSnapshot());
+    updateFn();
+  };
+
+  /**
    * Saves current state machine configuration to IndexedDB
    * Shows a temporary success notification
    */
@@ -182,6 +346,9 @@ export default function useStateMachine() {
    */
   const addState = (name) => {
     if (name.trim()) {
+      // Capture snapshot before making changes
+      pushToUndoStack(captureSnapshot());
+      
       const newState = {
         id: generateId(),
         name: name.trim(),
@@ -212,6 +379,9 @@ export default function useStateMachine() {
       return;
     }
 
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
+
     // If not referenced, proceed with deletion
     setStates(currentStates => currentStates.filter(state => state.id !== stateId));
     addToChangeLog(`Deleted state: ${stateToDelete.name}`);
@@ -228,6 +398,9 @@ export default function useStateMachine() {
     if (!stateToEdit) return;
 
     const oldName = stateToEdit.name;
+    
+    // Capture snapshot before making changes
+    pushToUndoStack(captureSnapshot());
     
     // Update the state name
     setStates(currentStates => 
@@ -447,6 +620,9 @@ export default function useStateMachine() {
         addToChangeLog(`Imported Excel configuration: ${newStates.length} states created with rules sorted by priority`);
       }
 
+      // Clear undo/redo history after import
+      clearUndoHistory();
+
       return {
         states: newStates,
         fileName: file.name
@@ -492,6 +668,9 @@ export default function useStateMachine() {
     
     // Clear imported CSV data
     await storage.removeItem('lastImportedCSV');
+    
+    // Clear undo/redo history
+    clearUndoHistory();
     
     addToChangeLog('Cleared all state machine data');
     toast.success('State machine data has been cleared');
@@ -618,6 +797,12 @@ export default function useStateMachine() {
     exportConfiguration,
     handleRuleDictionaryImport,
     clearData,
-    isLoading
+    isLoading,
+    // Undo/Redo functionality
+    undo,
+    redo,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+    withUndoCapture
   };
 }

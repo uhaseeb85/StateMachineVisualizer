@@ -32,7 +32,8 @@ const RulesPanel = ({
   loadedDictionary,
   setLoadedDictionary,
   addToChangeLog = () => {},
-  loadedStateDictionary
+  loadedStateDictionary,
+  withUndoCapture
 }) => {
   // Rule editing states
   const [newRuleCondition, setNewRuleCondition] = useState("");
@@ -99,7 +100,7 @@ const RulesPanel = ({
 
     // If the state was actually updated (no duplicates found)
     if (updatedStates !== states) {
-      setStates(updatedStates);
+      withUndoCapture(() => setStates(updatedStates));
       setNewRuleCondition("");
       setNewRuleNextState("");
       setNewRulePriority(50);
@@ -125,7 +126,7 @@ const RulesPanel = ({
       }
       return state;
     });
-    setStates(updatedStates);
+    withUndoCapture(() => setStates(updatedStates));
   };
 
   /**
@@ -300,7 +301,7 @@ const RulesPanel = ({
 
     // If the state was actually updated (no duplicates found)
     if (updatedStates !== states) {
-      setStates(updatedStates);
+      withUndoCapture(() => setStates(updatedStates));
       setEditingRuleId(null);
       setEditingRuleCondition("");
       setNewRuleNextState("");
@@ -353,7 +354,7 @@ const RulesPanel = ({
       return state;
     });
 
-    setStates(updatedStates);
+    withUndoCapture(() => setStates(updatedStates));
     setNewRuleCondition("");
     setNewRuleNextState("");
     setNewRulePriority(50);
@@ -841,7 +842,9 @@ RulesPanel.propTypes = {
   // Rule dictionary state
   loadedDictionary: PropTypes.object,
   setLoadedDictionary: PropTypes.func.isRequired,
-  loadedStateDictionary: PropTypes.object
+  loadedStateDictionary: PropTypes.object,
+  // Undo/Redo functionality
+  withUndoCapture: PropTypes.func.isRequired
 };
 
 export default RulesPanel;

@@ -158,6 +158,21 @@ const StepPanel = ({
     setIsDraggingDivider(true);
   };
   
+  // Update selectedStep when steps change (important for undo/redo)
+  useEffect(() => {
+    if (selectedStep) {
+      // Find the current version of the selected step from the steps array
+      const updatedStep = steps.find(s => s.id === selectedStep.id);
+      if (updatedStep) {
+        // Update selectedStep to reflect the current data
+        setSelectedStep(updatedStep);
+      } else {
+        // Step was deleted, clear selection
+        setSelectedStep(null);
+      }
+    }
+  }, [steps]); // Only depend on steps, not selectedStep to avoid infinite loops
+  
   // Handle mouse move for resizing
   useEffect(() => {
     const handleMouseMove = (e) => {
