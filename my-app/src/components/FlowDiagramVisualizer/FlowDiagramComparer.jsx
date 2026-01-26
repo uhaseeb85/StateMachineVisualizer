@@ -4,13 +4,13 @@
  * Component for comparing two flow diagrams and visualizing their differences.
  * Helps users identify structural differences between two flow diagram versions.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Check, GitCompare, FileUp, Database, Download } from 'lucide-react';
+import { AlertCircle, Check, GitCompare, FileUp, Database, Download, XCircle, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
@@ -22,6 +22,8 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
   const [compareFlowDiagram, setCompareFlowDiagram] = useState(null);
   // Whether comparison is in progress
   const [isComparing, setIsComparing] = useState(false);
+  // Whether file import is in progress
+  const [isLoading, setIsLoading] = useState(false);
   // File input ref for import
   const fileInputRef = useRef(null);
   // Comparison results
@@ -40,7 +42,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
 
   // Update baseline flow diagram when component opens
   useEffect(() => {
-    if (isOpen && steps.length > 0) {
+    if (isOpen) {
       setBaseFlowDiagram({
         id: 'current',
         name: 'Current Flow Diagram',
@@ -48,7 +50,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
         connections: JSON.parse(JSON.stringify(connections))
       });
     }
-  }, [isOpen, steps, connections]);
+  }, [isOpen]);
 
   // Trigger file input click for import
   const handleImportClick = () => {
@@ -60,6 +62,14 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
     try {
       const file = event.target.files[0];
       if (!file) return;
+
+      // File size validation (50MB limit)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        throw new Error('File size exceeds 50MB limit');
+      }
+
+      setIsLoading(true);
 
       // Check file type
       if (file.name.endsWith('.json')) {
@@ -96,6 +106,33 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
           throw new Error('Invalid data format: Missing steps array');
         }
 
+        // Extract and restore images from ZIP
+        const imagesFolder = zipContents.folder("images");
+        if (imagesFolder) {
+          const imageFiles = [];
+          imagesFolder.forEach((relativePath, file) => {
+            if (!file.dir) {
+              imageFiles.push({ path: relativePath, file });
+            }
+          });
+
+          // Create blob URLs for images
+          for (const { path, file } of imageFiles) {
+            const blob = await file.async('blob');
+            const blobUrl = URL.createObjectURL(blob);
+            
+            // Update step imageUrls with blob URLs
+            flowData.steps.forEach(step => {
+              if (step.imageUrls && Array.isArray(step.imageUrls)) {
+                step.imageUrls = step.imageUrls.map(url => {
+                  const filename = url.split('/').pop();
+                  return filename === path ? blobUrl : url;
+                });
+              }
+            });
+          }
+        }
+
         setCompareFlowDiagram({
           id: 'imported',
           name: `Imported from ${file.name}`,
@@ -107,11 +144,11 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
       } else {
         throw new Error('Please upload a JSON or ZIP file.');
       }
-
-      event.target.value = '';
     } catch (error) {
-      console.error('Import error:', error);
+      console.error('FlowDiagramComparer - Import error:', error);
       toast.error(`Import error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
       event.target.value = '';
     }
   };
@@ -202,6 +239,32 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
           isModified = true;
         }
         
+        // Compare arrays and additional properties
+        if (JSON.stringify(baseStep.assumptions || []) !== JSON.stringify(compareStep.assumptions || [])) {
+          changes.push('Assumptions changed');
+          isModified = true;
+        }
+        
+        if (JSON.stringify(baseStep.questions || []) !== JSON.stringify(compareStep.questions || [])) {
+          changes.push('Questions changed');
+          isModified = true;
+        }
+        
+        if (JSON.stringify(baseStep.imageUrls || []) !== JSON.stringify(compareStep.imageUrls || [])) {
+          changes.push('Images changed');
+          isModified = true;
+        }
+        
+        if (JSON.stringify(baseStep.imageCaptions || []) !== JSON.stringify(compareStep.imageCaptions || [])) {
+          changes.push('Image captions changed');
+          isModified = true;
+        }
+        
+        if ((baseStep.parentId || null) !== (compareStep.parentId || null)) {
+          changes.push('Parent step changed');
+          isModified = true;
+        }
+        
         result.push({
           id: baseStep.id,
           name: baseStep.name,
@@ -246,11 +309,28 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
       return step ? step.name : `Unknown (${stepId})`;
     };
     
+    // Helper to check if two connections match (by ID first, then by step names)
+    const connectionsMatch = (conn1, steps1, conn2, steps2) => {
+      // First try exact ID match
+      if (conn1.fromStepId === conn2.fromStepId && conn1.toStepId === conn2.toStepId) {
+        return true;
+      }
+      
+      // Fallback: match by step names if IDs don't match
+      const from1 = steps1.find(s => s.id === conn1.fromStepId);
+      const to1 = steps1.find(s => s.id === conn1.toStepId);
+      const from2 = steps2.find(s => s.id === conn2.fromStepId);
+      const to2 = steps2.find(s => s.id === conn2.toStepId);
+      
+      return from1 && to1 && from2 && to2 &&
+             from1.name === from2.name &&
+             to1.name === to2.name;
+    };
+    
     // Check each base connection
     baseConnections.forEach(baseConn => {
       const compareConn = compareConnections.find(c =>
-        c.fromStepId === baseConn.fromStepId &&
-        c.toStepId === baseConn.toStepId
+        connectionsMatch(baseConn, baseSteps, c, compareSteps)
       );
       
       const fromName = getStepName(baseSteps, baseConn.fromStepId);
@@ -293,8 +373,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
     // Find connections in compare that are not in base (added)
     compareConnections.forEach(compareConn => {
       const baseConn = baseConnections.find(c =>
-        c.fromStepId === compareConn.fromStepId &&
-        c.toStepId === compareConn.toStepId
+        connectionsMatch(compareConn, compareSteps, c, baseSteps)
       );
       
       if (!baseConn) {
@@ -319,19 +398,60 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'added':
-        return <Badge className="bg-red-500">Removed in Current</Badge>;
+        return (
+          <Badge className="bg-green-500 inline-flex items-center gap-1">
+            <Plus className="h-3 w-3" aria-hidden="true" />
+            <span>New in Comparison</span>
+          </Badge>
+        );
       case 'removed':
-        return <Badge className="bg-green-500">Only in Current</Badge>;
+        return (
+          <Badge className="bg-red-500 inline-flex items-center gap-1">
+            <XCircle className="h-3 w-3" aria-hidden="true" />
+            <span>Missing from Comparison</span>
+          </Badge>
+        );
       case 'modified':
-        return <Badge className="bg-yellow-500">Modified</Badge>;
+        return (
+          <Badge className="bg-yellow-500 inline-flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" aria-hidden="true" />
+            <span>Modified</span>
+          </Badge>
+        );
       default:
-        return <Badge className="bg-gray-500">Unchanged</Badge>;
+        return (
+          <Badge className="bg-gray-500 inline-flex items-center gap-1">
+            <Check className="h-3 w-3" aria-hidden="true" />
+            <span>Unchanged</span>
+          </Badge>
+        );
     }
   };
 
+  // Memoized filtered arrays for performance
+  const changedSteps = useMemo(() => 
+    results.stepComparison.filter(step => step.status !== 'unchanged'),
+    [results.stepComparison]
+  );
+  
+  const changedConnections = useMemo(() => 
+    results.connectionComparison.filter(conn => conn.status !== 'unchanged'),
+    [results.connectionComparison]
+  );
+  
+  const hasResults = useMemo(() => 
+    results.stepComparison.length > 0,
+    [results.stepComparison]
+  );
+  
+  const hasDifferences = useMemo(() => 
+    changedSteps.length > 0 || changedConnections.length > 0,
+    [changedSteps, changedConnections]
+  );
+
   // Export comparison results to Excel
   const exportComparisonResults = async () => {
-    if (results.stepComparison.length === 0) {
+    if (!hasResults) {
       toast.error('No comparison results to export');
       return;
     }
@@ -345,9 +465,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
       ];
       
       // Add step differences
-      results.stepComparison
-        .filter(step => step.status !== 'unchanged')
-        .forEach(step => {
+      changedSteps.forEach(step => {
           let details = '';
           if (step.status === 'modified') {
             details = step.changes.join('; ');
@@ -362,9 +480,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
         });
       
       // Add connection differences
-      results.connectionComparison
-        .filter(conn => conn.status !== 'unchanged')
-        .forEach(conn => {
+      changedConnections.forEach(conn => {
           let details = '';
           
           if (conn.status === 'modified') {
@@ -444,7 +560,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
       
       toast.success('Comparison results exported successfully');
     } catch (error) {
-      console.error('Error exporting comparison results:', error);
+      console.error('FlowDiagramComparer - Error exporting comparison results:', error);
       toast.error('Failed to export comparison results');
     }
   };
@@ -459,7 +575,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
         <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
             <div className="flex items-center gap-2">
-              <GitCompare className="w-6 h-6" />
+              <GitCompare className="w-6 h-6" aria-hidden="true" />
               Flow Diagram Comparison
             </div>
           </DialogTitle>
@@ -483,10 +599,21 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
               <div className="flex flex-col space-y-3">
                 <Button
                   onClick={handleImportClick}
+                  disabled={isLoading}
                   className="flex items-center gap-2 w-full p-3 justify-center bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                  aria-label="Select JSON or ZIP file for comparison"
                 >
-                  <FileUp className="w-5 h-5" />
-                  Select JSON/ZIP File for Comparison
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                      Loading file...
+                    </>
+                  ) : (
+                    <>
+                      <FileUp className="w-5 h-5" aria-hidden="true" />
+                      Select JSON/ZIP File for Comparison
+                    </>
+                  )}
                 </Button>
                 <input
                   type="file"
@@ -494,12 +621,13 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                   onChange={handleFileImport}
                   accept=".json,.zip"
                   className="hidden"
+                  aria-label="File input for flow diagram comparison"
                 />
                 
                 {compareFlowDiagram && (
                   <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
                     <div className="flex items-center gap-2">
-                      <Database className="w-5 h-5 text-blue-500" />
+                      <Database className="w-5 h-5 text-blue-500" aria-hidden="true" />
                       <div className="text-sm font-medium">{compareFlowDiagram.name}</div>
                     </div>
                     <div className="text-sm text-gray-500 mt-2">
@@ -516,21 +644,35 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
               onClick={runComparison} 
               disabled={!baseFlowDiagram || !compareFlowDiagram || isComparing}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+              aria-label="Run comparison between flow diagrams"
             >
               {isComparing ? 'Comparing...' : 'Compare Flow Diagrams'}
             </Button>
           </div>
           
+          {/* ARIA live region for screen reader announcements */}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {isComparing && "Comparison in progress"}
+            {hasResults && !isComparing && hasDifferences && 
+              `Comparison complete. Found ${results.summary.addedSteps + results.summary.removedSteps + results.summary.modifiedSteps} step changes and ${results.summary.addedConnections + results.summary.removedConnections + results.summary.modifiedConnections} connection changes.`
+            }
+            {hasResults && !isComparing && !hasDifferences &&
+              "Comparison complete. No differences found between flow diagrams."
+            }
+          </div>
+          
           {/* Results section */}
-          {results.stepComparison.length > 0 && (
+          {hasResults && (
             <div className="mt-6">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xl font-medium">Comparison Results</h3>
                 <Button
                   onClick={exportComparisonResults}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md"
+                  disabled={!hasDifferences}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Export comparison results to Excel"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4" aria-hidden="true" />
                   Export Results
                 </Button>
               </div>
@@ -540,39 +682,43 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                 <h4 className="text-sm font-medium mb-2">Understanding Comparison Results</h4>
                 <ul className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
                   <li className="flex items-center gap-2">
-                    <Badge className="bg-red-500">Removed in Current</Badge>
-                    <span>Element exists in comparison flow but has been removed from current flow</span>
+                    <Badge className="bg-green-500 inline-flex items-center gap-1">
+                      <Plus className="h-3 w-3" aria-hidden="true" />
+                      <span>New in Comparison</span>
+                    </Badge>
+                    <span>Element exists in comparison file but not in baseline</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <Badge className="bg-green-500">Only in Current</Badge>
-                    <span>Element exists only in the current flow but not in the comparison</span>
+                    <Badge className="bg-red-500 inline-flex items-center gap-1">
+                      <XCircle className="h-3 w-3" aria-hidden="true" />
+                      <span>Missing from Comparison</span>
+                    </Badge>
+                    <span>Element exists in baseline but not in comparison file</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <Badge className="bg-yellow-500">Modified</Badge>
+                    <Badge className="bg-yellow-500 inline-flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                      <span>Modified</span>
+                    </Badge>
                     <span>Element exists in both but has different properties</span>
                   </li>
                 </ul>
               </div>
               
               {/* Summary section */}
-              {(results.summary.addedSteps > 0 || 
-                results.summary.removedSteps > 0 || 
-                results.summary.modifiedSteps > 0 || 
-                results.summary.addedConnections > 0 || 
-                results.summary.removedConnections > 0 || 
-                results.summary.modifiedConnections > 0) ? (
+              {hasDifferences ? (
                 <>
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="p-4 border rounded-lg">
                       <h4 className="text-lg font-medium mb-2">Step Changes</h4>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
-                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.addedSteps}</span>
-                          <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
-                        </div>
                         <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
-                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.removedSteps}</span>
-                          <span className="text-xs text-green-600 dark:text-green-400">Only in Current</span>
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedSteps}</span>
+                          <span className="text-xs text-green-600 dark:text-green-400">New</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
+                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedSteps}</span>
+                          <span className="text-xs text-red-600 dark:text-red-400">Missing</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
                           <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedSteps}</span>
@@ -584,13 +730,13 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                     <div className="p-4 border rounded-lg">
                       <h4 className="text-lg font-medium mb-2">Connection Changes</h4>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
-                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.addedConnections}</span>
-                          <span className="text-xs text-red-600 dark:text-red-400">Removed</span>
-                        </div>
                         <div className="flex flex-col items-center p-2 bg-green-100 dark:bg-green-900 rounded">
-                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.removedConnections}</span>
-                          <span className="text-xs text-green-600 dark:text-green-400">Only in Current</span>
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">{results.summary.addedConnections}</span>
+                          <span className="text-xs text-green-600 dark:text-green-400">New</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-red-100 dark:bg-red-900 rounded">
+                          <span className="text-lg font-bold text-red-700 dark:text-red-300">{results.summary.removedConnections}</span>
+                          <span className="text-xs text-red-600 dark:text-red-400">Missing</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-yellow-100 dark:bg-yellow-900 rounded">
                           <span className="text-lg font-bold text-yellow-700 dark:text-yellow-300">{results.summary.modifiedConnections}</span>
@@ -607,6 +753,9 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                     </div>
                     <div className="max-h-[400px] overflow-y-auto">
                       <Table>
+                        <TableCaption className="sr-only">
+                          Comparison results showing differences between baseline and imported flow diagrams
+                        </TableCaption>
                         <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                           <TableRow>
                             <TableHead>Type</TableHead>
@@ -617,14 +766,18 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                         </TableHeader>
                         <TableBody>
                           {/* Step differences */}
-                          {results.stepComparison
-                            .filter(step => step.status !== 'unchanged')
-                            .map((step, index) => (
-                            <TableRow key={`step-${index}`} className={
-                              step.status === 'added' ? 'bg-red-50 dark:bg-red-900/20' :
-                              step.status === 'removed' ? 'bg-green-50 dark:bg-green-900/20' :
-                              step.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
-                            }>
+                          {changedSteps.map((step, index) => (
+                            <TableRow 
+                              key={`step-${index}`} 
+                              className={
+                                step.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
+                                step.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
+                                step.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
+                              }
+                              tabIndex={0}
+                              role="row"
+                              aria-label={`${step.status} step: ${step.name}`}
+                            >
                               <TableCell>Step</TableCell>
                               <TableCell>{step.name}</TableCell>
                               <TableCell>{getStatusBadge(step.status)}</TableCell>
@@ -645,14 +798,18 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                           ))}
                           
                           {/* Connection differences */}
-                          {results.connectionComparison
-                            .filter(conn => conn.status !== 'unchanged')
-                            .map((conn, index) => (
-                            <TableRow key={`conn-${index}`} className={
-                              conn.status === 'added' ? 'bg-red-50 dark:bg-red-900/20' :
-                              conn.status === 'removed' ? 'bg-green-50 dark:bg-green-900/20' :
-                              conn.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
-                            }>
+                          {changedConnections.map((conn, index) => (
+                            <TableRow 
+                              key={`conn-${index}`} 
+                              className={
+                                conn.status === 'added' ? 'bg-green-50 dark:bg-green-900/20' :
+                                conn.status === 'removed' ? 'bg-red-50 dark:bg-red-900/20' :
+                                conn.status === 'modified' ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
+                              }
+                              tabIndex={0}
+                              role="row"
+                              aria-label={`${conn.status} connection: ${conn.fromStep} to ${conn.toStep}`}
+                            >
                               <TableCell>Connection</TableCell>
                               <TableCell>{conn.fromStep} → {conn.toStep}</TableCell>
                               <TableCell>{getStatusBadge(conn.status)}</TableCell>
@@ -673,8 +830,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
                           ))}
                           
                           {/* No differences message */}
-                          {results.stepComparison.filter(s => s.status !== 'unchanged').length === 0 && 
-                           results.connectionComparison.filter(c => c.status !== 'unchanged').length === 0 && (
+                          {changedSteps.length === 0 && changedConnections.length === 0 && (
                             <TableRow>
                               <TableCell colSpan={4} className="text-center py-4 text-gray-500">
                                 No differences found
@@ -689,7 +845,7 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
               ) : (
                 <div className="p-6 mb-6 text-center bg-gray-50 dark:bg-gray-800 border rounded-lg">
                   <div className="flex justify-center mb-3">
-                    <Check className="w-8 h-8 text-green-500" />
+                    <Check className="w-8 h-8 text-green-500" aria-hidden="true" />
                   </div>
                   <h4 className="text-lg font-medium text-green-600 dark:text-green-400 mb-1">
                     Flow Diagrams Are Identical
@@ -703,9 +859,9 @@ const FlowDiagramComparer = ({ isOpen, onClose, steps, connections }) => {
           )}
           
           {/* No results message */}
-          {results.stepComparison.length === 0 && !isComparing && baseFlowDiagram && compareFlowDiagram && (
+          {!hasResults && !isComparing && baseFlowDiagram && compareFlowDiagram && (
             <div className="text-center p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-              <AlertCircle className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+              <AlertCircle className="w-8 h-8 mx-auto text-gray-400 mb-2" aria-hidden="true" />
               <p className="text-gray-600 dark:text-gray-400">
                 Click "Compare Flow Diagrams" to see the differences
               </p>
