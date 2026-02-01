@@ -17,18 +17,22 @@ import ExcelJS from 'exceljs';
 /**
  * Generate default dictionaries from flow diagram data
  */
-const generateDefaultDictionaries = (steps) => {
-  // Generate state dictionary from steps
-  const stateDictionary = steps.map(step => ({
-    key: step.name,
-    description: step.description || ''
-  }));
+const generateDefaultDictionaries = (steps, stepClassifications = {}) => {
+  // Generate state dictionary from steps classified as states
+  const stateDictionary = steps
+    .filter(step => stepClassifications[step.id] !== 'rule')
+    .map(step => ({
+      key: step.name,
+      description: getQualifiedStepName(step, steps)
+    }));
 
-  // Generate default rule dictionary
-  const ruleDictionary = [
-    { key: 'SUCCESS', description: 'Successful transition' },
-    { key: 'FAILURE', description: 'Failed transition' }
-  ];
+  // Generate rule dictionary from steps classified as rules
+  const ruleDictionary = steps
+    .filter(step => stepClassifications[step.id] === 'rule')
+    .map(step => ({
+      key: step.name,
+      description: getQualifiedStepName(step, steps)
+    }));
 
   return { stateDictionary, ruleDictionary };
 };
@@ -49,8 +53,20 @@ const getQualifiedStepName = (step, allSteps) => {
 /**
  * Convert flow diagram to state machine CSV rows
  */
-const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}) => {
+const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}, stateDictionary = [], ruleDictionary = []) => {
   const rows = [];
+  
+  // Helper function to lookup state name from description
+  const lookupStateName = (description) => {
+    const entry = stateDictionary.find(item => item.description === description);
+    return entry ? entry.key : `[UNKNOWN_STATE: ${description}]`;
+  };
+  
+  // Helper function to lookup rule name from description
+  const lookupRuleName = (description) => {
+    const entry = ruleDictionary.find(item => item.description === description);
+    return entry ? entry.key : `[UNKNOWN_RULE: ${description}]`;
+  };
   
   // Create a map of step IDs to qualified names
   const stepNameMap = new Map();
@@ -73,7 +89,8 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
   
   // Generate rows for each state step
   stateSteps.forEach(step => {
-    const sourceName = stepNameMap.get(step.id);
+    const sourceDescription = stepNameMap.get(step.id);
+    const sourceName = lookupStateName(sourceDescription);
     const stepConnections = connectionsBySource.get(step.id) || [];
     
     if (stepConnections.length === 0) {
@@ -89,11 +106,11 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
       // Add a row for each connection
       stepConnections.forEach(conn => {
         const destinationStep = steps.find(s => s.id === conn.toStepId);
-        const destinationName = stepNameMap.get(conn.toStepId) || '';
+        const destinationDescription = stepNameMap.get(conn.toStepId) || '';
         
         // Determine the rule and final destination
         let ruleKey;
-        let finalDestination = destinationName;
+        let finalDestination = '';
         
         // Check if the destination is a rule step
         if (stepClassifications[conn.toStepId] === 'rule') {
@@ -107,8 +124,9 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
             visited.add(currentStepId);
             
             if (stepClassifications[currentStepId] === 'rule') {
-              // Add this rule to the chain
-              ruleChain.push(stepNameMap.get(currentStepId));
+              // Add this rule to the chain (lookup the rule name)
+              const ruleDescription = stepNameMap.get(currentStepId);
+              ruleChain.push(lookupRuleName(ruleDescription));
               
               // Get the next connection
               const nextConnections = connectionsBySource.get(currentStepId) || [];
@@ -119,8 +137,9 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
                 currentStepId = null;
               }
             } else {
-              // Reached a state - this is our final destination
-              finalDestination = stepNameMap.get(currentStepId) || '';
+              // Reached a state - this is our final destination (lookup the state name)
+              const stateDescription = stepNameMap.get(currentStepId) || '';
+              finalDestination = lookupStateName(stateDescription);
               break;
             }
           }
@@ -134,7 +153,11 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
           }
         } else {
           // Normal state-to-state connection
-          ruleKey = conn.type === 'success' ? ruleMapping.success : ruleMapping.failure;
+          // Lookup the destination state name
+          finalDestination = lookupStateName(destinationDescription);
+          // Use the mapped rule from success/failure type
+          const ruleDescription = conn.type === 'success' ? ruleMapping.success : ruleMapping.failure;
+          ruleKey = lookupRuleName(ruleDescription);
         }
         
         rows.push({
@@ -206,7 +229,7 @@ const exportDictionary = (dictionary, filename) => {
 /**
  * Dictionary Editor Component
  */
-const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", valueLabel = "Description" }) => {
+const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", valueLabel = "Description", onUpload, onDownload, uploadId }) => {
   const handleAdd = () => {
     onChange([...dictionary, { key: '', description: '' }]);
   };
@@ -226,10 +249,24 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</h4>
-        <Button size="sm" variant="outline" onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-1" />
-          Add Entry
-        </Button>
+        <div className="flex gap-1">
+          <input
+            type="file"
+            accept=".json"
+            onChange={onUpload}
+            className="hidden"
+            id={uploadId}
+          />
+          <Button size="sm" variant="outline" onClick={() => document.getElementById(uploadId).click()} title="Upload">
+            <Upload className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={onDownload} title="Download">
+            <Download className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleAdd} title="Add Entry">
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
       <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-40 overflow-y-auto">
         <table className="w-full text-sm">
@@ -294,7 +331,10 @@ DictionaryEditor.propTypes = {
   onChange: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
   keyLabel: PropTypes.string,
-  valueLabel: PropTypes.string
+  valueLabel: PropTypes.string,
+  onUpload: PropTypes.func.isRequired,
+  onDownload: PropTypes.func.isRequired,
+  uploadId: PropTypes.string.isRequired
 };
 
 /**
@@ -309,27 +349,45 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   });
   // Track which steps are classified as rules vs states
   const [stepClassifications, setStepClassifications] = useState({});
+  // Track whether to show step classification section
+  const [showStepClassification, setShowStepClassification] = useState(false);
+  // Store editable CSV rows
+  const [editableRows, setEditableRows] = useState([]);
   
   // Initialize with default dictionaries when modal opens
   useEffect(() => {
     if (isOpen && steps.length > 0) {
-      const { stateDictionary: defaultStates, ruleDictionary: defaultRules } = generateDefaultDictionaries(steps);
-      setStateDictionary(defaultStates);
-      setRuleDictionary(defaultRules);
-      // Initialize from existing step types
+      // Initialize from existing step types first
       const initialClassifications = {};
       steps.forEach(step => {
         initialClassifications[step.id] = step.type || 'state';
       });
       setStepClassifications(initialClassifications);
+      
+      // Then generate dictionaries based on classifications
+      const { stateDictionary: defaultStates, ruleDictionary: defaultRules } = generateDefaultDictionaries(steps, initialClassifications);
+      setStateDictionary(defaultStates);
+      setRuleDictionary(defaultRules);
     }
   }, [isOpen, steps]);
   
   // Generate CSV preview data
   const csvRows = useMemo(() => {
     if (!isOpen) return [];
-    return convertToStateMachineRows(steps, connections, ruleMapping, stepClassifications);
-  }, [steps, connections, ruleMapping, stepClassifications, isOpen]);
+    return convertToStateMachineRows(steps, connections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary);
+  }, [steps, connections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary, isOpen]);
+  
+  // Update editable rows when csvRows change
+  useEffect(() => {
+    setEditableRows(csvRows);
+  }, [csvRows]);
+  
+  // Handle cell edit
+  const handleCellEdit = (rowIndex, field, value) => {
+    const newRows = [...editableRows];
+    newRows[rowIndex] = { ...newRows[rowIndex], [field]: value };
+    setEditableRows(newRows);
+  };
   
   // Handle dictionary file upload
   const handleDictionaryUpload = (e, type) => {
@@ -372,7 +430,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     try {
       const timestamp = new Date().toISOString().split('T')[0];
       const filename = `state_machine_export_${timestamp}.csv`;
-      await exportCSV(csvRows, filename);
+      await exportCSV(editableRows, filename);
       toast.success(`CSV exported: ${filename}`);
       onClose();
     } catch (error) {
@@ -407,85 +465,24 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
-          {/* Dictionary Management Section */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Dictionary Management</h3>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" onClick={handleAutoGenerate}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Auto-Generate Dictionaries
-              </Button>
-              <div>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={(e) => handleDictionaryUpload(e, 'state')}
-                  className="hidden"
-                  id="upload-state-dict"
-                />
-                <Button size="sm" variant="outline" onClick={() => document.getElementById('upload-state-dict').click()}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload State Dictionary
-                </Button>
-              </div>
-              <div>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={(e) => handleDictionaryUpload(e, 'rule')}
-                  className="hidden"
-                  id="upload-rule-dict"
-                />
-                <Button size="sm" variant="outline" onClick={() => document.getElementById('upload-rule-dict').click()}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Rule Dictionary
-                </Button>
-              </div>
-              <Button size="sm" variant="outline" onClick={handleExportStateDictionary}>
-                <Download className="w-4 h-4 mr-2" />
-                Download State Dictionary
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleExportRuleDictionary}>
-                <Download className="w-4 h-4 mr-2" />
-                Download Rule Dictionary
-              </Button>
-            </div>
-          </div>
-          
-          {/* Rule Mapping Configuration */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Rule Mapping Configuration</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Configure how success and failure connection types map to rule names in the CSV export.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="success-mapping">Success Path Rule Name</Label>
-                <Input
-                  id="success-mapping"
-                  value={ruleMapping.success}
-                  onChange={(e) => setRuleMapping(prev => ({ ...prev, success: e.target.value }))}
-                  placeholder="e.g., SUCCESS, APPROVED, PASS"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="failure-mapping">Failure Path Rule Name</Label>
-                <Input
-                  id="failure-mapping"
-                  value={ruleMapping.failure}
-                  onChange={(e) => setRuleMapping(prev => ({ ...prev, failure: e.target.value }))}
-                  placeholder="e.g., FAILURE, REJECTED, FAIL"
-                />
-              </div>
-            </div>
-          </div>
-          
           {/* Step Classification */}
           <div className="space-y-3">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Step Classification</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Classify each step as either a "State" (appears as Source/Destination Node) or "Rule" (appears in Rule List column).
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Step Classification</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Classify each step as either a "State" (appears as Source/Destination Node) or "Rule" (appears in Rule List column).
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowStepClassification(!showStepClassification)}
+              >
+                {showStepClassification ? 'Hide' : 'Show'}
+              </Button>
+            </div>
+            {showStepClassification && (
             <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-60 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
@@ -535,6 +532,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 </tbody>
               </table>
             </div>
+            )}
           </div>
           
           {/* Dictionary Editors */}
@@ -545,6 +543,9 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               title="State Dictionary"
               keyLabel="State Name"
               valueLabel="Description"
+              onUpload={(e) => handleDictionaryUpload(e, 'state')}
+              onDownload={handleExportStateDictionary}
+              uploadId="upload-state-dict"
             />
             <DictionaryEditor
               dictionary={ruleDictionary}
@@ -552,13 +553,16 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               title="Rule Dictionary"
               keyLabel="Rule Name"
               valueLabel="Description"
+              onUpload={(e) => handleDictionaryUpload(e, 'rule')}
+              onDownload={handleExportRuleDictionary}
+              uploadId="upload-rule-dict"
             />
           </div>
           
           {/* CSV Preview */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              CSV Preview ({csvRows.length} rows)
+              CSV Preview ({editableRows.length} rows)
             </h3>
             <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-80 overflow-auto">
               <table className="w-full text-sm">
@@ -572,20 +576,53 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                   </tr>
                 </thead>
                 <tbody>
-                  {csvRows.length === 0 ? (
+                  {editableRows.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                         No data to preview. Add steps and connections to your flow diagram.
                       </td>
                     </tr>
                   ) : (
-                    csvRows.map((row, index) => (
-                      <tr key={index} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.sourceNode}</td>
-                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.destinationNode || <span className="text-gray-400 italic">empty</span>}</td>
-                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.ruleList}</td>
-                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.priority}</td>
-                        <td className="px-3 py-2 text-gray-500 dark:text-gray-400 italic">empty</td>
+                    editableRows.map((row, index) => (
+                      <tr key={index} className="border-t border-gray-200 dark:border-gray-700">
+                        <td className="px-2 py-1">
+                          <Input
+                            value={row.sourceNode}
+                            onChange={(e) => handleCellEdit(index, 'sourceNode', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Input
+                            value={row.destinationNode}
+                            onChange={(e) => handleCellEdit(index, 'destinationNode', e.target.value)}
+                            className="h-8 text-sm"
+                            placeholder="empty"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Input
+                            value={row.ruleList}
+                            onChange={(e) => handleCellEdit(index, 'ruleList', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Input
+                            type="number"
+                            value={row.priority}
+                            onChange={(e) => handleCellEdit(index, 'priority', parseInt(e.target.value) || 50)}
+                            className="h-8 text-sm w-20"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Input
+                            value={row.operation}
+                            onChange={(e) => handleCellEdit(index, 'operation', e.target.value)}
+                            className="h-8 text-sm"
+                            placeholder="empty"
+                          />
+                        </td>
                       </tr>
                     ))
                   )}
