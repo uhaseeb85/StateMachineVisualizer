@@ -1348,37 +1348,6 @@ const StepPanel = ({
                 Add Step
               </Button>
             </div>
-            {/* Type selector for root steps */}
-            <div className="flex gap-2 items-center">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Type:</span>
-              <Button
-                type="button"
-                size="sm"
-                variant={newStepType === 'state' ? 'default' : 'outline'}
-                onClick={() => setNewStepType('state')}
-                className="h-7 px-3"
-              >
-                State
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={newStepType === 'rule' ? 'default' : 'outline'}
-                onClick={() => setNewStepType('rule')}
-                className="h-7 px-3"
-              >
-                Rule
-              </Button>
-            </div>
-            <Button
-              onClick={undoLastOperation}
-              disabled={operationHistory.length === 0}
-              variant="outline"
-              className="h-10"
-              title="Undo last operation"
-            >
-              <Undo2 className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Connection Selection Indicator */}
