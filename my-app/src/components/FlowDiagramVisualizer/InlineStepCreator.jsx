@@ -36,7 +36,8 @@ const InlineStepCreator = ({
     description: '',
     parentId: currentStep?.id || '', // Auto-set to current step if available
     autoConnect: !!currentStep,
-    connectionType: 'success'
+    connectionType: 'success',
+    type: 'state'
   });
 
   const handleCreate = () => {
@@ -53,7 +54,8 @@ const InlineStepCreator = ({
       assumptions: [],
       questions: [],
       imageUrls: [],
-      imageCaptions: []
+      imageCaptions: [],
+      type: formData.type
     };
 
     // Call onCreate and get the new step ID
@@ -73,7 +75,8 @@ const InlineStepCreator = ({
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success'
+      connectionType: 'success',
+      type: 'state'
     });
   };
 
@@ -83,7 +86,8 @@ const InlineStepCreator = ({
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success'
+      connectionType: 'success',
+      type: 'state'
     });
     onCancel();
   };
@@ -127,6 +131,37 @@ const InlineStepCreator = ({
             rows={2}
             className="w-full"
           />
+        </div>
+
+        {/* Step Type */}
+        <div>
+          <label className="text-sm font-medium mb-1 block">
+            Step Type
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, type: 'state'})}
+              className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
+                formData.type === 'state'
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >
+              State
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, type: 'rule'})}
+              className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
+                formData.type === 'rule'
+                  ? 'bg-purple-500 text-white border-purple-500'
+                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >
+              Rule
+            </button>
+          </div>
         </div>
 
         {/* Parent Step Selection */}

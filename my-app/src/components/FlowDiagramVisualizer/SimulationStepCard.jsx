@@ -101,6 +101,7 @@ const SimulationStepCard = ({
   const [formData, setFormData] = useState({
     name: step.name,
     description: step.description || '',
+    type: step.type || 'state',
     assumptions: step.assumptions || [],
     questions: step.questions || [],
     imageUrls: step.imageUrls || [],
@@ -119,6 +120,7 @@ const SimulationStepCard = ({
       setFormData({
         name: step.name,
         description: step.description || '',
+        type: step.type || 'state',
         assumptions: step.assumptions || [],
         questions: step.questions || [],
         imageUrls: step.imageUrls || [],
@@ -378,6 +380,36 @@ const SimulationStepCard = ({
                 className="w-full min-h-[80px]"
                 rows={3}
               />
+            </div>
+
+            {/* Step Type Selector */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                🏷️ Step Type
+              </label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={(formData.type || 'state') === 'state' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'state' })}
+                  className="flex-1"
+                >
+                  State
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={(formData.type || 'state') === 'rule' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'rule' })}
+                  className="flex-1"
+                >
+                  Rule
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                State: Main flow nodes • Rule: Conditions/logic
+              </p>
             </div>
 
             {/* Assumptions Section */}

@@ -41,13 +41,15 @@ const StepPanel = ({
   onRemoveConnection,
   onSave,
 }) => {
-  const [newStepName, setNewStepName] = useState('');
   const [selectedStep, setSelectedStep] = useState(null);
   const [connectionType, setConnectionType] = useState(null);
   const [connectionSourceId, setConnectionSourceId] = useState(null);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [addingSubStepFor, setAddingSubStepFor] = useState(null);
+  const [newStepName, setNewStepName] = useState('');
+  const [newStepType, setNewStepType] = useState('state');
   const [subStepName, setSubStepName] = useState('');
+  const [subStepType, setSubStepType] = useState('state');
   const [editingStepId, setEditingStepId] = useState(null);
   const [editedStepName, setEditedStepName] = useState('');
   const editInputRef = useRef(null);
@@ -228,9 +230,11 @@ const StepPanel = ({
         name: newStepName.trim(),
         description: '',
         expectedResponse: '',
-        parentId: null
+        parentId: null,
+        type: newStepType
       });
       setNewStepName('');
+      setNewStepType('state');
       toast.success('Step added successfully');
     }
   };
@@ -242,9 +246,11 @@ const StepPanel = ({
         name: subStepName.trim(),
         description: '',
         expectedResponse: '',
-        parentId: parentId
+        parentId: parentId,
+        type: subStepType
       });
       setSubStepName('');
+      setSubStepType('state');
       setAddingSubStepFor(null);
       setExpandedSteps(prev => ({
         ...prev,
@@ -1237,33 +1243,58 @@ const StepPanel = ({
 
         {/* Sub-step input form */}
         {addingSubStepFor === step.id && (
-          <div className="flex gap-2 mt-2" style={{ marginLeft: `${(level + 1) * 20}px` }}>
-            <Input
-              placeholder="Enter sub-step name..."
-              value={subStepName}
-              onChange={(e) => setSubStepName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddSubStep(step.id)}
-              className="h-8"
-              autoFocus
-            />
-            <Button
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => handleAddSubStep(step.id)}
-              disabled={!subStepName.trim()}
-            >
-              Add
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setAddingSubStepFor(null);
-                setSubStepName('');
-              }}
-            >
-              Cancel
-            </Button>
+          <div className="space-y-2 mt-2" style={{ marginLeft: `${(level + 1) * 20}px` }}>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter sub-step name..."
+                value={subStepName}
+                onChange={(e) => setSubStepName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddSubStep(step.id)}
+                className="h-8"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleAddSubStep(step.id)}
+                disabled={!subStepName.trim()}
+              >
+                Add
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setAddingSubStepFor(null);
+                  setSubStepName('');
+                  setSubStepType('state');
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+            {/* Type selector for sub-steps */}
+            <div className="flex gap-2 items-center">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Type:</span>
+              <Button
+                type="button"
+                size="sm"
+                variant={subStepType === 'state' ? 'default' : 'outline'}
+                onClick={() => setSubStepType('state')}
+                className="h-6 px-2 text-xs"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={subStepType === 'rule' ? 'default' : 'outline'}
+                onClick={() => setSubStepType('rule')}
+                className="h-6 px-2 text-xs"
+              >
+                Rule
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1299,22 +1330,46 @@ const StepPanel = ({
       <div className="border rounded-xl p-6 bg-background overflow-y-auto" style={{ width: `${leftPanelWidth}%` }}>
         <div className="space-y-4">
           {/* Add root step input */}
-          <div className="flex gap-2 sticky top-0 bg-background pb-4 border-b">
-            <Input
-              placeholder="Enter step name..."
-              value={newStepName}
-              onChange={(e) => setNewStepName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
-              className="h-10 flex-1"
-            />
-            <Button
-              onClick={handleAddRootStep}
-              disabled={!newStepName.trim()}
-              className="h-10"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Step
-            </Button>
+          <div className="space-y-2 sticky top-0 bg-background pb-4 border-b">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter step name..."
+                value={newStepName}
+                onChange={(e) => setNewStepName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
+                className="h-10 flex-1"
+              />
+              <Button
+                onClick={handleAddRootStep}
+                disabled={!newStepName.trim()}
+                className="h-10"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Step
+              </Button>
+            </div>
+            {/* Type selector for root steps */}
+            <div className="flex gap-2 items-center">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Type:</span>
+              <Button
+                type="button"
+                size="sm"
+                variant={newStepType === 'state' ? 'default' : 'outline'}
+                onClick={() => setNewStepType('state')}
+                className="h-7 px-3"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={newStepType === 'rule' ? 'default' : 'outline'}
+                onClick={() => setNewStepType('rule')}
+                className="h-7 px-3"
+              >
+                Rule
+              </Button>
+            </div>
             <Button
               onClick={undoLastOperation}
               disabled={operationHistory.length === 0}
@@ -1466,6 +1521,36 @@ const StepPanel = ({
                   disabled={false}
                   spellCheck={false}
                 />
+              </div>
+
+              {/* Step Type Selector */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  🏷️ Step Type
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={(selectedStep.type || 'state') === 'state' ? 'default' : 'outline'}
+                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'state' })}
+                    className="flex-1"
+                  >
+                    State
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={(selectedStep.type || 'state') === 'rule' ? 'default' : 'outline'}
+                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'rule' })}
+                    className="flex-1"
+                  >
+                    Rule
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  State: Main flow nodes • Rule: Conditions/logic
+                </p>
               </div>
 
               {/* Connections Section */}

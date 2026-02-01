@@ -272,6 +272,7 @@ const useFlowDiagram = (storageKey) => {
     const newStep = {
       id: uuidv4(),
       ...stepData,
+      type: stepData.type || 'state',
       position: stepData.position || { x: 0, y: 0 },
     };
     console.log('Created step with ID:', newStep.id);

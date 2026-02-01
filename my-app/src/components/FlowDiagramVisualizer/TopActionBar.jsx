@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
 import FlowDiagramToolsModal from './FlowDiagramToolsModal';
+import ConvertToStateMachineModal from './ConvertToStateMachineModal';
 
 const TopActionBar = ({
   onChangeMode,
@@ -48,6 +49,7 @@ const TopActionBar = ({
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const dropdownRef = useRef(null);
   const [showAnalysisToolsModal, setShowAnalysisToolsModal] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
 
   // Close dropdown when clicking outside
@@ -160,6 +162,10 @@ const TopActionBar = ({
 
   const handleCloseAnalysisTools = () => {
     setShowAnalysisToolsModal(false);
+  };
+
+  const handleConvertToStateMachine = () => {
+    setShowConvertModal(true);
   };
 
   return (
@@ -391,6 +397,7 @@ const TopActionBar = ({
         onShowAllAssumptionsQuestions={onShowAllAssumptionsQuestions}
         onShowActionHistory={onShowActionHistory}
         onShowComparer={onShowComparer}
+        onConvertToStateMachine={handleConvertToStateMachine}
         actionHistoryCount={actionHistoryCount}
         steps={steps}
         // Pass needed props for Generate Flow Diagram
@@ -398,6 +405,14 @@ const TopActionBar = ({
         selectedRootElement={selectedRootElement}
         setSelectedRootElement={setSelectedRootElement}
         onGenerateFlowDiagram={handleGenerateFlowDiagram}
+      />
+
+      {/* Convert to State Machine Modal */}
+      <ConvertToStateMachineModal
+        isOpen={showConvertModal}
+        onClose={() => setShowConvertModal(false)}
+        steps={steps}
+        connections={connections}
       />
 
 

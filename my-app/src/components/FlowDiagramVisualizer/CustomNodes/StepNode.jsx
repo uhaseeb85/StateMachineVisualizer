@@ -177,14 +177,22 @@ const StepNode = ({ data, isConnectable }) => {
         
         {/* Node content container */}
         <div className="p-3 flex-1 flex flex-col">
-          {/* Node label (step name) */}
-          <div className="font-medium text-center mb-1 overflow-hidden" style={{ 
-            wordWrap: 'break-word', 
-            hyphens: 'auto',
-            maxHeight: '60px',  // Allow for more vertical space
-            overflowY: 'auto'   // Add scrolling for very long names
-          }}>
-            {label}
+          {/* Node label (step name) with type badge */}
+          <div className="flex flex-col items-center gap-1 mb-1">
+            <div className="font-medium text-center overflow-hidden" style={{ 
+              wordWrap: 'break-word', 
+              hyphens: 'auto',
+              maxHeight: '60px',
+              overflowY: 'auto'
+            }}>
+              {label}
+            </div>
+            {/* Show badge if this is a rule-type step */}
+            {data.stepType === 'rule' && (
+              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-500 text-white">
+                RULE
+              </span>
+            )}
           </div>
           
           {/* Image display section */}

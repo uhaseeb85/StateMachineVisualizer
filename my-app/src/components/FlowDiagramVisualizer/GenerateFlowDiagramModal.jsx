@@ -245,6 +245,7 @@ const FlowDiagramContent = ({
             data: { 
               label: step.name,
               type,
+              stepType: step.type || 'state', // Pass step type for badge display
               description: step.description || "No description available",
               stepData: step, // Pass the full step data
             },

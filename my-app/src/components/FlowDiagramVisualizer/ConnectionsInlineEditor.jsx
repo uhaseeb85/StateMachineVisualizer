@@ -115,6 +115,7 @@ const ConnectionsInlineEditor = ({
       name: newStepName.trim(),
       description: newStepDescription.trim(),
       parentId: parentStepId || null,
+      type: 'state', // Default to state
       assumptions: [],
       questions: [],
       imageUrls: [],
