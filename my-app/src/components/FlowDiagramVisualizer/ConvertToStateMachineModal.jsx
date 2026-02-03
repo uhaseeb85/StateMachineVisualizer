@@ -56,6 +56,7 @@ const getQualifiedStepName = (step, allSteps) => {
  */
 const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}, stateDictionary = {}, ruleDictionary = {}) => {
   const rows = [];
+  let priority = 0; // Start priority at 0 and increment for each row
   
   // Helper function to lookup state name from description
   const lookupStateName = (description) => {
@@ -102,7 +103,7 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
         sourceNode: sourceName,
         destinationNode: '',
         ruleList: '',
-        priority: 50,
+        priority: priority++,
         operation: ''
       });
     } else {
@@ -166,7 +167,7 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
           sourceNode: sourceName,
           destinationNode: finalDestination,
           ruleList: ruleKey,
-          priority: 50,
+          priority: priority++,
           operation: ''
         });
       });
