@@ -179,8 +179,8 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
           // Normal state-to-state connection
           // Lookup the destination state name
           finalDestination = lookupStateName(destinationDescription);
-          // Direct state-to-state connections have no rules (success/failure are just outcomes)
-          ruleKey = '';
+          // Direct state-to-state connections use TRUE as the rule
+          ruleKey = 'TRUE';
         }
         
         rows.push({
