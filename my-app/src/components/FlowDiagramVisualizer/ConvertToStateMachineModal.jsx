@@ -10,29 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Download, Trash2, Plus, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { Upload, Download, Trash2, Plus, FileSpreadsheet, Edit, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
+import { getItem, setItem } from '@/utils/storageWrapper';
 
 /**
  * Generate default dictionaries from flow diagram data
  */
 const generateDefaultDictionaries = (steps, stepClassifications = {}) => {
-  // Generate state dictionary from steps classified as states
-  const stateDictionary = steps
+  // Generate state dictionary from steps classified as states (object format)
+  const stateDictionary = {};
+  steps
     .filter(step => stepClassifications[step.id] !== 'rule')
-    .map(step => ({
-      key: step.name,
-      description: getQualifiedStepName(step, steps)
-    }));
+    .forEach(step => {
+      stateDictionary[step.name] = getQualifiedStepName(step, steps);
+    });
 
-  // Generate rule dictionary from steps classified as rules
-  const ruleDictionary = steps
+  // Generate rule dictionary from steps classified as rules (object format)
+  const ruleDictionary = {};
+  steps
     .filter(step => stepClassifications[step.id] === 'rule')
-    .map(step => ({
-      key: step.name,
-      description: getQualifiedStepName(step, steps)
-    }));
+    .forEach(step => {
+      ruleDictionary[step.name] = getQualifiedStepName(step, steps);
+    });
 
   return { stateDictionary, ruleDictionary };
 };
@@ -53,19 +54,21 @@ const getQualifiedStepName = (step, allSteps) => {
 /**
  * Convert flow diagram to state machine CSV rows
  */
-const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}, stateDictionary = [], ruleDictionary = []) => {
+const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}, stateDictionary = {}, ruleDictionary = {}) => {
   const rows = [];
   
   // Helper function to lookup state name from description
   const lookupStateName = (description) => {
-    const entry = stateDictionary.find(item => item.description === description);
-    return entry ? entry.key : `[UNKNOWN_STATE: ${description}]`;
+    // Find key where value matches the description
+    const entry = Object.entries(stateDictionary).find(([key, value]) => value === description);
+    return entry ? entry[0] : `[UNKNOWN_STATE: ${description}]`;
   };
   
   // Helper function to lookup rule name from description
   const lookupRuleName = (description) => {
-    const entry = ruleDictionary.find(item => item.description === description);
-    return entry ? entry.key : `[UNKNOWN_RULE: ${description}]`;
+    // Find key where value matches the description
+    const entry = Object.entries(ruleDictionary).find(([key, value]) => value === description);
+    return entry ? entry[0] : `[UNKNOWN_RULE: ${description}]`;
   };
   
   // Create a map of step IDs to qualified names
@@ -155,9 +158,8 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
           // Normal state-to-state connection
           // Lookup the destination state name
           finalDestination = lookupStateName(destinationDescription);
-          // Use the mapped rule from success/failure type
-          const ruleDescription = conn.type === 'success' ? ruleMapping.success : ruleMapping.failure;
-          ruleKey = lookupRuleName(ruleDescription);
+          // Direct state-to-state connections have no rules (success/failure are just outcomes)
+          ruleKey = '';
         }
         
         rows.push({
@@ -230,26 +232,60 @@ const exportDictionary = (dictionary, filename) => {
  * Dictionary Editor Component
  */
 const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", valueLabel = "Description", onUpload, onDownload, uploadId }) => {
+  const [newKey, setNewKey] = useState('');
+  const [newValue, setNewValue] = useState('');
+
+  
+  const entries = useMemo(() => {
+    return Object.entries(dictionary || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [dictionary]);
+  
   const handleAdd = () => {
-    onChange([...dictionary, { key: '', description: '' }]);
+    const key = newKey.trim();
+    const value = newValue.trim();
+    if (!key || !value) {
+      toast.error(`Please provide both ${keyLabel.toLowerCase()} and ${valueLabel.toLowerCase()}`);
+      return;
+    }
+    if (dictionary[key]) {
+      toast.error(`${keyLabel} "${key}" already exists`);
+      return;
+    }
+    onChange({ ...dictionary, [key]: value });
+    setNewKey('');
+    setNewValue('');
   };
   
-  const handleDelete = (index) => {
-    const newDict = dictionary.filter((_, i) => i !== index);
+  const handleDelete = (key) => {
+    const newDict = { ...dictionary };
+    delete newDict[key];
     onChange(newDict);
   };
   
-  const handleChange = (index, field, value) => {
-    const newDict = [...dictionary];
-    newDict[index] = { ...newDict[index], [field]: value };
+  const handleUpdate = (oldKey, newKey, newValue) => {
+    const trimmedKey = newKey.trim();
+    const trimmedValue = newValue.trim();
+    if (!trimmedKey || !trimmedValue) {
+      toast.error('Both fields are required');
+      return;
+    }
+    if (trimmedKey !== oldKey && dictionary[trimmedKey]) {
+      toast.error(`${keyLabel} "${trimmedKey}" already exists`);
+      return;
+    }
+    const newDict = { ...dictionary };
+    if (trimmedKey !== oldKey) {
+      delete newDict[oldKey];
+    }
+    newDict[trimmedKey] = trimmedValue;
     onChange(newDict);
   };
   
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</h4>
-        <div className="flex gap-1">
+        <div className="flex gap-3">
           <input
             type="file"
             accept=".json"
@@ -258,59 +294,120 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
             id={uploadId}
           />
           <Button size="sm" variant="outline" onClick={() => document.getElementById(uploadId).click()} title="Upload">
-            <Upload className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="outline" onClick={onDownload} title="Download">
             <Download className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="outline" onClick={handleAdd} title="Add Entry">
-            <Plus className="w-4 h-4" />
+          <Button size="sm" variant="outline" onClick={onDownload} title="Download">
+            <Upload className="w-4 h-4" />
           </Button>
         </div>
       </div>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-40 overflow-y-auto">
-        <table className="w-full text-sm">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+        <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
             <tr>
-              <th className="px-2 py-1 text-left text-gray-700 dark:text-gray-300 font-medium">{keyLabel}</th>
-              <th className="px-2 py-1 text-left text-gray-700 dark:text-gray-300 font-medium">{valueLabel}</th>
-              <th className="px-2 py-1 w-10"></th>
+              <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300 font-medium">{keyLabel}</th>
+              <th className="px-4 py-3 text-left text-gray-700 dark:text-gray-300 font-medium">{valueLabel}</th>
+              <th className="px-4 py-3 w-10"></th>
             </tr>
           </thead>
           <tbody>
-            {dictionary.length === 0 ? (
+            {/* Add new entry row */}
+            <tr className="bg-blue-50 dark:bg-blue-950/30 border-b-2 border-blue-200 dark:border-blue-800">
+              <td className="px-4 py-3">
+                <Input
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                  className="h-10 text-sm"
+                  placeholder="New key..."
+                />
+              </td>
+              <td className="px-4 py-2">
+                <Input
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                  className="h-10 text-sm"
+                  placeholder="New value..."
+                />
+              </td>
+              <td className="px-4 py-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleAdd}
+                  disabled={!newKey.trim() || !newValue.trim()}
+                  className="h-8 w-8 p-0"
+                  title="Add entry (Enter)"
+                >
+                  <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </Button>
+              </td>
+            </tr>
+            
+            {/* Existing entries */}
+            {entries.length === 0 ? (
               <tr>
-                <td colSpan="3" className="px-2 py-4 text-center text-gray-500 dark:text-gray-400">
-                  No entries. Click "Add Entry" to create one.
+                <td colSpan="3" className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                  No entries yet. Add one above.
                 </td>
               </tr>
             ) : (
-              dictionary.map((entry, index) => (
-                <tr key={index} className="border-t border-gray-200 dark:border-gray-700">
-                  <td className="px-2 py-1">
+              entries.map(([key, value]) => (
+                <tr key={key} className="border-t border-gray-200 dark:border-gray-700">
+                  <td className="px-4 py-2">
                     <Input
-                      value={entry.key}
-                      onChange={(e) => handleChange(index, 'key', e.target.value)}
-                      className="h-7 text-xs"
-                      placeholder="Key"
+                      defaultValue={key}
+                      onBlur={(e) => {
+                        const newKey = e.target.value.trim();
+                        if (newKey && newKey !== key) {
+                          handleUpdate(key, newKey, value);
+                        } else if (!newKey) {
+                          e.target.value = key; // Restore if empty
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        } else if (e.key === 'Escape') {
+                          e.target.value = key;
+                          e.target.blur();
+                        }
+                      }}
+                      className="h-10 text-sm"
                     />
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="px-4 py-2">
                     <Input
-                      value={entry.description}
-                      onChange={(e) => handleChange(index, 'description', e.target.value)}
-                      className="h-7 text-xs"
-                      placeholder="Description"
+                      defaultValue={value}
+                      onBlur={(e) => {
+                        const newValue = e.target.value.trim();
+                        if (newValue && newValue !== value) {
+                          handleUpdate(key, key, newValue);
+                        } else if (!newValue) {
+                          e.target.value = value; // Restore if empty
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        } else if (e.key === 'Escape') {
+                          e.target.value = value;
+                          e.target.blur();
+                        }
+                      }}
+                      className="h-10 text-sm"
                     />
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="px-4 py-2">
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDelete(index)}
-                      className="h-7 w-7 p-0"
+                      onClick={() => handleDelete(key)}
+                      className="h-8 w-8 p-0"
+                      title="Delete"
                     >
-                      <Trash2 className="w-3 h-3 text-red-500" />
+                      <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   </td>
                 </tr>
@@ -324,10 +421,7 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
 };
 
 DictionaryEditor.propTypes = {
-  dictionary: PropTypes.arrayOf(PropTypes.shape({
-    key: PropTypes.string,
-    description: PropTypes.string
-  })).isRequired,
+  dictionary: PropTypes.objectOf(PropTypes.string).isRequired,
   onChange: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
   keyLabel: PropTypes.string,
@@ -341,8 +435,8 @@ DictionaryEditor.propTypes = {
  * Main Modal Component
  */
 const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => {
-  const [stateDictionary, setStateDictionary] = useState([]);
-  const [ruleDictionary, setRuleDictionary] = useState([]);
+  const [stateDictionary, setStateDictionary] = useState({});
+  const [ruleDictionary, setRuleDictionary] = useState({});
   const [ruleMapping, setRuleMapping] = useState({
     success: 'SUCCESS',
     failure: 'FAILURE'
@@ -351,25 +445,98 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   const [stepClassifications, setStepClassifications] = useState({});
   // Track whether to show step classification section
   const [showStepClassification, setShowStepClassification] = useState(false);
+  // Track whether to show dictionary editors
+  const [showStateDictionary, setShowStateDictionary] = useState(false);
+  const [showRuleDictionary, setShowRuleDictionary] = useState(false);
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
   
-  // Initialize with default dictionaries when modal opens
+  // Load persisted dictionaries on mount
+  useEffect(() => {
+    const loadPersistedDictionaries = async () => {
+      try {
+        const persistedStateDictionary = await getItem('flowDiagram_stateDictionary');
+        const persistedRuleDictionary = await getItem('flowDiagram_ruleDictionary');
+        const persistedStepClassifications = await getItem('flowDiagram_stepClassifications');
+        
+        if (persistedStateDictionary && Object.keys(persistedStateDictionary).length > 0) {
+          setStateDictionary(persistedStateDictionary);
+        }
+        if (persistedRuleDictionary && Object.keys(persistedRuleDictionary).length > 0) {
+          setRuleDictionary(persistedRuleDictionary);
+        }
+        if (persistedStepClassifications && Object.keys(persistedStepClassifications).length > 0) {
+          setStepClassifications(persistedStepClassifications);
+        }
+      } catch (error) {
+        console.error('Error loading persisted dictionaries:', error);
+      }
+    };
+    
+    if (isOpen) {
+      loadPersistedDictionaries();
+    }
+  }, [isOpen]);
+  
+  // Initialize with default dictionaries when modal opens (if not already persisted)
   useEffect(() => {
     if (isOpen && steps.length > 0) {
-      // Initialize from existing step types first
-      const initialClassifications = {};
-      steps.forEach(step => {
-        initialClassifications[step.id] = step.type || 'state';
-      });
-      setStepClassifications(initialClassifications);
-      
-      // Then generate dictionaries based on classifications
-      const { stateDictionary: defaultStates, ruleDictionary: defaultRules } = generateDefaultDictionaries(steps, initialClassifications);
-      setStateDictionary(defaultStates);
-      setRuleDictionary(defaultRules);
+      // Only generate defaults if dictionaries are empty
+      if (Object.keys(stateDictionary).length === 0 || Object.keys(ruleDictionary).length === 0) {
+        // Initialize from existing step types first, or from persisted classifications
+        const initialClassifications = Object.keys(stepClassifications).length > 0 
+          ? stepClassifications 
+          : {};
+        
+        // Fill in any missing classifications from step types
+        steps.forEach(step => {
+          if (!initialClassifications[step.id]) {
+            initialClassifications[step.id] = step.type || 'state';
+          }
+        });
+        
+        if (Object.keys(stepClassifications).length === 0) {
+          setStepClassifications(initialClassifications);
+        }
+        
+        // Then generate dictionaries based on classifications
+        const { stateDictionary: defaultStates, ruleDictionary: defaultRules } = generateDefaultDictionaries(steps, initialClassifications);
+        if (Object.keys(stateDictionary).length === 0) {
+          setStateDictionary(defaultStates);
+        }
+        if (Object.keys(ruleDictionary).length === 0) {
+          setRuleDictionary(defaultRules);
+        }
+      }
     }
-  }, [isOpen, steps]);
+  }, [isOpen, steps, stateDictionary, ruleDictionary, stepClassifications]);
+  
+  // Persist state dictionary whenever it changes
+  useEffect(() => {
+    if (isOpen && Object.keys(stateDictionary).length > 0) {
+      setItem('flowDiagram_stateDictionary', stateDictionary).catch(error => {
+        console.error('Error persisting state dictionary:', error);
+      });
+    }
+  }, [stateDictionary, isOpen]);
+  
+  // Persist rule dictionary whenever it changes
+  useEffect(() => {
+    if (isOpen && Object.keys(ruleDictionary).length > 0) {
+      setItem('flowDiagram_ruleDictionary', ruleDictionary).catch(error => {
+        console.error('Error persisting rule dictionary:', error);
+      });
+    }
+  }, [ruleDictionary, isOpen]);
+  
+  // Persist step classifications whenever they change
+  useEffect(() => {
+    if (isOpen && Object.keys(stepClassifications).length > 0) {
+      setItem('flowDiagram_stepClassifications', stepClassifications).catch(error => {
+        console.error('Error persisting step classifications:', error);
+      });
+    }
+  }, [stepClassifications, isOpen]);
   
   // Generate CSV preview data
   const csvRows = useMemo(() => {
@@ -398,7 +565,9 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target.result);
-        if (Array.isArray(json) && json.every(item => item.key !== undefined && item.description !== undefined)) {
+        // Check if it's an object with string values
+        if (typeof json === 'object' && !Array.isArray(json) && 
+            Object.values(json).every(v => typeof v === 'string')) {
           if (type === 'state') {
             setStateDictionary(json);
             toast.success('State dictionary loaded successfully');
@@ -407,7 +576,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
             toast.success('Rule dictionary loaded successfully');
           }
         } else {
-          toast.error('Invalid dictionary format. Expected array of {key, description} objects');
+          toast.error('Invalid dictionary format. Expected object with string values: {"key": "description"}');
         }
       } catch (error) {
         toast.error(`Error parsing JSON: ${error.message}`);
@@ -453,7 +622,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] w-[1400px] h-[90vh] flex flex-col bg-white dark:bg-gray-900">
+      <DialogContent className="max-w-[98vw] w-[1800px] h-[95vh] flex flex-col bg-white dark:bg-gray-900">
         <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6" />
@@ -465,100 +634,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
-          {/* Step Classification */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Step Classification</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Classify each step as either a "State" (appears as Source/Destination Node) or "Rule" (appears in Rule List column).
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowStepClassification(!showStepClassification)}
-              >
-                {showStepClassification ? 'Hide' : 'Show'}
-              </Button>
-            </div>
-            {showStepClassification && (
-            <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-60 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Step Name</th>
-                    <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Classification</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {steps.length === 0 ? (
-                    <tr>
-                      <td colSpan="2" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                        No steps available.
-                      </td>
-                    </tr>
-                  ) : (
-                    steps.map(step => {
-                      const qualifiedName = getQualifiedStepName(step, steps);
-                      const classification = stepClassifications[step.id] || 'state';
-                      return (
-                        <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                size="sm"
-                                variant={classification === 'state' ? 'default' : 'outline'}
-                                onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'state' }))}
-                                className="h-7 px-3"
-                              >
-                                State
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={classification === 'rule' ? 'default' : 'outline'}
-                                onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'rule' }))}
-                                className="h-7 px-3"
-                              >
-                                Rule
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            )}
-          </div>
-          
-          {/* Dictionary Editors */}
-          <div className="grid grid-cols-2 gap-4">
-            <DictionaryEditor
-              dictionary={stateDictionary}
-              onChange={setStateDictionary}
-              title="State Dictionary"
-              keyLabel="State Name"
-              valueLabel="Description"
-              onUpload={(e) => handleDictionaryUpload(e, 'state')}
-              onDownload={handleExportStateDictionary}
-              uploadId="upload-state-dict"
-            />
-            <DictionaryEditor
-              dictionary={ruleDictionary}
-              onChange={setRuleDictionary}
-              title="Rule Dictionary"
-              keyLabel="Rule Name"
-              valueLabel="Description"
-              onUpload={(e) => handleDictionaryUpload(e, 'rule')}
-              onDownload={handleExportRuleDictionary}
-              uploadId="upload-rule-dict"
-            />
-          </div>
-          
           {/* CSV Preview */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
@@ -629,6 +704,158 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 </tbody>
               </table>
             </div>
+          </div>
+          
+          {/* Dictionary Editors */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowStateDictionary(!showStateDictionary);
+                  setShowRuleDictionary(false);
+                  setShowStepClassification(false);
+                }}
+                className="gap-2"
+              >
+                {showStateDictionary ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    Hide State Dictionary ({Object.keys(stateDictionary).length})
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Show State Dictionary ({Object.keys(stateDictionary).length})
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowRuleDictionary(!showRuleDictionary);
+                  setShowStateDictionary(false);
+                  setShowStepClassification(false);
+                }}
+                className="gap-2"
+              >
+                {showRuleDictionary ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    Hide Rule Dictionary ({Object.keys(ruleDictionary).length})
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Show Rule Dictionary ({Object.keys(ruleDictionary).length})
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowStepClassification(!showStepClassification);
+                  setShowStateDictionary(false);
+                  setShowRuleDictionary(false);
+                }}
+                className="gap-2"
+              >
+                {showStepClassification ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    Hide Step Classification ({steps.length})
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Show Step Classification ({steps.length})
+                  </>
+                )}
+              </Button>
+            </div>
+            {showStateDictionary && (
+              <DictionaryEditor
+                dictionary={stateDictionary}
+                onChange={setStateDictionary}
+                title="State Dictionary"
+                keyLabel="State Name"
+                valueLabel="Description"
+                onUpload={(e) => handleDictionaryUpload(e, 'state')}
+                onDownload={handleExportStateDictionary}
+                uploadId="upload-state-dict"
+              />
+            )}
+            {showRuleDictionary && (
+              <DictionaryEditor
+                dictionary={ruleDictionary}
+                onChange={setRuleDictionary}
+                title="Rule Dictionary"
+                keyLabel="Rule Name"
+                valueLabel="Description"
+                onUpload={(e) => handleDictionaryUpload(e, 'rule')}
+                onDownload={handleExportRuleDictionary}
+                uploadId="upload-rule-dict"
+              />
+            )}
+            {showStepClassification && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Classify each step as either a "State" (appears as Source/Destination Node) or "Rule" (appears in Rule List column).
+                </p>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Step Name</th>
+                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Classification</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {steps.length === 0 ? (
+                        <tr>
+                          <td colSpan="2" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                            No steps available.
+                          </td>
+                        </tr>
+                      ) : (
+                        steps.map(step => {
+                          const qualifiedName = getQualifiedStepName(step, steps);
+                          const classification = stepClassifications[step.id] || 'state';
+                          return (
+                            <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
+                              <td className="px-3 py-2">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant={classification === 'state' ? 'default' : 'outline'}
+                                    onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'state' }))}
+                                    className="h-7 px-3"
+                                  >
+                                    State
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={classification === 'rule' ? 'default' : 'outline'}
+                                    onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'rule' }))}
+                                    className="h-7 px-3"
+                                  >
+                                    Rule
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
