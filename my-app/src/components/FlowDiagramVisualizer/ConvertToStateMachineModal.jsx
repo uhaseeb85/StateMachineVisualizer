@@ -445,9 +445,8 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   const [stepClassifications, setStepClassifications] = useState({});
   // Track whether to show step classification section
   const [showStepClassification, setShowStepClassification] = useState(false);
-  // Track whether to show dictionary editors
-  const [showStateDictionary, setShowStateDictionary] = useState(false);
-  const [showRuleDictionary, setShowRuleDictionary] = useState(false);
+  // Track active tab for dictionaries and classification
+  const [activeTab, setActiveTab] = useState(null); // 'state' | 'rule' | 'classification' | null
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
   
@@ -706,77 +705,41 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
             </div>
           </div>
           
-          {/* Dictionary Editors */}
+          {/* Dictionary and Classification Tabs */}
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowStateDictionary(!showStateDictionary);
-                  setShowRuleDictionary(false);
-                  setShowStepClassification(false);
-                }}
-                className="gap-2"
+            <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setActiveTab(activeTab === 'state' ? null : 'state')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'state'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
               >
-                {showStateDictionary ? (
-                  <>
-                    <ChevronUp className="h-4 w-4" />
-                    Hide State Dictionary ({Object.keys(stateDictionary).length})
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    Show State Dictionary ({Object.keys(stateDictionary).length})
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowRuleDictionary(!showRuleDictionary);
-                  setShowStateDictionary(false);
-                  setShowStepClassification(false);
-                }}
-                className="gap-2"
+                State Dictionary ({Object.keys(stateDictionary).length})
+              </button>
+              <button
+                onClick={() => setActiveTab(activeTab === 'rule' ? null : 'rule')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'rule'
+                    ? 'border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
               >
-                {showRuleDictionary ? (
-                  <>
-                    <ChevronUp className="h-4 w-4" />
-                    Hide Rule Dictionary ({Object.keys(ruleDictionary).length})
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    Show Rule Dictionary ({Object.keys(ruleDictionary).length})
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowStepClassification(!showStepClassification);
-                  setShowStateDictionary(false);
-                  setShowRuleDictionary(false);
-                }}
-                className="gap-2"
+                Rule Dictionary ({Object.keys(ruleDictionary).length})
+              </button>
+              <button
+                onClick={() => setActiveTab(activeTab === 'classification' ? null : 'classification')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'classification'
+                    ? 'border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
               >
-                {showStepClassification ? (
-                  <>
-                    <ChevronUp className="h-4 w-4" />
-                    Hide Step Classification ({steps.length})
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    Show Step Classification ({steps.length})
-                  </>
-                )}
-              </Button>
+                Step Classification ({steps.length})
+              </button>
             </div>
-            {showStateDictionary && (
+            {activeTab === 'state' && (
               <DictionaryEditor
                 dictionary={stateDictionary}
                 onChange={setStateDictionary}
@@ -788,7 +751,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 uploadId="upload-state-dict"
               />
             )}
-            {showRuleDictionary && (
+            {activeTab === 'rule' && (
               <DictionaryEditor
                 dictionary={ruleDictionary}
                 onChange={setRuleDictionary}
@@ -800,7 +763,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 uploadId="upload-rule-dict"
               />
             )}
-            {showStepClassification && (
+            {activeTab === 'classification' && (
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                   Classify each step as either a "State" (appears as Source/Destination Node) or "Rule" (appears in Rule List column).
