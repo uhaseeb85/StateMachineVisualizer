@@ -285,7 +285,7 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</h4>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <input
             type="file"
             accept=".json"
@@ -293,11 +293,13 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
             className="hidden"
             id={uploadId}
           />
-          <Button size="sm" variant="outline" onClick={() => document.getElementById(uploadId).click()} title="Upload">
+          <Button size="sm" variant="outline" onClick={() => document.getElementById(uploadId).click()} className="gap-2">
             <Download className="w-4 h-4" />
+            Import
           </Button>
-          <Button size="sm" variant="outline" onClick={onDownload} title="Download">
+          <Button size="sm" variant="outline" onClick={onDownload} className="gap-2">
             <Upload className="w-4 h-4" />
+            Export
           </Button>
         </div>
       </div>
