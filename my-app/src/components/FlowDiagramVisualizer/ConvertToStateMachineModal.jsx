@@ -52,6 +52,26 @@ const getQualifiedStepName = (step, allSteps) => {
 };
 
 /**
+ * Get all descendants of a step (children and grandchildren)
+ */
+const getDescendants = (stepId, allSteps) => {
+  const descendants = new Set();
+  const queue = [stepId];
+  
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    const children = allSteps.filter(s => s.parentId === currentId);
+    
+    children.forEach(child => {
+      descendants.add(child.id);
+      queue.push(child.id);
+    });
+  }
+  
+  return descendants;
+};
+
+/**
  * Convert flow diagram to state machine CSV rows
  */
 const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}, stateDictionary = {}, ruleDictionary = {}) => {
@@ -452,6 +472,44 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   const [activeTab, setActiveTab] = useState(null); // 'state' | 'rule' | 'classification' | null
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
+  // Track selected root steps
+  const [selectedRootSteps, setSelectedRootSteps] = useState(new Set());
+  
+  // Get all root steps (steps without parentId)
+  const rootSteps = useMemo(() => {
+    return steps.filter(step => !step.parentId);
+  }, [steps]);
+  
+  // Initialize selectedRootSteps with all root steps when modal opens
+  useEffect(() => {
+    if (isOpen && rootSteps.length > 0) {
+      setSelectedRootSteps(new Set(rootSteps.map(step => step.id)));
+    }
+  }, [isOpen, rootSteps]);
+  
+  // Filter steps based on selected root steps
+  const filteredSteps = useMemo(() => {
+    if (selectedRootSteps.size === 0) return [];
+    
+    const includedStepIds = new Set();
+    
+    // Add all selected root steps and their descendants
+    selectedRootSteps.forEach(rootStepId => {
+      includedStepIds.add(rootStepId);
+      const descendants = getDescendants(rootStepId, steps);
+      descendants.forEach(id => includedStepIds.add(id));
+    });
+    
+    return steps.filter(step => includedStepIds.has(step.id));
+  }, [steps, selectedRootSteps]);
+  
+  // Filter connections to only include those between filtered steps
+  const filteredConnections = useMemo(() => {
+    const filteredStepIds = new Set(filteredSteps.map(s => s.id));
+    return connections.filter(conn => 
+      filteredStepIds.has(conn.fromStepId) && filteredStepIds.has(conn.toStepId)
+    );
+  }, [connections, filteredSteps]);
   
   // Load persisted dictionaries on mount
   useEffect(() => {
@@ -540,11 +598,11 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     }
   }, [stepClassifications, isOpen]);
   
-  // Generate CSV preview data
+  // Generate CSV preview data using filtered steps and connections
   const csvRows = useMemo(() => {
     if (!isOpen) return [];
-    return convertToStateMachineRows(steps, connections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary);
-  }, [steps, connections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary, isOpen]);
+    return convertToStateMachineRows(filteredSteps, filteredConnections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary);
+  }, [filteredSteps, filteredConnections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary, isOpen]);
   
   // Update editable rows when csvRows change
   useEffect(() => {
@@ -556,6 +614,30 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     const newRows = [...editableRows];
     newRows[rowIndex] = { ...newRows[rowIndex], [field]: value };
     setEditableRows(newRows);
+  };
+  
+  // Handle root step selection toggle
+  const handleToggleRootStep = (stepId) => {
+    setSelectedRootSteps(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stepId)) {
+        newSet.delete(stepId);
+      } else {
+        newSet.add(stepId);
+      }
+      return newSet;
+    });
+  };
+  
+  // Handle select/deselect all root steps
+  const handleToggleAllRootSteps = () => {
+    if (selectedRootSteps.size === rootSteps.length) {
+      // Deselect all
+      setSelectedRootSteps(new Set());
+    } else {
+      // Select all
+      setSelectedRootSteps(new Set(rootSteps.map(step => step.id)));
+    }
   };
   
   // Handle dictionary file upload
@@ -656,7 +738,10 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                   {editableRows.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                        No data to preview. Add steps and connections to your flow diagram.
+                        {selectedRootSteps.size === 0 
+                          ? 'No root steps selected. Select at least one root step above.'
+                          : 'No data to preview. Add steps and connections to your flow diagram.'
+                        }
                       </td>
                     </tr>
                   ) : (
@@ -741,6 +826,16 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               >
                 Step Classification ({steps.length})
               </button>
+              <button
+                onClick={() => setActiveTab(activeTab === 'rootsteps' ? null : 'rootsteps')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'rootsteps'
+                    ? 'border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                Root Steps Selection ({selectedRootSteps.size}/{rootSteps.length})
+              </button>
             </div>
             {activeTab === 'state' && (
               <DictionaryEditor
@@ -765,6 +860,66 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 onDownload={handleExportRuleDictionary}
                 uploadId="upload-rule-dict"
               />
+            )}
+            {activeTab === 'rootsteps' && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Select which root steps and their descendants should be included in the conversion.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleToggleAllRootSteps}
+                    className="gap-2"
+                  >
+                    {selectedRootSteps.size === rootSteps.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                </div>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 w-10"></th>
+                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Root Step Name</th>
+                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Descendants</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rootSteps.length === 0 ? (
+                        <tr>
+                          <td colSpan="3" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                            No root steps available.
+                          </td>
+                        </tr>
+                      ) : (
+                        rootSteps.map(step => {
+                          const qualifiedName = getQualifiedStepName(step, steps);
+                          const isSelected = selectedRootSteps.has(step.id);
+                          const descendantCount = getDescendants(step.id, steps).size;
+                          
+                          return (
+                            <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <td className="px-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleRootStep(step.id)}
+                                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
+                              <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
+                                {descendantCount > 0 ? `${descendantCount}` : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
             {activeTab === 'classification' && (
               <div>
