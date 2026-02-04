@@ -406,9 +406,18 @@ const SimulationStepCard = ({
                 >
                   Rule
                 </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={(formData.type || 'state') === 'behavior' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                  className="flex-1"
+                >
+                  Behavior
+                </Button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                State: Main flow nodes • Rule: Conditions/logic
+                State: Main flow nodes • Rule: Conditions/logic • Behavior: Actions/outcomes
               </p>
             </div>
 

@@ -144,7 +144,7 @@ const InlineStepCreator = ({
               onClick={() => setFormData({...formData, type: 'state'})}
               className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
                 formData.type === 'state'
-                  ? 'bg-blue-500 text-white border-blue-500'
+                  ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
@@ -155,11 +155,22 @@ const InlineStepCreator = ({
               onClick={() => setFormData({...formData, type: 'rule'})}
               className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
                 formData.type === 'rule'
-                  ? 'bg-purple-500 text-white border-purple-500'
+                  ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Rule
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, type: 'behavior'})}
+              className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
+                formData.type === 'behavior'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >
+              Behavior
             </button>
           </div>
         </div>

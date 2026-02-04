@@ -189,8 +189,14 @@ const StepNode = ({ data, isConnectable }) => {
             </div>
             {/* Show badge if this is a rule-type step */}
             {data.stepType === 'rule' && (
-              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-500 text-white">
+              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-600 text-white">
                 RULE
+              </span>
+            )}
+            {/* Show badge if this is a behavior-type step */}
+            {data.stepType === 'behavior' && (
+              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-600 text-white">
+                BEHAVIOR
               </span>
             )}
           </div>
