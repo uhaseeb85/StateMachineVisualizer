@@ -1151,7 +1151,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   // Track which steps are classified as rules vs states vs behaviors
   const [stepClassifications, setStepClassifications] = useState({});
   // Track active tab for dictionaries and classification
-  const [activeTab, setActiveTab] = useState(null); // 'state' | 'rule' | 'classification' | 'rules' | null
+  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'state' | 'rule' | 'classification' | 'rules' | 'rootsteps' | null
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
   // Track selected root steps
@@ -1532,161 +1532,23 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
             </div>
           </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto py-4 space-y-6">
-          {/* Validation Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                Validation & Integrity
-              </h3>
-              <Button 
-                onClick={handleValidate} 
-                variant="outline"
-                className="gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Validate State Machine
-              </Button>
-            </div>
-            {validationResults && (
-              <ValidationResultsDisplay 
-                results={validationResults} 
-                onAddAllMissing={handleAddAllMissing}
-                hasUnmapped={editableRows.some(row => 
-                  row.sourceNode.includes('[UNKNOWN_') || 
-                  row.destinationNode.includes('[UNKNOWN_') || 
-                  row.ruleList.includes('[UNKNOWN_')
-                )}
-              />
-            )}
-          </div>
-
-          {/* CSV Preview */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                CSV Preview ({editableRows.length} rows)
-                {validationResults && (
-                  <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    validationResults.summary.errors > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
-                    'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                  }`}>
-                    {validationResults.summary.errors > 0 ? <AlertCircle className="w-3 h-3" /> :
-                     <CheckCircle2 className="w-3 h-3" />}
-                    {validationResults.summary.errors > 0 ? 'Error' : 'Valid'}
-                  </span>
-                )}
-              </h3>
-            </div>
-            <div 
-              ref={tableContainerRef}
-              className="border border-gray-200 dark:border-gray-700 rounded-md max-h-80 overflow-auto shadow-inner bg-gray-50/30"
-            >
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Source Node</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Destination Node</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Rule List</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Priority</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Operation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {editableRows.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                        {selectedRootSteps.size === 0 
-                          ? 'No root steps selected. Select at least one root step above.'
-                          : 'No data to preview. Add steps and connections to your flow diagram.'
-                        }
-                      </td>
-                    </tr>
-                  ) : (
-                    editableRows.map((row, index) => {
-                      const rowIssues = validationResults 
-                        ? validationResults.errors.filter(i => i.row === index)
-                        : [];
-                      
-                      const rowError = rowIssues.find(i => i.type === 'error');
-
-                      return (
-                        <React.Fragment key={`row-group-${index}`}>
-                          <tr 
-                            className={`border-t border-gray-200 dark:border-gray-700 transition-colors ${
-                              rowError ? 'bg-red-50/50 dark:bg-red-900/10' : ''
-                            }`}
-                          >
-                            <td className="px-2 py-1 relative">
-                              {rowIssues.some(i => i.message.includes('Source node')) && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" title="Source node issue" />
-                              )}
-                              <Input
-                                value={row.sourceNode}
-                                onChange={(e) => handleCellEdit(index, 'sourceNode', e.target.value)}
-                                className={`h-8 text-sm ${row.sourceNode.includes('[UNKNOWN_STATE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : ''}`}
-                              />
-                            </td>
-                            <td className="px-2 py-1 relative">
-                              {rowIssues.some(i => i.message.includes('Destination node')) && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" title="Destination node issue" />
-                              )}
-                              <Input
-                                value={row.destinationNode}
-                                onChange={(e) => handleCellEdit(index, 'destinationNode', e.target.value)}
-                                className={`h-8 text-sm ${row.destinationNode.includes('[UNKNOWN_STATE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : ''}`}
-                                placeholder="empty"
-                              />
-                            </td>
-                            <td className="px-2 py-1 relative">
-                              {rowIssues.some(i => i.id.startsWith('err-missing-rule')) && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" title="Missing rule issue" />
-                              )}
-                              <Input
-                                value={row.ruleList}
-                                onChange={(e) => handleCellEdit(index, 'ruleList', e.target.value)}
-                                className={`h-8 text-sm ${
-                                  row.ruleList.includes('[UNKNOWN_RULE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : 
-                                  !row.ruleList && row.destinationNode ? 'border-amber-300 dark:border-amber-900 bg-amber-50/30' : ''
-                                }`}
-                                placeholder={!row.ruleList && row.destinationNode ? "Needs rule..." : ""}
-                              />
-                            </td>
-                            <td className="px-2 py-1 text-center">
-                              <Input
-                                type="number"
-                                value={row.priority}
-                                onChange={(e) => handleCellEdit(index, 'priority', Number.parseInt(e.target.value, 10) || 50)}
-                                className="h-8 text-sm w-20 mx-auto"
-                              />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input
-                                value={row.operation}
-                                onChange={(e) => handleCellEdit(index, 'operation', e.target.value)}
-                                className="h-8 text-sm"
-                                placeholder="empty"
-                              />
-                            </td>
-                          </tr>
-                          {rowIssues.length > 0 && (
-                            <RowValidationDisplay issues={rowIssues} />
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
+        <div className="flex-1 overflow-y-auto py-4">
           {/* Dictionary and Classification Tabs */}
-          <div className="space-y-3">
-            <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
+          <div className="space-y-4">
+            <div className="flex items-center border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab(activeTab === 'csv' ? null : 'csv')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'csv'
+                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                CSV Preview ({editableRows.length})
+              </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'state' ? null : 'state')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'state'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
@@ -1696,7 +1558,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'rule' ? null : 'rule')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'rule'
                     ? 'border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
@@ -1706,7 +1568,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'classification' ? null : 'classification')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'classification'
                     ? 'border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
@@ -1716,7 +1578,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'rules' ? null : 'rules')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'rules'
                     ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
@@ -1726,7 +1588,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'rootsteps' ? null : 'rootsteps')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'rootsteps'
                     ? 'border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
@@ -1735,193 +1597,347 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 Root Steps Selection ({selectedRootSteps.size}/{rootSteps.length})
               </button>
             </div>
-            {activeTab === 'state' && (
-              <DictionaryEditor
-                dictionary={stateDictionary}
-                onChange={setStateDictionary}
-                title="State Dictionary"
-                keyLabel="State Name"
-                valueLabel="Description"
-                onUpload={(e) => handleDictionaryUpload(e, 'state')}
-                onDownload={handleExportStateDictionary}
-                uploadId="upload-state-dict"
-              />
-            )}
-            {activeTab === 'rule' && (
-              <DictionaryEditor
-                dictionary={ruleDictionary}
-                onChange={setRuleDictionary}
-                title="Rule Dictionary"
-                keyLabel="Rule Name"
-                valueLabel="Description"
-                onUpload={(e) => handleDictionaryUpload(e, 'rule')}
-                onDownload={handleExportRuleDictionary}
-                uploadId="upload-rule-dict"
-              />
-            )}
-            {activeTab === 'rootsteps' && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Select which root steps and their descendants should be included in the conversion.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleToggleAllRootSteps}
-                    className="gap-2"
-                  >
-                    {selectedRootSteps.size === rootSteps.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                </div>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 w-10"></th>
-                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Root Step Name</th>
-                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Descendants</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rootSteps.length === 0 ? (
-                        <tr>
-                          <td colSpan="3" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                            No root steps available.
-                          </td>
-                        </tr>
-                      ) : (
-                        rootSteps.map(step => {
-                          const qualifiedName = getQualifiedStepName(step, steps);
-                          const isSelected = selectedRootSteps.has(step.id);
-                          const descendantCount = getDescendants(step.id, steps).size;
-                          
-                          return (
-                            <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                              <td className="px-3 py-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleToggleRootStep(step.id)}
-                                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500 cursor-pointer"
-                                />
-                              </td>
-                              <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
-                              <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
-                                {descendantCount > 0 ? `${descendantCount}` : '-'}
+
+            <div className="pt-2">
+              {activeTab === 'csv' && (
+                <div className="space-y-6">
+                  {/* Validation Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        Validation & Integrity
+                      </h3>
+                      <Button 
+                        onClick={handleValidate} 
+                        variant="outline"
+                        className="gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Validate State Machine
+                      </Button>
+                    </div>
+                    {validationResults && (
+                      <ValidationResultsDisplay 
+                        results={validationResults} 
+                        onAddAllMissing={handleAddAllMissing}
+                        hasUnmapped={editableRows.some(row => 
+                          row.sourceNode.includes('[UNKNOWN_') || 
+                          row.destinationNode.includes('[UNKNOWN_') || 
+                          row.ruleList.includes('[UNKNOWN_')
+                        )}
+                      />
+                    )}
+                  </div>
+
+                  {/* CSV Preview Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        CSV Preview ({editableRows.length} rows)
+                        {validationResults && (
+                          <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            validationResults.summary.errors > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
+                            'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                          }`}>
+                            {validationResults.summary.errors > 0 ? <AlertCircle className="w-3 h-3" /> :
+                             <CheckCircle2 className="w-3 h-3" />}
+                            {validationResults.summary.errors > 0 ? 'Error' : 'Valid'}
+                          </span>
+                        )}
+                      </h3>
+                    </div>
+                    <div 
+                      ref={tableContainerRef}
+                      className="border border-gray-200 dark:border-gray-700 rounded-md max-h-[60vh] overflow-auto shadow-inner bg-gray-50/30"
+                    >
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Source Node</th>
+                            <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Destination Node</th>
+                            <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Rule List</th>
+                            <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Priority</th>
+                            <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Operation</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editableRows.length === 0 ? (
+                            <tr>
+                              <td colSpan="5" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                                {selectedRootSteps.size === 0 
+                                  ? 'No root steps selected. Select at least one root step in the "Root Steps Selection" tab.'
+                                  : 'No data to preview. Add steps and connections to your flow diagram.'
+                                }
                               </td>
                             </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {activeTab === 'classification' && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      Classify steps as State (node), Rule (condition), or Behavior (action that's skipped in CSV).
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                      <span>
-                        {filteredSteps.filter(s => (stepClassifications[s.id] || 'state') === 'state').length} States
-                      </span>
-                      <span>
-                        {filteredSteps.filter(s => stepClassifications[s.id] === 'rule').length} Rules
-                      </span>
-                      <span>
-                        {filteredSteps.filter(s => stepClassifications[s.id] === 'behavior').length} Behaviors
-                      </span>
+                          ) : (
+                            editableRows.map((row, index) => {
+                              const rowIssues = validationResults 
+                                ? validationResults.errors.filter(i => i.row === index)
+                                : [];
+                              
+                              const rowError = rowIssues.find(i => i.type === 'error');
+
+                              return (
+                                <React.Fragment key={`row-group-${index}`}>
+                                  <tr 
+                                    className={`border-t border-gray-200 dark:border-gray-700 transition-colors ${
+                                      rowError ? 'bg-red-50/50 dark:bg-red-900/10' : ''
+                                    }`}
+                                  >
+                                    <td className="px-2 py-1 relative">
+                                      {rowIssues.some(i => i.message.includes('Source node')) && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" title="Source node issue" />
+                                      )}
+                                      <Input
+                                        value={row.sourceNode}
+                                        onChange={(e) => handleCellEdit(index, 'sourceNode', e.target.value)}
+                                        className={`h-8 text-sm ${row.sourceNode.includes('[UNKNOWN_STATE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : ''}`}
+                                      />
+                                    </td>
+                                    <td className="px-2 py-1 relative">
+                                      {rowIssues.some(i => i.message.includes('Destination node')) && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" title="Destination node issue" />
+                                      )}
+                                      <Input
+                                        value={row.destinationNode}
+                                        onChange={(e) => handleCellEdit(index, 'destinationNode', e.target.value)}
+                                        className={`h-8 text-sm ${row.destinationNode.includes('[UNKNOWN_STATE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : ''}`}
+                                        placeholder="empty"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-1 relative">
+                                      {rowIssues.some(i => i.id.startsWith('err-missing-rule')) && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" title="Missing rule issue" />
+                                      )}
+                                      <Input
+                                        value={row.ruleList}
+                                        onChange={(e) => handleCellEdit(index, 'ruleList', e.target.value)}
+                                        className={`h-8 text-sm ${
+                                          row.ruleList.includes('[UNKNOWN_RULE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : 
+                                          !row.ruleList && row.destinationNode ? 'border-amber-300 dark:border-amber-900 bg-amber-50/30' : ''
+                                        }`}
+                                        placeholder={!row.ruleList && row.destinationNode ? "Needs rule..." : ""}
+                                      />
+                                    </td>
+                                    <td className="px-2 py-1 text-center">
+                                      <Input
+                                        type="number"
+                                        value={row.priority}
+                                        onChange={(e) => handleCellEdit(index, 'priority', Number.parseInt(e.target.value, 10) || 50)}
+                                        className="h-8 text-sm w-20 mx-auto"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <Input
+                                        value={row.operation}
+                                        onChange={(e) => handleCellEdit(index, 'operation', e.target.value)}
+                                        className="h-8 text-sm"
+                                        placeholder="empty"
+                                      />
+                                    </td>
+                                  </tr>
+                                  {rowIssues.length > 0 && (
+                                    <RowValidationDisplay issues={rowIssues} />
+                                  )}
+                                </React.Fragment>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const newClassifications = { ...stepClassifications };
-                      filteredSteps.forEach(step => {
-                        newClassifications[step.id] = detectStepType(step.name, classificationRules);
-                      });
-                      setStepClassifications(newClassifications);
-                      toast.success('Auto-detection completed');
-                    }}
-                    className="gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
-                    Auto-Detect Types
-                  </Button>
                 </div>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Step Name</th>
-                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Classification</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSteps.length === 0 ? (
+              )}
+              {activeTab === 'state' && (
+                <DictionaryEditor
+                  dictionary={stateDictionary}
+                  onChange={setStateDictionary}
+                  title="State Dictionary"
+                  keyLabel="State Name"
+                  valueLabel="Description"
+                  onUpload={(e) => handleDictionaryUpload(e, 'state')}
+                  onDownload={handleExportStateDictionary}
+                  uploadId="upload-state-dict"
+                />
+              )}
+              {activeTab === 'rule' && (
+                <DictionaryEditor
+                  dictionary={ruleDictionary}
+                  onChange={setRuleDictionary}
+                  title="Rule Dictionary"
+                  keyLabel="Rule Name"
+                  valueLabel="Description"
+                  onUpload={(e) => handleDictionaryUpload(e, 'rule')}
+                  onDownload={handleExportRuleDictionary}
+                  uploadId="upload-rule-dict"
+                />
+              )}
+              {activeTab === 'rootsteps' && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Select which root steps and their descendants should be included in the conversion.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleToggleAllRootSteps}
+                      className="gap-2"
+                    >
+                      {selectedRootSteps.size === rootSteps.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                  </div>
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                         <tr>
-                          <td colSpan="2" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                            No steps available. Select root steps above.
-                          </td>
+                          <th className="px-3 py-2 w-10"></th>
+                          <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Root Step Name</th>
+                          <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Descendants</th>
                         </tr>
-                      ) : (
-                        filteredSteps.map(step => {
-                          const qualifiedName = getQualifiedStepName(step, steps);
-                          const classification = stepClassifications[step.id] || 'state';
-                          return (
-                            <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                              <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
-                              <td className="px-3 py-2">
-                                <div className="flex items-center justify-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant={classification === 'state' ? 'default' : 'outline'}
-                                    onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'state' }))}
-                                    className="h-7 px-3"
-                                  >
-                                    State
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={classification === 'rule' ? 'default' : 'outline'}
-                                    onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'rule' }))}
-                                    className="h-7 px-3"
-                                  >
-                                    Rule
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={classification === 'behavior' ? 'default' : 'outline'}
-                                    onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'behavior' }))}
-                                    className="h-7 px-3"
-                                  >
-                                    Behavior
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {rootSteps.length === 0 ? (
+                          <tr>
+                            <td colSpan="3" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                              No root steps available.
+                            </td>
+                          </tr>
+                        ) : (
+                          rootSteps.map(step => {
+                            const qualifiedName = getQualifiedStepName(step, steps);
+                            const isSelected = selectedRootSteps.has(step.id);
+                            const descendantCount = getDescendants(step.id, steps).size;
+                            
+                            return (
+                              <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleRootStep(step.id)}
+                                    className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
+                                <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
+                                  {descendantCount > 0 ? `${descendantCount}` : '-'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
-            {activeTab === 'rules' && (
-              <ClassificationRulesEditor
-                rules={classificationRules}
-                onChange={setClassificationRules}
-                onExport={handleExportClassificationRules}
-                onRestoreDefaults={handleRestoreClassificationRulesDefaults}
-              />
-            )}
+              )}
+              {activeTab === 'classification' && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                        Classify steps as State (node), Rule (condition), or Behavior (action that's skipped in CSV).
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <span>
+                          {filteredSteps.filter(s => (stepClassifications[s.id] || 'state') === 'state').length} States
+                        </span>
+                        <span>
+                          {filteredSteps.filter(s => stepClassifications[s.id] === 'rule').length} Rules
+                        </span>
+                        <span>
+                          {filteredSteps.filter(s => stepClassifications[s.id] === 'behavior').length} Behaviors
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const newClassifications = { ...stepClassifications };
+                        filteredSteps.forEach(step => {
+                          newClassifications[step.id] = detectStepType(step.name, classificationRules);
+                        });
+                        setStepClassifications(newClassifications);
+                        toast.success('Auto-detection completed');
+                      }}
+                      className="gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                      Auto-Detect Types
+                    </Button>
+                  </div>
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Step Name</th>
+                          <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Classification</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSteps.length === 0 ? (
+                          <tr>
+                            <td colSpan="2" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                              No steps available. Select root steps above.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredSteps.map(step => {
+                            const qualifiedName = getQualifiedStepName(step, steps);
+                            const classification = stepClassifications[step.id] || 'state';
+                            return (
+                              <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={classification === 'state' ? 'default' : 'outline'}
+                                      onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'state' }))}
+                                      className="h-7 px-3"
+                                    >
+                                      State
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={classification === 'rule' ? 'default' : 'outline'}
+                                      onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'rule' }))}
+                                      className="h-7 px-3"
+                                    >
+                                      Rule
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={classification === 'behavior' ? 'default' : 'outline'}
+                                      onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'behavior' }))}
+                                      className="h-7 px-3"
+                                    >
+                                      Behavior
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'rules' && (
+                <ClassificationRulesEditor
+                  rules={classificationRules}
+                  onChange={setClassificationRules}
+                  onExport={handleExportClassificationRules}
+                  onRestoreDefaults={handleRestoreClassificationRulesDefaults}
+                />
+              )}
+            </div>
           </div>
         </div>
         
