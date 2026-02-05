@@ -41,7 +41,8 @@ const TopActionBar = ({
   canRedo,
   steps,
   connections,
-  currentFileName
+  currentFileName,
+  onUpdateStep
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -413,6 +414,7 @@ const TopActionBar = ({
         onClose={() => setShowConvertModal(false)}
         steps={steps}
         connections={connections}
+        onUpdateStep={onUpdateStep}
       />
 
 
@@ -439,7 +441,8 @@ TopActionBar.propTypes = {
   canRedo: PropTypes.bool.isRequired,
   steps: PropTypes.array,
   connections: PropTypes.array,
-  currentFileName: PropTypes.string
+  currentFileName: PropTypes.string,
+  onUpdateStep: PropTypes.func
 };
 
 export default TopActionBar;

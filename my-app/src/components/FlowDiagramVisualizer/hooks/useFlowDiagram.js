@@ -970,6 +970,7 @@ const useFlowDiagram = (storageKey) => {
                   name: row['Step Name'],
                   description: row['Description'] || '',
                   expectedResponse: row['Expected Response'] || '',
+                  type: 'state',
                   imageUrls: imageUrls,
                   imageUrl: imageUrls ? imageUrls[0] : null, // For backward compatibility
                   imageCaptions: imageCaptions,

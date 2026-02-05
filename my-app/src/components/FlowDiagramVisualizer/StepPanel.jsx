@@ -47,11 +47,7 @@ const StepPanel = ({
   const [expandedSteps, setExpandedSteps] = useState({});
   const [addingSubStepFor, setAddingSubStepFor] = useState(null);
   const [newStepName, setNewStepName] = useState('');
-  const [newStepAlias, setNewStepAlias] = useState('');
-  const [newStepType, setNewStepType] = useState('state');
   const [subStepName, setSubStepName] = useState('');
-  const [subStepAlias, setSubStepAlias] = useState('');
-  const [subStepType, setSubStepType] = useState('state');
   const [editingStepId, setEditingStepId] = useState(null);
   const [editedStepName, setEditedStepName] = useState('');
   const editInputRef = useRef(null);
@@ -230,15 +226,11 @@ const StepPanel = ({
     if (newStepName.trim()) {
       onAddStep({
         name: newStepName.trim(),
-        alias: newStepAlias.trim() || undefined,
         description: '',
         expectedResponse: '',
         parentId: null,
-        type: newStepType
       });
       setNewStepName('');
-      setNewStepAlias('');
-      setNewStepType('state');
       toast.success('Step added successfully');
     }
   };
@@ -248,15 +240,11 @@ const StepPanel = ({
     if (subStepName.trim()) {
       onAddStep({
         name: subStepName.trim(),
-        alias: subStepAlias.trim() || undefined,
         description: '',
         expectedResponse: '',
         parentId: parentId,
-        type: subStepType
       });
       setSubStepName('');
-      setSubStepAlias('');
-      setSubStepType('state');
       setAddingSubStepFor(null);
       setExpandedSteps(prev => ({
         ...prev,
@@ -1226,7 +1214,6 @@ const StepPanel = ({
                 e.stopPropagation();
                 setAddingSubStepFor(step.id);
                 setSubStepName('');
-                setSubStepAlias('');
               }}
               title="Add sub-step"
             >
@@ -1274,52 +1261,9 @@ const StepPanel = ({
                 onClick={() => {
                   setAddingSubStepFor(null);
                   setSubStepName('');
-                  setSubStepAlias('');
-                  setSubStepType('state');
                 }}
               >
                 Cancel
-              </Button>
-            </div>
-
-            <div className="flex gap-2">
-              <Input
-                placeholder="Alias (optional, used in CSV)"
-                value={subStepAlias}
-                onChange={(e) => setSubStepAlias(e.target.value)}
-                className="h-8"
-              />
-            </div>
-
-            {/* Type selector for sub-steps */}
-            <div className="flex gap-2 items-center">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Type:</span>
-              <Button
-                type="button"
-                size="sm"
-                variant={subStepType === 'state' ? 'default' : 'outline'}
-                onClick={() => setSubStepType('state')}
-                className="h-6 px-2 text-xs"
-              >
-                State
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={subStepType === 'rule' ? 'default' : 'outline'}
-                onClick={() => setSubStepType('rule')}
-                className="h-6 px-2 text-xs"
-              >
-                Rule
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={subStepType === 'behavior' ? 'default' : 'outline'}
-                onClick={() => setSubStepType('behavior')}
-                className="h-6 px-2 text-xs"
-              >
-                Behavior
               </Button>
             </div>
           </div>
@@ -1373,46 +1317,6 @@ const StepPanel = ({
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Step
-              </Button>
-            </div>
-
-            <div className="flex gap-2">
-              <Input
-                placeholder="Alias (optional, used in CSV)"
-                value={newStepAlias}
-                onChange={(e) => setNewStepAlias(e.target.value)}
-                className="h-10 flex-1"
-              />
-            </div>
-
-            <div className="flex gap-2 items-center">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Type:</span>
-              <Button
-                type="button"
-                size="sm"
-                variant={newStepType === 'state' ? 'default' : 'outline'}
-                onClick={() => setNewStepType('state')}
-                className="h-7 px-3 text-xs"
-              >
-                State
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={newStepType === 'rule' ? 'default' : 'outline'}
-                onClick={() => setNewStepType('rule')}
-                className="h-7 px-3 text-xs"
-              >
-                Rule
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={newStepType === 'behavior' ? 'default' : 'outline'}
-                onClick={() => setNewStepType('behavior')}
-                className="h-7 px-3 text-xs"
-              >
-                Behavior
               </Button>
             </div>
           </div>
@@ -1566,7 +1470,7 @@ const StepPanel = ({
                   <Button
                     type="button"
                     size="sm"
-                    variant={selectedStep.type === 'state' ? 'default' : 'outline'}
+                    variant={(selectedStep.type || 'state') === 'state' ? 'default' : 'outline'}
                     onClick={() => handleUpdateStep(selectedStep.id, { type: 'state' })}
                     className="h-8 px-3"
                   >
@@ -1575,7 +1479,7 @@ const StepPanel = ({
                   <Button
                     type="button"
                     size="sm"
-                    variant={selectedStep.type === 'rule' ? 'default' : 'outline'}
+                    variant={(selectedStep.type || 'state') === 'rule' ? 'default' : 'outline'}
                     onClick={() => handleUpdateStep(selectedStep.id, { type: 'rule' })}
                     className="h-8 px-3"
                   >
@@ -1584,7 +1488,7 @@ const StepPanel = ({
                   <Button
                     type="button"
                     size="sm"
-                    variant={selectedStep.type === 'behavior' ? 'default' : 'outline'}
+                    variant={(selectedStep.type || 'state') === 'behavior' ? 'default' : 'outline'}
                     onClick={() => handleUpdateStep(selectedStep.id, { type: 'behavior' })}
                     className="h-8 px-3"
                   >

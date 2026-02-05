@@ -24,69 +24,27 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
-import { getItem, setItem } from '@/utils/storageWrapper';
 import ConvertToStateMachineWelcomeModal from './ConvertToStateMachineWelcomeModal';
 
 /**
- * Default classification rules
+ * Auto-classify steps based on naming rules
+ * Rule 1: Ends with ? → rule
+ * Rule 2: ALL CAPS → state
  */
-const DEFAULT_CLASSIFICATION_RULES = {
-  stateKeywords: ['page', 'screen', 'view', 'dashboard', 'modal', 'popup', 'tab', 'window'],
-  behaviorKeywords: ['answers', 'choose', 'chooses', 'click', 'clicks', 'customer', 'enter', 'enters', 'input', 'inputs', 'provide', 'provides', 'response', 'select', 'selects', 'submit', 'submits', 'upload', 'uploads'],
-  ruleKeywords: ['is eligible', 'has', 'can', 'should', 'verify', 'verifies', 'check', 'checks', 'validate', 'validates']
-};
-
-/**
- * Detect step type based on step name keywords using configurable rules
- */
-const detectStepType = (stepName, rules = DEFAULT_CLASSIFICATION_RULES) => {
-  if (!stepName) return 'state';
+const autoClassifyStep = (stepName) => {
+  if (!stepName) return null;
   
-  const lowerName = stepName.toLowerCase().trim();
-  
-  // Priority rule 1: Anything that starts with 'ask' is a state
-  if (lowerName.startsWith('ask')) {
-    return 'state';
+  // Rule 1: Ends with ? → rule
+  if (stepName.trim().endsWith('?')) {
+    return 'rule';
   }
   
-  // Priority rule 2: Anything that is ALL CAPS is a state
+  // Rule 2: ALL CAPS (with at least one letter) → state
   if (/[A-Z]/.test(stepName) && stepName === stepName.toUpperCase()) {
     return 'state';
   }
-
-  // Priority rule 3: Anything with a question mark is a rule
-  if (stepName.includes('?')) {
-    return 'rule';
-  }
   
-  // Helper for word-boundary matching
-  const matchesKeyword = (keywords) => {
-    return (keywords || []).some(keyword => {
-      if (!keyword) return false;
-      const escapedKeyword = keyword.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\\$&`);
-      // Match as whole word or part of string based on keyword length/type
-      const regex = new RegExp(String.raw`\b${escapedKeyword}\b`, 'i');
-      return regex.test(lowerName);
-    });
-  };
-  
-  // Check for state keywords
-  if (matchesKeyword(rules.stateKeywords)) {
-    return 'state';
-  }
-  
-  // Check for behavior keywords (action-oriented)
-  if (matchesKeyword(rules.behaviorKeywords)) {
-    return 'behavior';
-  }
-  
-  // Check for rule keywords (conditional/validation)
-  if (matchesKeyword(rules.ruleKeywords)) {
-    return 'rule';
-  }
-  
-  // Default to state
-  return 'state';
+  return null; // No rule matches, keep existing type
 };
 
 /**
@@ -204,7 +162,7 @@ const resolveStateConnection = ({ toStepId, connectionsBySource, getStepType, ge
 /**
  * Convert flow diagram to state machine CSV rows
  */
-const convertToStateMachineRows = (steps, connections, classificationRules) => {
+const convertToStateMachineRows = (steps, connections) => {
   const rows = [];
   let priority = 0; // Start priority at 0 and increment for each row
 
@@ -213,7 +171,7 @@ const convertToStateMachineRows = (steps, connections, classificationRules) => {
   const getStepType = (stepId) => {
     const step = stepsById.get(stepId);
     if (!step) return 'state';
-    return step.type || detectStepType(step.name, classificationRules);
+    return step.type || 'state';
   };
 
   const getStepLabel = (stepId) => {
@@ -225,7 +183,7 @@ const convertToStateMachineRows = (steps, connections, classificationRules) => {
 
   // Separate steps into states (exclude both rules and behaviors)
   const stateSteps = steps.filter((step) => {
-    const stepType = step.type || detectStepType(step.name, classificationRules);
+    const stepType = step.type || 'state';
     return stepType !== 'rule' && stepType !== 'behavior';
   });
   
@@ -532,276 +490,133 @@ DictionaryEditor.propTypes = {
 };
 
 /**
- * Classification Rules Editor Component
+ * Step Classification Editor Component
  */
-const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefaults }) => {
-  const [newState, setNewState] = useState('');
-  const [newBehavior, setNewBehavior] = useState('');
-  const [newRule, setNewRule] = useState('');
-  const fileInputRef = useRef(null);
-
-  const handleAddState = () => {
-    const keyword = newState.trim().toLowerCase();
-    if (!keyword) {
-      toast.error('Please enter a state keyword');
-      return;
-    }
-    if (rules.stateKeywords?.includes(keyword)) {
-      toast.error(`State keyword "${keyword}" already exists`);
-      return;
-    }
-    onChange({
-      ...rules,
-      stateKeywords: [...(rules.stateKeywords || []), keyword].sort((a, b) => a.localeCompare(b))
-    });
-    setNewState('');
+const StepClassificationEditor = ({ steps, onUpdateStep, onRunAutoClassify }) => {
+  const getQualifiedName = (step, allSteps) => {
+    if (!step.parentId) return step.name;
+    const parent = allSteps.find(s => s.id === step.parentId);
+    if (!parent) return step.name;
+    const parentName = getQualifiedName(parent, allSteps);
+    return `${parentName} > ${step.name}`;
   };
 
-  const handleAddBehavior = () => {
-    const keyword = newBehavior.trim().toLowerCase();
-    if (!keyword) {
-      toast.error('Please enter a behavior keyword');
-      return;
-    }
-    if (rules.behaviorKeywords.includes(keyword)) {
-      toast.error(`Behavior keyword "${keyword}" already exists`);
-      return;
-    }
-    onChange({
-      ...rules,
-      behaviorKeywords: [...rules.behaviorKeywords, keyword].sort((a, b) => a.localeCompare(b))
-    });
-    setNewBehavior('');
-  };
-
-  const handleAddRule = () => {
-    const keyword = newRule.trim().toLowerCase();
-    if (!keyword) {
-      toast.error('Please enter a rule keyword');
-      return;
-    }
-    if (rules.ruleKeywords.includes(keyword)) {
-      toast.error(`Rule keyword "${keyword}" already exists`);
-      return;
-    }
-    onChange({
-      ...rules,
-      ruleKeywords: [...rules.ruleKeywords, keyword].sort((a, b) => a.localeCompare(b))
-    });
-    setNewRule('');
-  };
-
-  const handleRemoveState = (keyword) => {
-    const updated = rules.stateKeywords.filter((k) => k !== keyword);
-    onChange({ ...rules, stateKeywords: updated });
-  };
-
-  const handleRemoveBehavior = (keyword) => {
-    const updated = rules.behaviorKeywords.filter((k) => k !== keyword);
-    onChange({ ...rules, behaviorKeywords: updated });
-  };
-
-  const handleRemoveRule = (keyword) => {
-    const updated = rules.ruleKeywords.filter((k) => k !== keyword);
-    onChange({ ...rules, ruleKeywords: updated });
-  };
-
-  const handleImport = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const imported = JSON.parse(text);
-      if (!Array.isArray(imported.behaviorKeywords) || !Array.isArray(imported.ruleKeywords) || !Array.isArray(imported.stateKeywords)) {
-        toast.error('Invalid format: must contain "stateKeywords", "behaviorKeywords" and "ruleKeywords" arrays');
-        return;
-      }
-      if (!imported.behaviorKeywords.every(k => typeof k === 'string') || 
-          !imported.ruleKeywords.every(k => typeof k === 'string') ||
-          !imported.stateKeywords.every(k => typeof k === 'string')) {
-        toast.error('Invalid format: all keywords must be strings');
-        return;
-      }
-      onChange(imported);
-      toast.success('Classification rules imported successfully');
-    } catch (error) {
-      toast.error('Error parsing rules file: ' + error.message);
+  const handleTypeChange = (stepId, newType) => {
+    if (onUpdateStep) {
+      onUpdateStep(stepId, { type: newType });
+      toast.success('Step type updated');
     }
   };
 
   return (
     <div className="space-y-4 flex flex-col flex-1 overflow-hidden">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Keyword Classification Rules</h4>
-        <div className="flex gap-2">
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            className="hidden"
-            ref={fileInputRef}
-          />
-          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
-            <Download className="w-4 h-4" />
-            Import
-          </Button>
-          <Button size="sm" variant="outline" onClick={onExport} className="gap-2">
-            <Upload className="w-4 h-4" />
-            Export
-          </Button>
-          <Button size="sm" variant="outline" onClick={onRestoreDefaults} className="gap-2">
-            <RotateCcw className="w-4 h-4" />
-            Restore
+        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          Classify Step Types
+        </h4>
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Changes sync with Step Panel
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onRunAutoClassify}
+            disabled={!onRunAutoClassify || steps.length === 0}
+            className="h-7 px-3 text-xs"
+          >
+            Run Auto-Classification
           </Button>
         </div>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <h5 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">Priority Rules (Built-in)</h5>
+        <h5 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">
+          Auto-Classification Rules
+        </h5>
         <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-          <div>• Starts with &quot;ask&quot; → <strong>State</strong></div>
+          <div>• Ends with ? (e.g., &quot;is eligible?&quot;) → <strong>Rule</strong></div>
           <div>• ALL CAPS (e.g., &quot;DASHBOARD&quot;) → <strong>State</strong></div>
+          <div className="mt-2 italic">Auto-classification runs from this tab</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 flex-1 overflow-hidden">
-        <div className="space-y-3 flex flex-col overflow-hidden">
-          <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-            State Keywords
-          </h5>
-          <div className="flex gap-2">
-            <Input
-              value={newState}
-              onChange={(e) => setNewState(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddState()}
-              placeholder="e.g., page, screen..."
-              className="h-9 text-sm flex-1"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleAddState}
-              disabled={!newState.trim()}
-              className="h-9 w-9 p-0"
-            >
-              <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
-            </Button>
-          </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
-            {!rules.stateKeywords || rules.stateKeywords.length === 0 ? (
-              <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No state keywords</div>
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+            <tr>
+              <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">
+                Step Name
+              </th>
+              <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium w-48">
+                Type
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {steps.length === 0 ? (
+              <tr>
+                <td colSpan="2" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                  No steps to classify.
+                </td>
+              </tr>
             ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {rules.stateKeywords.map((keyword) => (
-                  <div key={keyword} className="px-3 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <code className="text-xs text-gray-700 dark:text-gray-300">{keyword}</code>
-                    <Button size="sm" variant="ghost" onClick={() => handleRemoveState(keyword)} className="h-6 w-6 p-0">
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              steps.map(step => {
+                const qualifiedName = getQualifiedName(step, steps);
+                const currentType = step.type || 'state';
+                
+                return (
+                  <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-3 py-2 text-gray-900 dark:text-gray-100">
+                      {qualifiedName}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={currentType === 'state' ? 'default' : 'outline'}
+                          onClick={() => handleTypeChange(step.id, 'state')}
+                          className="h-7 px-3 text-xs"
+                        >
+                          State
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={currentType === 'rule' ? 'default' : 'outline'}
+                          onClick={() => handleTypeChange(step.id, 'rule')}
+                          className="h-7 px-3 text-xs"
+                        >
+                          Rule
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={currentType === 'behavior' ? 'default' : 'outline'}
+                          onClick={() => handleTypeChange(step.id, 'behavior')}
+                          className="h-7 px-3 text-xs"
+                        >
+                          Behavior
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
-          </div>
-        </div>
-
-        <div className="space-y-3 flex flex-col overflow-hidden">
-          <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-            Behavior Keywords
-          </h5>
-          <div className="flex gap-2">
-            <Input
-              value={newBehavior}
-              onChange={(e) => setNewBehavior(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddBehavior()}
-              placeholder="e.g., clicks, enters..."
-              className="h-9 text-sm flex-1"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleAddBehavior}
-              disabled={!newBehavior.trim()}
-              className="h-9 w-9 p-0"
-            >
-              <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
-            </Button>
-          </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
-            {rules.behaviorKeywords.length === 0 ? (
-              <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No behavior keywords</div>
-            ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {rules.behaviorKeywords.map((keyword) => (
-                  <div key={keyword} className="px-3 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <code className="text-xs text-gray-700 dark:text-gray-300">{keyword}</code>
-                    <Button size="sm" variant="ghost" onClick={() => handleRemoveBehavior(keyword)} className="h-6 w-6 p-0">
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-3 flex flex-col overflow-hidden">
-          <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-            Rule Keywords
-          </h5>
-          <div className="flex gap-2">
-            <Input
-              value={newRule}
-              onChange={(e) => setNewRule(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddRule()}
-              placeholder="e.g., has, verify..."
-              className="h-9 text-sm flex-1"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleAddRule}
-              disabled={!newRule.trim()}
-              className="h-9 w-9 p-0"
-            >
-              <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
-            </Button>
-          </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
-            {rules.ruleKeywords.length === 0 ? (
-              <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No rule keywords</div>
-            ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {rules.ruleKeywords.map((keyword) => (
-                  <div key={keyword} className="px-3 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <code className="text-xs text-gray-700 dark:text-gray-300">{keyword}</code>
-                    <Button size="sm" variant="ghost" onClick={() => handleRemoveRule(keyword)} className="h-6 w-6 p-0">
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
 
-ClassificationRulesEditor.propTypes = {
-  rules: PropTypes.shape({
-    stateKeywords: PropTypes.arrayOf(PropTypes.string).isRequired,
-    behaviorKeywords: PropTypes.arrayOf(PropTypes.string).isRequired,
-    ruleKeywords: PropTypes.arrayOf(PropTypes.string).isRequired
-  }).isRequired,
-  onChange: PropTypes.func.isRequired,
-  onExport: PropTypes.func.isRequired,
-  onRestoreDefaults: PropTypes.func.isRequired
+StepClassificationEditor.propTypes = {
+  steps: PropTypes.array.isRequired,
+  onUpdateStep: PropTypes.func,
+  onRunAutoClassify: PropTypes.func
 };
 
 /**
@@ -982,10 +797,9 @@ RowValidationDisplay.propTypes = {
 /**
  * Main Modal Component
  */
-const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => {
-  const [classificationRules, setClassificationRules] = useState(DEFAULT_CLASSIFICATION_RULES);
+const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpdateStep }) => {
   // Track active tab for dictionaries and classification
-  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'rules' | 'rootsteps' | null
+  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'rootsteps' | 'classify' | null
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
   // Track selected root steps
@@ -1046,56 +860,11 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     );
   }, [connections, filteredSteps]);
   
-  // Load persisted dictionaries and classification rules on mount
-  useEffect(() => {
-    const loadPersistedData = async () => {
-      try {
-        const persistedClassificationRules = await getItem('flowDiagram_classificationRules');
-        if (persistedClassificationRules) {
-          // Merge persisted rules with defaults to ensure new categories (like stateKeywords)
-          // and new default keywords (like customer) are present even if not in old storage
-          setClassificationRules({
-            ...DEFAULT_CLASSIFICATION_RULES,
-            ...persistedClassificationRules,
-            // Deep merge keywords arrays to be extra safe
-            stateKeywords: Array.from(new Set([
-              ...DEFAULT_CLASSIFICATION_RULES.stateKeywords, 
-              ...(persistedClassificationRules.stateKeywords || [])
-            ])).sort((a, b) => a.localeCompare(b)),
-            behaviorKeywords: Array.from(new Set([
-              ...DEFAULT_CLASSIFICATION_RULES.behaviorKeywords, 
-              ...(persistedClassificationRules.behaviorKeywords || [])
-            ])).sort((a, b) => a.localeCompare(b)),
-            ruleKeywords: Array.from(new Set([
-              ...DEFAULT_CLASSIFICATION_RULES.ruleKeywords, 
-              ...(persistedClassificationRules.ruleKeywords || [])
-            ])).sort((a, b) => a.localeCompare(b))
-          });
-        }
-      } catch (error) {
-        console.error('Error loading persisted data:', error);
-      }
-    };
-    
-    if (isOpen) {
-      loadPersistedData();
-    }
-  }, [isOpen]);
-
-  // Persist classification rules whenever they change
-  useEffect(() => {
-    if (isOpen) {
-      setItem('flowDiagram_classificationRules', classificationRules).catch(error => {
-        console.error('Error persisting classification rules:', error);
-      });
-    }
-  }, [classificationRules, isOpen]);
-  
   // Generate CSV preview data using filtered steps and connections
   const csvRows = useMemo(() => {
     if (!isOpen) return [];
-    return convertToStateMachineRows(filteredSteps, filteredConnections, classificationRules);
-  }, [filteredSteps, filteredConnections, classificationRules, isOpen]);
+    return convertToStateMachineRows(filteredSteps, filteredConnections);
+  }, [filteredSteps, filteredConnections, isOpen]);
   
   // Update editable rows when csvRows change
   useEffect(() => {
@@ -1156,6 +925,42 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     }
   };
 
+  const runAutoClassification = () => {
+    if (!onUpdateStep || filteredSteps.length === 0) {
+      return;
+    }
+
+    const typeUpdates = new Map();
+
+    filteredSteps.forEach(step => {
+      const suggestedType = autoClassifyStep(step.name);
+      if (suggestedType && step.type !== suggestedType) {
+        typeUpdates.set(step.id, suggestedType);
+      }
+    });
+
+    if (typeUpdates.size === 0) {
+      toast.info('No steps matched auto-classification rules');
+      return;
+    }
+
+    typeUpdates.forEach((type, stepId) => {
+      onUpdateStep(stepId, { type });
+    });
+
+    const updatedFilteredSteps = filteredSteps.map(step => {
+      if (typeUpdates.has(step.id)) {
+        return { ...step, type: typeUpdates.get(step.id) };
+      }
+      return step;
+    });
+
+    const updatedRows = convertToStateMachineRows(updatedFilteredSteps, filteredConnections);
+    setEditableRows(updatedRows);
+    setValidationResults(null);
+    toast.info(`Auto-classified ${typeUpdates.size} step(s)`);
+  };
+
   // Run validation
   const handleValidate = () => {
     const results = validateStateMachineRows(editableRows);
@@ -1167,18 +972,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     }
   };
 
-  // Export classification rules
-  const handleExportClassificationRules = () => {
-    const timestamp = new Date().toISOString().split('T')[0];
-    exportDictionary(classificationRules, `classification_rules_${timestamp}.json`);
-    toast.success('Classification rules exported');
-  };
-
-  // Restore classification rules to defaults
-  const handleRestoreClassificationRulesDefaults = () => {
-    setClassificationRules(DEFAULT_CLASSIFICATION_RULES);
-    toast.success('Classification rules restored to defaults');
-  };
   
   return (
     <>
@@ -1230,16 +1023,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 CSV Preview ({editableRows.length})
               </button>
               <button
-                onClick={() => setActiveTab(activeTab === 'rules' ? null : 'rules')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'rules'
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                Classification Rules
-              </button>
-              <button
                 onClick={() => setActiveTab(activeTab === 'rootsteps' ? null : 'rootsteps')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'rootsteps'
@@ -1248,6 +1031,16 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 }`}
               >
                 Root Steps Selection ({selectedRootSteps.size}/{rootSteps.length})
+              </button>
+              <button
+                onClick={() => setActiveTab(activeTab === 'classify' ? null : 'classify')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'classify'
+                    ? 'border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                Step Classification ({filteredSteps.length})
               </button>
             </div>
 
@@ -1452,13 +1245,12 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                   </div>
                 </div>
               )}
-              {activeTab === 'rules' && (
+              {activeTab === 'classify' && (
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <ClassificationRulesEditor
-                    rules={classificationRules}
-                    onChange={setClassificationRules}
-                    onExport={handleExportClassificationRules}
-                    onRestoreDefaults={handleRestoreClassificationRulesDefaults}
+                  <StepClassificationEditor
+                    steps={filteredSteps}
+                    onUpdateStep={onUpdateStep}
+                    onRunAutoClassify={runAutoClassification}
                   />
                 </div>
               )}
@@ -1499,7 +1291,8 @@ ConvertToStateMachineModal.propTypes = {
     fromStepId: PropTypes.string.isRequired,
     toStepId: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['success', 'failure']).isRequired
-  })).isRequired
+  })).isRequired,
+  onUpdateStep: PropTypes.func
 };
 
 export default ConvertToStateMachineModal;

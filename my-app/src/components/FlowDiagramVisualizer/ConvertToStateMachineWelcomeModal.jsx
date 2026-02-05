@@ -9,7 +9,7 @@ import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Network, Sparkles, Book, Filter, Download } from 'lucide-react';
+import { FileSpreadsheet, Network, Book, Filter, Download } from 'lucide-react';
 
 const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -32,10 +32,9 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="types">Step Types</TabsTrigger>
-            <TabsTrigger value="rules">Rules</TabsTrigger>
             <TabsTrigger value="aliases">Aliases</TabsTrigger>
             <TabsTrigger value="filters">Filters</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
@@ -61,10 +60,6 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
                   <span><strong>Step Types:</strong> Mark steps as State, Rule, or Behavior</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-500 font-bold">•</span>
-                  <span><strong>Auto-Detection:</strong> If a step has no type, the converter can infer it from naming rules</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
@@ -148,57 +143,6 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
                   <strong>⚠️ Important:</strong> If a behavior is directly connected to a state without a rule,
                   the export preview will flag it as an error (rule list missing) so you can insert a Rule step.
                 </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Rules Tab */}
-          <TabsContent value="rules" className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Sparkles className="w-8 h-8 text-amber-500 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Classification Rules (Auto-Detect)</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  The converter can infer a step&apos;s type from its name when <strong>step type</strong> isn&apos;t explicitly set.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">When are these rules used?</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  If you set a step&apos;s type (State / Rule / Behavior) in the step editors, that type is used.
-                  If a step has no type, the converter uses keyword-based rules to guess it.
-                </p>
-              </div>
-
-              <div className="border border-indigo-200 dark:border-indigo-800 rounded-lg p-4 bg-indigo-50 dark:bg-indigo-950/30">
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  ⚙️
-                  <span>Customize Detection Keywords</span>
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Use the <strong>Classification Rules</strong> tab to tune what counts as a State / Rule / Behavior.
-                </p>
-                <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                  <li>• Add/remove <strong>State Keywords</strong> (e.g., "page", "screen")</li>
-                  <li>• Add/remove <strong>Behavior Keywords</strong> (e.g., "click", "enter")</li>
-                  <li>• Add/remove <strong>Rule Keywords</strong> (e.g., "has", "verify")</li>
-                  <li>• <strong>Export</strong>/<strong>Import</strong> rules as JSON</li>
-                  <li>• <strong>Restore</strong> defaults anytime</li>
-                </ul>
-              </div>
-
-              <div className="border border-amber-200 dark:border-amber-800 rounded-lg p-4 bg-amber-50 dark:bg-amber-950/30">
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Priority Rules</span>
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  The auto-detect logic applies a few quick checks first (e.g., names starting with "ask" or ALL CAPS).
-                  Then it checks configured keywords.
-                </p>
               </div>
             </div>
           </TabsContent>

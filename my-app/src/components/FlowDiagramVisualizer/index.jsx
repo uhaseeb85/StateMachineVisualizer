@@ -232,6 +232,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           steps={steps}
           connections={connections}
           currentFileName={currentFileName}
+          onUpdateStep={updateStep}
         />
 
         {/* Main step panel for diagram editing */}
