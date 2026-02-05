@@ -4,7 +4,7 @@
  * Provides quick editing of name, description, assumptions, questions, and screenshots
  */
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   Dialog,
@@ -23,12 +23,18 @@ import {
   Pencil,
   Check,
   Image as ImageIcon,
-  Trash2,
   CheckCircle2,
   XCircle,
   Link as LinkIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+  reader.readAsDataURL(file);
+});
 
 /**
  * EditStepOverlay Component
@@ -46,7 +52,9 @@ import { toast } from 'sonner';
 const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection, onAddConnection, onAddStep }) => {
   const [formData, setFormData] = useState({
     name: step?.name || '',
+    alias: step?.alias || '',
     description: step?.description || '',
+    type: step?.type || 'state',
     assumptions: step?.assumptions || [],
     questions: step?.questions || [],
     imageUrls: step?.imageUrls || [],
@@ -67,11 +75,27 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const [connectionMode, setConnectionMode] = useState('existing'); // 'existing' or 'create'
   const [newStepData, setNewStepData] = useState({
     name: '',
+    alias: '',
     description: '',
-    parentId: ''
+    parentId: '',
+    type: 'state'
   });
   
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!step) return;
+    setFormData({
+      name: step.name || '',
+      alias: step.alias || '',
+      description: step.description || '',
+      type: step.type || 'state',
+      assumptions: step.assumptions || [],
+      questions: step.questions || [],
+      imageUrls: step.imageUrls || [],
+      imageCaptions: step.imageCaptions || []
+    });
+  }, [step?.id, isOpen]);
 
   const handleSave = () => {
     if (!formData.name.trim()) {
@@ -134,33 +158,38 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
     }
   };
 
-  const handleImageUpload = (e) => {
+  const appendImage = (imageUrl) => {
+    if (typeof imageUrl !== 'string') return;
+    setFormData((prev) => ({
+      ...prev,
+      imageUrls: [...prev.imageUrls, imageUrl],
+      imageCaptions: [...prev.imageCaptions, '']
+    }));
+  };
+
+  const handleImageUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach(file => {
+    for (const file of Array.from(files)) {
       if (!file.type.match('image.*')) {
         toast.error(`File "${file.name}" is not an image`);
-        return;
+        continue;
       }
 
       if (file.size > 2 * 1024 * 1024) {
         toast.error(`Image "${file.name}" is larger than 2MB`);
-        return;
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
-        setFormData(prev => ({
-          ...prev,
-          imageUrls: [...prev.imageUrls, imageUrl],
-          imageCaptions: [...prev.imageCaptions, '']
-        }));
+      try {
+        const imageUrl = await readFileAsDataUrl(file);
+        appendImage(imageUrl);
         toast.success('Screenshot added');
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch {
+        toast.error(`Failed to upload "${file.name}"`);
+      }
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -199,10 +228,11 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
         <div className="flex-1 overflow-y-auto px-6 space-y-4 py-4">
           {/* Step Name */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="edit-step-name" className="text-sm font-medium mb-1 block">
               📝 Step Name
             </label>
             <Input
+              id="edit-step-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter step name..."
@@ -210,12 +240,61 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
             />
           </div>
 
+          {/* Alias */}
+          <div>
+            <label htmlFor="edit-step-alias" className="text-sm font-medium mb-1 block">
+              🏷️ Alias (used in CSV)
+            </label>
+            <Input
+              id="edit-step-alias"
+              value={formData.alias}
+              onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+              placeholder="Optional (e.g., LOGIN_PAGE)"
+              className="w-full"
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <div className="text-sm font-medium mb-2 block">🧩 Type</div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'state' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'state' })}
+                className="h-8 px-3"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'rule' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'rule' })}
+                className="h-8 px-3"
+              >
+                Rule
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                className="h-8 px-3"
+              >
+                Behavior
+              </Button>
+            </div>
+          </div>
+
           {/* Description */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="edit-step-description" className="text-sm font-medium mb-1 block">
               📄 Description
             </label>
             <Textarea
+              id="edit-step-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter step description..."
@@ -230,7 +309,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <LinkIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  <label className="text-sm font-semibold">🔗 Connections from this step</label>
+                  <div className="text-sm font-semibold">🔗 Connections from this step</div>
                 </div>
                 {onAddConnection && !showConnectionCreator && (
                   <Button
@@ -255,7 +334,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                <div className="space-y-3">
                     {/* Connection Type Selector */}
                     <div>
-                      <label className="text-xs font-medium mb-2 block">Connection Type:</label>
+                      <div className="text-xs font-medium mb-2 block">Connection Type:</div>
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           size="sm"
@@ -301,7 +380,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
 
                     {/* Mode Selector */}
                     <div>
-                      <label className="text-xs font-medium mb-2 block">Target Mode:</label>
+                      <div className="text-xs font-medium mb-2 block">Target Mode:</div>
                       <div className="flex gap-4 mb-2">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -311,7 +390,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                             checked={connectionMode === 'existing'}
                             onChange={(e) => {
                               setConnectionMode(e.target.value);
-                              setNewStepData({ name: '', description: '', parentId: '' });
+                              setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
                             }}
                             className="w-4 h-4 text-purple-600"
                           />
@@ -337,8 +416,9 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                     {/* Existing Step Selector */}
                     {connectionMode === 'existing' && (
                       <div>
-                        <label className="text-xs font-medium mb-1 block">Select Step:</label>
+                        <label htmlFor="edit-step-connection-target" className="text-xs font-medium mb-1 block">Select Step:</label>
                         <select
+                          id="edit-step-connection-target"
                           value={newConnectionTarget}
                           onChange={(e) => setNewConnectionTarget(e.target.value)}
                           className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
@@ -378,8 +458,9 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                     {connectionMode === 'create' && (
                       <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600">
                         <div>
-                          <label className="text-xs font-medium mb-1 block">Step Name: *</label>
+                          <label htmlFor="edit-step-create-name" className="text-xs font-medium mb-1 block">Step Name: *</label>
                           <Input
+                            id="edit-step-create-name"
                             value={newStepData.name}
                             onChange={(e) => setNewStepData({ ...newStepData, name: e.target.value })}
                             placeholder="Enter new step name..."
@@ -387,8 +468,51 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                           />
                         </div>
                         <div>
-                          <label className="text-xs font-medium mb-1 block">Description:</label>
+                          <label htmlFor="edit-step-create-alias" className="text-xs font-medium mb-1 block">Alias (used in CSV):</label>
+                          <Input
+                            id="edit-step-create-alias"
+                            value={newStepData.alias}
+                            onChange={(e) => setNewStepData({ ...newStepData, alias: e.target.value })}
+                            placeholder="Optional (e.g., LOGIN_PAGE)"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium mb-2 block">Type:</div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={newStepData.type === 'state' ? 'default' : 'outline'}
+                              onClick={() => setNewStepData({ ...newStepData, type: 'state' })}
+                              className="h-7 px-2 text-xs"
+                            >
+                              State
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={newStepData.type === 'rule' ? 'default' : 'outline'}
+                              onClick={() => setNewStepData({ ...newStepData, type: 'rule' })}
+                              className="h-7 px-2 text-xs"
+                            >
+                              Rule
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={newStepData.type === 'behavior' ? 'default' : 'outline'}
+                              onClick={() => setNewStepData({ ...newStepData, type: 'behavior' })}
+                              className="h-7 px-2 text-xs"
+                            >
+                              Behavior
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <label htmlFor="edit-step-create-description" className="text-xs font-medium mb-1 block">Description:</label>
                           <Textarea
+                            id="edit-step-create-description"
                             value={newStepData.description}
                             onChange={(e) => setNewStepData({ ...newStepData, description: e.target.value })}
                             placeholder="Enter description (optional)..."
@@ -397,8 +521,9 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                           />
                         </div>
                         <div>
-                          <label className="text-xs font-medium mb-1 block">Parent Step (optional):</label>
+                          <label htmlFor="edit-step-create-parent" className="text-xs font-medium mb-1 block">Parent Step (optional):</label>
                           <select
+                            id="edit-step-create-parent"
                             value={newStepData.parentId}
                             onChange={(e) => setNewStepData({ ...newStepData, parentId: e.target.value })}
                             className="w-full h-8 rounded-md border border-gray-300 dark:border-gray-600 
@@ -481,12 +606,14 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                             // Create the new step
                             const newStepId = onAddStep({
                               name: newStepData.name.trim(),
+                              alias: newStepData.alias.trim() || undefined,
                               description: newStepData.description.trim(),
                               parentId: newStepData.parentId || null,
                               assumptions: [],
                               questions: [],
                               imageUrls: [],
-                              imageCaptions: []
+                              imageCaptions: [],
+                              type: newStepData.type
                             });
 
                             if (newStepId) {
@@ -496,7 +623,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                               
                               // Reset form
                               setShowConnectionCreator(false);
-                              setNewStepData({ name: '', description: '', parentId: '' });
+                              setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
                               setConnectionMode('existing');
                             }
                           }
@@ -517,7 +644,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                         onClick={() => {
                           setShowConnectionCreator(false);
                           setNewConnectionTarget('');
-                          setNewStepData({ name: '', description: '', parentId: '' });
+                          setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
                           setConnectionMode('existing');
                         }}
                       >
@@ -529,7 +656,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               )}
               
               {/* Success Connections */}
-              {connections.filter(c => c.fromStepId === step.id && c.type === 'success').length > 0 && (
+              {connections.some(c => c.fromStepId === step.id && c.type === 'success') && (
                 <div className="mb-3">
                   <div className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3" />
@@ -538,13 +665,13 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                   <div className="space-y-1">
                     {connections
                       .filter(c => c.fromStepId === step.id && c.type === 'success')
-                      .map((conn, idx) => {
+                      .map((conn) => {
                         const targetStep = allSteps.find(s => s.id === conn.toStepId);
                         if (!targetStep) return null;
                         
                         return (
                           <div 
-                            key={`success-${idx}`}
+                            key={`success-${conn.fromStepId}-${conn.toStepId}`}
                             className="flex items-center justify-between px-2 py-1 bg-green-100 dark:bg-green-800/40 rounded text-sm"
                           >
                             <div className="flex items-center gap-2">
@@ -571,7 +698,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               )}
 
               {/* Failure Connections */}
-              {connections.filter(c => c.fromStepId === step.id && c.type === 'failure').length > 0 && (
+              {connections.some(c => c.fromStepId === step.id && c.type === 'failure') && (
                 <div>
                   <div className="text-xs font-medium text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
                     <XCircle className="h-3 w-3" />
@@ -580,13 +707,13 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                   <div className="space-y-1">
                     {connections
                       .filter(c => c.fromStepId === step.id && c.type === 'failure')
-                      .map((conn, idx) => {
+                      .map((conn) => {
                         const targetStep = allSteps.find(s => s.id === conn.toStepId);
                         if (!targetStep) return null;
                         
                         return (
                           <div 
-                            key={`failure-${idx}`}
+                            key={`failure-${conn.fromStepId}-${conn.toStepId}`}
                             className="flex items-center justify-between px-2 py-1 bg-red-100 dark:bg-red-800/40 rounded text-sm"
                           >
                             <div className="flex items-center gap-2">
@@ -613,7 +740,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               )}
 
               {/* No connections message */}
-              {connections.filter(c => c.fromStepId === step.id).length === 0 && (
+              {!connections.some(c => c.fromStepId === step.id) && (
                 <div className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-2">
                   No connections from this step
                 </div>
@@ -624,11 +751,11 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           {/* Assumptions */}
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
             <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm font-semibold">💡 Assumptions ({formData.assumptions.length})</label>
+              <div className="text-sm font-semibold">💡 Assumptions ({formData.assumptions.length})</div>
             </div>
             <ul className="space-y-1 mb-2">
               {formData.assumptions.map((assumption, index) => (
-                <li key={index} className="flex items-center gap-2 bg-green-100 dark:bg-green-800/40 rounded px-2 py-1">
+                <li key={assumption} className="flex items-center gap-2 bg-green-100 dark:bg-green-800/40 rounded px-2 py-1">
                   {editingAssumptionIndex === index ? (
                     <>
                       <span className="font-semibold text-green-800 dark:text-green-200 min-w-[24px]">{index + 1}.</span>
@@ -705,11 +832,11 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           {/* Questions */}
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
             <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm font-semibold">❓ Questions ({formData.questions.length})</label>
+              <div className="text-sm font-semibold">❓ Questions ({formData.questions.length})</div>
             </div>
             <ul className="space-y-1 mb-2">
               {formData.questions.map((question, index) => (
-                <li key={index} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-800/40 rounded px-2 py-1">
+                <li key={question} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-800/40 rounded px-2 py-1">
                   {editingQuestionIndex === index ? (
                     <>
                       <span className="font-semibold text-blue-800 dark:text-blue-200 min-w-[24px]">{index + 1}.</span>
@@ -785,13 +912,13 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
 
           {/* Screenshots */}
           <div>
-            <label className="text-sm font-medium mb-2 block">
+            <div className="text-sm font-medium mb-2 block">
               📸 Screenshots ({formData.imageUrls.length})
-            </label>
+            </div>
             {formData.imageUrls.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 mb-2">
                 {formData.imageUrls.map((imageUrl, index) => (
-                  <div key={index} className="relative border rounded-md p-1 bg-gray-50 dark:bg-gray-800">
+                  <div key={imageUrl} className="relative border rounded-md p-1 bg-gray-50 dark:bg-gray-800">
                     <img
                       src={imageUrl}
                       alt={formData.imageCaptions[index] || `Screenshot ${index + 1}`}
@@ -852,7 +979,9 @@ EditStepOverlay.propTypes = {
   step: PropTypes.shape({
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
+    alias: PropTypes.string,
     description: PropTypes.string,
+    type: PropTypes.oneOf(['state', 'rule', 'behavior']),
     assumptions: PropTypes.arrayOf(PropTypes.string),
     questions: PropTypes.arrayOf(PropTypes.string),
     imageUrls: PropTypes.arrayOf(PropTypes.string),

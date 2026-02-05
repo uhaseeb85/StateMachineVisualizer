@@ -43,8 +43,10 @@ const CreateStepOverlay = ({
 }) => {
   const [formData, setFormData] = useState({
     name: '',
+    alias: '',
     description: '',
-    parentId: null
+    parentId: null,
+    type: 'state'
   });
   const [autoConnect, setAutoConnect] = useState(!!currentStep);
   const [connectionType, setConnectionType] = useState('success');
@@ -58,9 +60,10 @@ const CreateStepOverlay = ({
     // Create the new step
     const newStepId = onCreate({
       name: formData.name.trim(),
+      alias: formData.alias.trim() || undefined,
       description: formData.description.trim(),
       parentId: formData.parentId || null,
-      type: 'state'
+      type: formData.type
     });
 
     if (newStepId) {
@@ -77,7 +80,7 @@ const CreateStepOverlay = ({
       }
 
       // Reset form and close
-      setFormData({ name: '', description: '', parentId: null });
+      setFormData({ name: '', alias: '', description: '', parentId: null, type: 'state' });
       setAutoConnect(!!currentStep);
       setConnectionType('success');
       onClose();
@@ -86,7 +89,7 @@ const CreateStepOverlay = ({
 
   const handleCancel = () => {
     // Reset form
-    setFormData({ name: '', description: '', parentId: null });
+    setFormData({ name: '', alias: '', description: '', parentId: null, type: 'state' });
     setAutoConnect(!!currentStep);
     setConnectionType('success');
     onClose();
@@ -102,10 +105,11 @@ const CreateStepOverlay = ({
         <div className="space-y-4 py-4">
           {/* Step Name */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="create-step-name" className="text-sm font-medium mb-1 block">
               📝 Step Name *
             </label>
             <Input
+              id="create-step-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter step name..."
@@ -116,10 +120,11 @@ const CreateStepOverlay = ({
 
           {/* Description */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="create-step-description" className="text-sm font-medium mb-1 block">
               📄 Description
             </label>
             <Textarea
+              id="create-step-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter step description..."
@@ -128,12 +133,63 @@ const CreateStepOverlay = ({
             />
           </div>
 
+          {/* Alias */}
+          <div>
+            <label htmlFor="create-step-alias" className="text-sm font-medium mb-1 block">
+              🏷️ Alias (used in CSV)
+            </label>
+            <Input
+              id="create-step-alias"
+              value={formData.alias}
+              onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+              placeholder="Optional (e.g., LOGIN_PAGE)"
+              className="w-full"
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <div className="text-sm font-medium mb-2 block">
+              🧩 Type
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'state' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'state' })}
+                className="h-8 px-3"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'rule' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'rule' })}
+                className="h-8 px-3"
+              >
+                Rule
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                className="h-8 px-3"
+              >
+                Behavior
+              </Button>
+            </div>
+          </div>
+
           {/* Parent Step Selection */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="create-step-parent" className="text-sm font-medium mb-1 block">
               📂 Parent Step
             </label>
             <select
+              id="create-step-parent"
               value={formData.parentId || ''}
               onChange={(e) => setFormData({ ...formData, parentId: e.target.value || null })}
               className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 
@@ -196,9 +252,9 @@ const CreateStepOverlay = ({
               {/* Connection Type Selection */}
               {autoConnect && (
                 <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                  <label className="text-xs font-medium mb-2 block">
+                  <div className="text-xs font-medium mb-2 block">
                     Connection Type:
-                  </label>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       size="sm"

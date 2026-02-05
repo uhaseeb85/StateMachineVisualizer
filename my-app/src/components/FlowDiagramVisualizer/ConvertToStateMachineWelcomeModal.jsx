@@ -35,8 +35,8 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="types">Step Types</TabsTrigger>
-            <TabsTrigger value="classify">Classify</TabsTrigger>
-            <TabsTrigger value="dictionaries">Dictionaries</TabsTrigger>
+            <TabsTrigger value="rules">Rules</TabsTrigger>
+            <TabsTrigger value="aliases">Aliases</TabsTrigger>
             <TabsTrigger value="filters">Filters</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
           </TabsList>
@@ -60,15 +60,15 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
               <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
-                  <span><strong>Step Classification:</strong> Categorize steps as States, Rules, or Behaviors</span>
+                  <span><strong>Step Types:</strong> Mark steps as State, Rule, or Behavior</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
-                  <span><strong>Auto-Detection:</strong> Automatically classify steps based on keywords</span>
+                  <span><strong>Auto-Detection:</strong> If a step has no type, the converter can infer it from naming rules</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
-                  <span><strong>Dictionaries:</strong> Map flow diagram names to state machine names</span>
+                  <span><strong>Aliases:</strong> Export stable CSV identifiers using per-step aliases (fallback to step name)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
@@ -146,158 +146,98 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-2 text-xs">
                   <strong>⚠️ Important:</strong> If a behavior is directly connected to a state without a rule,
-                  it will be flagged with <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">&#123;BEHAVIOR: ...&#125;</code> in the CSV.
+                  the export preview will flag it as an error (rule list missing) so you can insert a Rule step.
                 </div>
               </div>
             </div>
           </TabsContent>
 
-          {/* Classification Tab */}
-          <TabsContent value="classify" className="space-y-4">
+          {/* Rules Tab */}
+          <TabsContent value="rules" className="space-y-4">
             <div className="flex items-start gap-3">
               <Sparkles className="w-8 h-8 text-amber-500 flex-shrink-0 mt-1" />
               <div>
-                <h3 className="font-semibold text-lg mb-2">Step Classification</h3>
+                <h3 className="font-semibold text-lg mb-2">Classification Rules (Auto-Detect)</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  You can classify steps manually, use auto-detection, or customize detection rules to speed up the process.
+                  The converter can infer a step&apos;s type from its name when <strong>step type</strong> isn&apos;t explicitly set.
                 </p>
               </div>
             </div>
 
             <div className="space-y-3">
-              {/* Manual Classification */}
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <span>Manual Classification</span>
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  In the <strong>Step Classification</strong> section, you'll see a table with all your steps.
-                  Click the buttons next to each step to classify it:
+                <h4 className="font-semibold mb-2">When are these rules used?</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  If you set a step&apos;s type (State / Rule / Behavior) in the step editors, that type is used.
+                  If a step has no type, the converter uses keyword-based rules to guess it.
                 </p>
-                <div className="flex items-center justify-center gap-2 mb-2 p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                  <Button size="sm" className="h-7 px-3">State</Button>
-                  <Button size="sm" className="h-7 px-3">Rule</Button>
-                  <Button size="sm" className="h-7 px-3">Behavior</Button>
-                </div>
               </div>
 
-              {/* Custom Classification Rules */}
               <div className="border border-indigo-200 dark:border-indigo-800 rounded-lg p-4 bg-indigo-50 dark:bg-indigo-950/30">
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
                   ⚙️
-                  <span>Customize Detection Rules</span>
+                  <span>Customize Detection Keywords</span>
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  The <strong>Classification Rules</strong> tab allows you to customize the keywords used for auto-detection. You can:
+                  Use the <strong>Classification Rules</strong> tab to tune what counts as a State / Rule / Behavior.
                 </p>
                 <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                  <li>• Add or remove <strong>Behavior Keywords</strong> (e.g., "clicks", "enters")</li>
-                  <li>• Add or remove <strong>Rule Keywords</strong> (e.g., "has", "verify")</li>
-                  <li>• <strong>Export</strong> your custom rules as JSON for reuse</li>
-                  <li>• <strong>Import</strong> previously saved rules</li>
-                  <li>• <strong>Restore</strong> default built-in rules anytime</li>
+                  <li>• Add/remove <strong>State Keywords</strong> (e.g., "page", "screen")</li>
+                  <li>• Add/remove <strong>Behavior Keywords</strong> (e.g., "click", "enter")</li>
+                  <li>• Add/remove <strong>Rule Keywords</strong> (e.g., "has", "verify")</li>
+                  <li>• <strong>Export</strong>/<strong>Import</strong> rules as JSON</li>
+                  <li>• <strong>Restore</strong> defaults anytime</li>
                 </ul>
               </div>
 
-              {/* Auto-Detection */}
               <div className="border border-amber-200 dark:border-amber-800 rounded-lg p-4 bg-amber-50 dark:bg-amber-950/30">
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  <span>Auto-Detection Rules</span>
+                  <span>Priority Rules</span>
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Click the <strong>"Auto-Detect Types"</strong> button to automatically classify steps based on
-                  naming conventions:
-                </p>
-                <div className="space-y-3 mt-2 text-xs">
-                  <div>
-                    <strong className="text-blue-600 dark:text-blue-400">State Keywords & Rules:</strong>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 mt-1 font-mono">
-                      • Starts with "ask" (e.g., "ask user for SSN")<br />
-                      • ALL CAPS names (e.g., "DASHBOARD")<br />
-                      • Keywords: page, screen, view, dashboard, modal, popup, tab, window
-                    </div>
-                  </div>
-                  <div>
-                    <strong className="text-amber-600 dark:text-amber-400">Behavior Keywords:</strong>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 mt-1 font-mono">
-                      answers, choose, chooses, click, clicks, customer, enter, enters, input, inputs, provide, provides, response, select, selects, submit, submits, upload, uploads
-                    </div>
-                  </div>
-                  <div>
-                    <strong className="text-purple-600 dark:text-purple-400">Rule Keywords:</strong>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 mt-1 font-mono">
-                      is eligible, has, can, should, verify, verifies, check, checks, validate, validates
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  The classification follows this order: Priority Rules (State) → State Keywords → Behavior Keywords → Rule Keywords.
-                </p>
-              </div>
-
-              {/* Type Counts */}
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  The classification section shows counts: <strong>X States • Y Rules • Z Behaviors</strong>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  The auto-detect logic applies a few quick checks first (e.g., names starting with "ask" or ALL CAPS).
+                  Then it checks configured keywords.
                 </p>
               </div>
             </div>
           </TabsContent>
 
-          {/* Dictionaries Tab */}
-          <TabsContent value="dictionaries" className="space-y-4">
+          {/* Aliases Tab */}
+          <TabsContent value="aliases" className="space-y-4">
             <div className="flex items-start gap-3">
               <Book className="w-8 h-8 text-green-500 flex-shrink-0 mt-1" />
               <div>
-                <h3 className="font-semibold text-lg mb-2">Name Mapping Dictionaries</h3>
+                <h3 className="font-semibold text-lg mb-2">Step Aliases (CSV Identifiers)</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Dictionaries map your flow diagram step names to cleaner state machine names in the CSV.
+                  Aliases let you export clean, stable identifiers without changing the visible step name.
                 </p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Why Use Dictionaries?</h4>
+                <h4 className="font-semibold mb-2">How aliases work</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Your flow diagram might have verbose descriptive names like "Customer enters Social Security Number",
-                  but your state machine CSV might need shorter names like "ENTER_SSN" or "ProvideSSN".
+                  When exporting CSV, the converter uses <strong>step.alias</strong> if present. If alias is empty,
+                  it falls back to the step name.
                 </p>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs">
-                  <strong>Example Mapping:</strong>
+                  <strong>Example:</strong>
                   <div className="mt-2 space-y-1 font-mono">
-                    <div>"Login Page" → "LOGIN"</div>
-                    <div>"User Dashboard Screen" → "DASHBOARD"</div>
-                    <div>"is eligible for benefits" → "CHECK_ELIGIBILITY"</div>
+                    <div>Step name: "Login Page" • Alias: "LOGIN" → CSV: "LOGIN"</div>
+                    <div>Step name: "is eligible for benefits" • Alias: "CHECK_ELIGIBILITY" → CSV: "CHECK_ELIGIBILITY"</div>
+                    <div>Step name: "Dashboard" • Alias: (empty) → CSV: "Dashboard"</div>
                   </div>
                 </div>
               </div>
 
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Two Dictionary Types</h4>
-                <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 font-bold">•</span>
-                    <span><strong>State Dictionary:</strong> Maps state-type steps to their CSV names</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-purple-500 font-bold">•</span>
-                    <span><strong>Rule Dictionary:</strong> Maps rule-type steps to their CSV names</span>
-                  </li>
-                </ul>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Note: Behaviors are excluded from both dictionaries since they don't appear in the CSV.
-                </p>
-              </div>
-
               <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50 dark:bg-blue-950/30">
-                <h4 className="font-semibold mb-2">Managing Dictionaries</h4>
+                <h4 className="font-semibold mb-2">Best practices</h4>
                 <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                  <li>• Add, edit, or delete entries directly in the table</li>
-                  <li>• Import dictionary JSON files from previous sessions</li>
-                  <li>• Export dictionaries to reuse across projects</li>
-                  <li>• Dictionaries are automatically saved to browser storage</li>
+                  <li>• Keep aliases unique within a diagram</li>
+                  <li>• Prefer stable formats like `SOME_STATE` / `CHECK_SOMETHING`</li>
+                  <li>• Use aliases to match downstream tool naming requirements</li>
                 </ul>
               </div>
             </div>

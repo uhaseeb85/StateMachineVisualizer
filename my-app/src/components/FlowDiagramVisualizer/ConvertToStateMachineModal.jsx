@@ -20,10 +20,7 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   AlertCircle, 
-  Info, 
-  ChevronDown, 
-  ChevronRight,
-  ExternalLink
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
@@ -66,9 +63,9 @@ const detectStepType = (stepName, rules = DEFAULT_CLASSIFICATION_RULES) => {
   const matchesKeyword = (keywords) => {
     return (keywords || []).some(keyword => {
       if (!keyword) return false;
-      const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedKeyword = keyword.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\\$&`);
       // Match as whole word or part of string based on keyword length/type
-      const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+      const regex = new RegExp(String.raw`\b${escapedKeyword}\b`, 'i');
       return regex.test(lowerName);
     });
   };
@@ -90,101 +87,6 @@ const detectStepType = (stepName, rules = DEFAULT_CLASSIFICATION_RULES) => {
   
   // Default to state
   return 'state';
-};
-
-/**
- * Extract step name from UNKNOWN marker
- */
-const extractUnknownEntry = (text, type) => {
-  const pattern = new RegExp(`\\[UNKNOWN_${type}:\\s*([^\\]]+)\\]`);
-  const match = text.match(pattern);
-  if (!match) return null;
-  // Return the step name directly
-  return match[1].trim();
-};
-
-/**
- * Generate a suggested key name from a step name
- */
-const generateSuggestedKey = (stepName) => {
-  return stepName
-    .replace(/[^a-zA-Z0-9\s]/g, '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .toUpperCase()
-    .substring(0, 50);
-};
-
-/**
- * Extract all unmapped items from rows and generate dictionary entries
- */
-const extractUnmappedItems = (rows) => {
-  const unmappedStates = new Set();
-  const unmappedRules = new Set();
-
-  rows.forEach((row) => {
-    // Check source node
-    if (row.sourceNode.includes('[UNKNOWN_STATE:')) {
-      const stepName = extractUnknownEntry(row.sourceNode, 'STATE');
-      if (stepName) unmappedStates.add(stepName);
-    }
-
-    // Check destination node
-    if (row.destinationNode.includes('[UNKNOWN_STATE:')) {
-      const stepName = extractUnknownEntry(row.destinationNode, 'STATE');
-      if (stepName) unmappedStates.add(stepName);
-    }
-
-    // Check rule list (may contain multiple rules separated by ' + ')
-    if (row.ruleList.includes('[UNKNOWN_RULE:')) {
-      const ruleParts = row.ruleList.split(' + ');
-      ruleParts.forEach(part => {
-        if (part.includes('[UNKNOWN_RULE:')) {
-          const stepName = extractUnknownEntry(part, 'RULE');
-          if (stepName) unmappedRules.add(stepName);
-        }
-      });
-    }
-  });
-
-  // Generate dictionary entries with suggested keys
-  const stateEntries = {};
-  unmappedStates.forEach(stepName => {
-    stateEntries[generateSuggestedKey(stepName)] = stepName;
-  });
-
-  const ruleEntries = {};
-  unmappedRules.forEach(stepName => {
-    ruleEntries[generateSuggestedKey(stepName)] = stepName;
-  });
-
-  return { stateEntries, ruleEntries };
-};
-
-/**
- * Generate default dictionaries from flow diagram data
- */
-const generateDefaultDictionaries = (steps, stepClassifications = {}) => {
-  // Generate state dictionary from steps classified as states (object format)
-  // Exclude both rules and behaviors
-  // Use simple step name as both key and value
-  const stateDictionary = {};
-  steps
-    .filter(step => stepClassifications[step.id] !== 'rule' && stepClassifications[step.id] !== 'behavior')
-    .forEach(step => {
-      stateDictionary[step.name] = step.name;
-    });
-
-  // Generate rule dictionary from steps classified as rules (object format)
-  // Use simple step name as both key and value
-  const ruleDictionary = {};
-  steps
-    .filter(step => stepClassifications[step.id] === 'rule')
-    .forEach(step => {
-      ruleDictionary[step.name] = step.name;
-    });
-
-  return { stateDictionary, ruleDictionary };
 };
 
 /**
@@ -220,35 +122,112 @@ const getDescendants = (stepId, allSteps) => {
   return descendants;
 };
 
+const getNextStepIdFromConnections = (connectionsBySource, fromStepId) => {
+  const nextConnections = connectionsBySource.get(fromStepId);
+  return nextConnections?.[0]?.toStepId || null;
+};
+
+const followRuleBehaviorChainToState = ({ startStepId, connectionsBySource, getStepType, getStepLabel }) => {
+  const ruleChain = [];
+  let currentStepId = startStepId;
+  const visited = new Set();
+
+  while (currentStepId && !visited.has(currentStepId)) {
+    visited.add(currentStepId);
+
+    const currentType = getStepType(currentStepId);
+    if (currentType === 'rule') {
+      ruleChain.push(getStepLabel(currentStepId));
+      currentStepId = getNextStepIdFromConnections(connectionsBySource, currentStepId);
+      continue;
+    }
+
+    if (currentType === 'behavior') {
+      currentStepId = getNextStepIdFromConnections(connectionsBySource, currentStepId);
+      continue;
+    }
+
+    return {
+      ruleList: ruleChain.join(' + '),
+      destinationNode: getStepLabel(currentStepId)
+    };
+  }
+
+  return {
+    ruleList: ruleChain.join(' + '),
+    destinationNode: ''
+  };
+};
+
+const skipBehaviorChain = ({ startStepId, connectionsBySource, getStepType }) => {
+  let currentStepId = startStepId;
+  const visited = new Set();
+
+  while (currentStepId && !visited.has(currentStepId) && getStepType(currentStepId) === 'behavior') {
+    visited.add(currentStepId);
+    currentStepId = getNextStepIdFromConnections(connectionsBySource, currentStepId);
+  }
+
+  return currentStepId;
+};
+
+const resolveStateConnection = ({ toStepId, connectionsBySource, getStepType, getStepLabel }) => {
+  const toType = getStepType(toStepId);
+
+  if (toType === 'rule') {
+    return followRuleBehaviorChainToState({ startStepId: toStepId, connectionsBySource, getStepType, getStepLabel });
+  }
+
+  if (toType === 'behavior') {
+    const nextAfterBehaviors = skipBehaviorChain({ startStepId: toStepId, connectionsBySource, getStepType });
+    if (!nextAfterBehaviors) {
+      return { ruleList: '', destinationNode: '' };
+    }
+
+    const nextType = getStepType(nextAfterBehaviors);
+    if (nextType === 'rule') {
+      return followRuleBehaviorChainToState({ startStepId: nextAfterBehaviors, connectionsBySource, getStepType, getStepLabel });
+    }
+
+    if (nextType === 'behavior') {
+      return { ruleList: '', destinationNode: '' };
+    }
+
+    // Behavior leads directly to a state (no rule) - flag via validation ruleList empty.
+    return { ruleList: '', destinationNode: getStepLabel(nextAfterBehaviors) };
+  }
+
+  // Normal state-to-state connection
+  return { ruleList: 'TRUE', destinationNode: getStepLabel(toStepId) };
+};
+
 /**
  * Convert flow diagram to state machine CSV rows
  */
-const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifications = {}, stateDictionary = {}, ruleDictionary = {}) => {
+const convertToStateMachineRows = (steps, connections, classificationRules) => {
   const rows = [];
   let priority = 0; // Start priority at 0 and increment for each row
-  
-  // Helper function to lookup state name from step name (direct match)
-  const lookupStateName = (stepName) => {
-    if (!stepName) return '';
-    const entry = Object.entries(stateDictionary).find(([key, value]) => value === stepName);
-    return entry ? entry[0] : `[UNKNOWN_STATE: ${stepName}]`;
+
+  const stepsById = new Map(steps.map((s) => [s.id, s]));
+
+  const getStepType = (stepId) => {
+    const step = stepsById.get(stepId);
+    if (!step) return 'state';
+    return step.type || detectStepType(step.name, classificationRules);
   };
-  
-  // Helper function to lookup rule name from step name (direct match)
-  const lookupRuleName = (stepName) => {
-    if (!stepName) return '';
-    const entry = Object.entries(ruleDictionary).find(([key, value]) => value === stepName);
-    return entry ? entry[0] : `[UNKNOWN_RULE: ${stepName}]`;
+
+  const getStepLabel = (stepId) => {
+    const step = stepsById.get(stepId);
+    if (!step) return '';
+    const alias = (step.alias || '').trim();
+    return alias || step.name || '';
   };
-  
-  // Create a map of step IDs to simple step names (NO qualified paths)
-  const stepNameMap = new Map();
-  steps.forEach(step => {
-    stepNameMap.set(step.id, step.name);
-  });
-  
+
   // Separate steps into states (exclude both rules and behaviors)
-  const stateSteps = steps.filter(step => stepClassifications[step.id] !== 'rule' && stepClassifications[step.id] !== 'behavior');
+  const stateSteps = steps.filter((step) => {
+    const stepType = step.type || detectStepType(step.name, classificationRules);
+    return stepType !== 'rule' && stepType !== 'behavior';
+  });
   
   // Group connections by source step
   const connectionsBySource = new Map();
@@ -258,11 +237,13 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
     }
     connectionsBySource.get(conn.fromStepId).push(conn);
   });
+
+  const resolveConnection = (toStepId) =>
+    resolveStateConnection({ toStepId, connectionsBySource, getStepType, getStepLabel });
   
   // Generate rows for each state step
   stateSteps.forEach(step => {
-    const sourceStepName = stepNameMap.get(step.id);
-    const sourceName = lookupStateName(sourceStepName);
+    const sourceName = (step.alias || '').trim() || step.name;
     const stepConnections = connectionsBySource.get(step.id) || [];
     
     if (stepConnections.length === 0) {
@@ -277,149 +258,12 @@ const convertToStateMachineRows = (steps, connections, ruleMapping, stepClassifi
     } else {
       // Add a row for each connection
       stepConnections.forEach(conn => {
-        const destinationStepName = stepNameMap.get(conn.toStepId) || '';
-        
-        // Determine the rule and final destination
-        let ruleKey;
-        let finalDestination = '';
-        
-        // Check if the destination is a rule step
-        if (stepClassifications[conn.toStepId] === 'rule') {
-          // Follow the chain of rules/behaviors to find all rules and the final state
-          const ruleChain = [];
-          let currentStepId = conn.toStepId;
-          let visited = new Set(); // Prevent infinite loops
-          
-          // Follow rule/behavior connections until we reach a state or end
-          while (currentStepId && !visited.has(currentStepId)) {
-            visited.add(currentStepId);
-            
-            if (stepClassifications[currentStepId] === 'rule') {
-              // Add this rule to the chain (lookup the rule name)
-              const ruleStepName = stepNameMap.get(currentStepId);
-              ruleChain.push(lookupRuleName(ruleStepName));
-              
-              // Get the next connection
-              const nextConnections = connectionsBySource.get(currentStepId) || [];
-              if (nextConnections.length > 0) {
-                currentStepId = nextConnections[0].toStepId;
-              } else {
-                // Rule has no outgoing connections
-                currentStepId = null;
-              }
-            } else if (stepClassifications[currentStepId] === 'behavior') {
-              // Skip behaviors - they don't appear in the CSV
-              // Just traverse through them to find the next step
-              const nextConnections = connectionsBySource.get(currentStepId) || [];
-              if (nextConnections.length > 0) {
-                currentStepId = nextConnections[0].toStepId;
-              } else {
-                // Behavior has no outgoing connections
-                currentStepId = null;
-              }
-            } else {
-              // Reached a state - this is our final destination (lookup the state name)
-              const stateStepName = stepNameMap.get(currentStepId) || '';
-              finalDestination = lookupStateName(stateStepName);
-              break;
-            }
-          }
-          
-          // Join all rules with " + "
-          ruleKey = ruleChain.join(' + ');
-          
-          // If we ended without finding a state, destination is empty
-          if (!currentStepId || stepClassifications[currentStepId] === 'rule' || stepClassifications[currentStepId] === 'behavior') {
-            finalDestination = '';
-          }
-        } else if (stepClassifications[conn.toStepId] === 'behavior') {
-          // State connected directly to behavior
-          // Traverse through behaviors to find what comes next
-          let currentStepId = conn.toStepId;
-          let visited = new Set();
-          
-          // Skip through all behaviors to find the next non-behavior step
-          while (currentStepId && !visited.has(currentStepId)) {
-            visited.add(currentStepId);
-            
-            if (stepClassifications[currentStepId] === 'behavior') {
-              // Move to next connection
-              const nextConnections = connectionsBySource.get(currentStepId) || [];
-              if (nextConnections.length > 0) {
-                currentStepId = nextConnections[0].toStepId;
-              } else {
-                currentStepId = null;
-              }
-            } else {
-              // Found a non-behavior step (rule or state)
-              break;
-            }
-          }
-          
-          // Now check what we found after the behavior(s)
-          if (currentStepId && stepClassifications[currentStepId] === 'rule') {
-            // Behavior leads to a rule - this is valid! Process the rule chain
-            const ruleChain = [];
-            let ruleVisited = new Set();
-            
-            while (currentStepId && !ruleVisited.has(currentStepId)) {
-              ruleVisited.add(currentStepId);
-              
-              if (stepClassifications[currentStepId] === 'rule') {
-                // Add this rule to the chain
-                const ruleStepName = stepNameMap.get(currentStepId);
-                ruleChain.push(lookupRuleName(ruleStepName));
-                
-                // Get the next connection
-                const nextConnections = connectionsBySource.get(currentStepId) || [];
-                if (nextConnections.length > 0) {
-                  currentStepId = nextConnections[0].toStepId;
-                } else {
-                  currentStepId = null;
-                }
-              } else if (stepClassifications[currentStepId] === 'behavior') {
-                // Skip behaviors in the rule chain
-                const nextConnections = connectionsBySource.get(currentStepId) || [];
-                if (nextConnections.length > 0) {
-                  currentStepId = nextConnections[0].toStepId;
-                } else {
-                  currentStepId = null;
-                }
-              } else {
-                // Reached a state
-                const stateStepName = stepNameMap.get(currentStepId) || '';
-                finalDestination = lookupStateName(stateStepName);
-                break;
-              }
-            }
-            
-            ruleKey = ruleChain.join(' + ');
-            
-            if (!currentStepId || stepClassifications[currentStepId] === 'rule' || stepClassifications[currentStepId] === 'behavior') {
-              finalDestination = '';
-            }
-          } else if (currentStepId && stepClassifications[currentStepId] !== 'rule' && stepClassifications[currentStepId] !== 'behavior') {
-            // Behavior leads directly to a state (no rule - this is a problem)
-            const stateStepName = stepNameMap.get(currentStepId) || '';
-            finalDestination = lookupStateName(stateStepName);
-            ruleKey = ''; // No rule - flag for validation
-          } else {
-            // Behavior leads nowhere or to another behavior
-            ruleKey = '';
-            finalDestination = '';
-          }
-        } else {
-          // Normal state-to-state connection
-          // Lookup the destination state name
-          finalDestination = lookupStateName(destinationStepName);
-          // Direct state-to-state connections use TRUE as the rule
-          ruleKey = 'TRUE';
-        }
+        const { ruleList, destinationNode } = resolveConnection(conn.toStepId);
         
         rows.push({
           sourceNode: sourceName,
-          destinationNode: finalDestination,
-          ruleList: ruleKey,
+          destinationNode,
+          ruleList,
           priority: priority++,
           operation: ''
         });
@@ -816,8 +660,8 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
       <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <h5 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">Priority Rules (Built-in)</h5>
         <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-          <div>• Starts with "ask" → <strong>State</strong></div>
-          <div>• ALL CAPS (e.g., "DASHBOARD") → <strong>State</strong></div>
+          <div>• Starts with &quot;ask&quot; → <strong>State</strong></div>
+          <div>• ALL CAPS (e.g., &quot;DASHBOARD&quot;) → <strong>State</strong></div>
         </div>
       </div>
 
@@ -968,40 +812,14 @@ const validateStateMachineRows = (rows) => {
 
   rows.forEach((row, index) => {
     const rowNum = index + 1;
-    
-    // Check for unknown states in source
-    if (row.sourceNode.includes('[UNKNOWN_STATE:')) {
-      const stepName = extractUnknownEntry(row.sourceNode, 'STATE');
-      errors.push({
-        id: `err-src-${index}`,
-        row: index,
-        type: 'error',
-        message: `Row ${rowNum}: Source node "${stepName || 'unknown'}" is unmapped.`,
-        suggestion: "Use 'Add All Missing' button to automatically add all unmapped items."
-      });
-    }
 
-    // Check for unknown states in destination
-    if (row.destinationNode.includes('[UNKNOWN_STATE:')) {
-      const stepName = extractUnknownEntry(row.destinationNode, 'STATE');
+    if (!row.sourceNode?.trim()) {
       errors.push({
-        id: `err-dest-${index}`,
+        id: `err-src-empty-${index}`,
         row: index,
         type: 'error',
-        message: `Row ${rowNum}: Destination node "${stepName || 'unknown'}" is unmapped.`,
-        suggestion: "Use 'Add All Missing' button to automatically add all unmapped items."
-      });
-    }
-
-    // Check for unknown rules
-    if (row.ruleList.includes('[UNKNOWN_RULE:')) {
-      const stepName = extractUnknownEntry(row.ruleList, 'RULE');
-      errors.push({
-        id: `err-rule-${index}`,
-        row: index,
-        type: 'error',
-        message: `Row ${rowNum}: Rule "${stepName || 'unknown'}" is unmapped.`,
-        suggestion: "Use 'Add All Missing' button to automatically add all unmapped items."
+        message: `Row ${rowNum}: Source node is empty.`,
+        suggestion: 'Set a Source Node value (typically a State alias/name).'
       });
     }
 
@@ -1030,63 +848,65 @@ const validateStateMachineRows = (rows) => {
 /**
  * Validation Results Display Component - Summary Only
  */
-const ValidationResultsDisplay = ({ results, onAddAllMissing, hasUnmapped }) => {
+const ValidationResultsDisplay = ({ results }) => {
   if (!results) return null;
 
   const { summary } = results;
+  const errorCount = summary?.errors || 0;
+  const errorPluralSuffix = errorCount === 1 ? '' : 's';
+  const headerBgClass = errorCount > 0
+    ? 'bg-red-50 dark:bg-red-950/20'
+    : 'bg-green-50 dark:bg-green-950/20';
+  const titleText = errorCount > 0
+    ? `${errorCount} Error${errorPluralSuffix} Found`
+    : 'Validation Passed';
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
       <div 
-        className={`flex items-center justify-between px-4 py-3 ${
-          summary.errors > 0 ? 'bg-red-50 dark:bg-red-950/20' : 
-          'bg-green-50 dark:bg-green-950/20'
-        }`}
+        className={`flex items-center justify-between px-4 py-3 ${headerBgClass}`}
       >
         <div className="flex items-center gap-3">
-          {summary.errors > 0 ? (
+          {errorCount > 0 ? (
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
           ) : (
             <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
           )}
           <span className="font-medium text-sm">
-            {summary.errors > 0 ? `${summary.errors} Error${summary.errors > 1 ? 's' : ''} Found` : 
-             'Validation Passed'}
+            {titleText}
           </span>
           <div className="flex items-center gap-2 ml-4">
-            {summary.errors > 0 && (
+            {errorCount > 0 && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                {summary.errors} ERR
+                {errorCount} ERR
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {summary.errors === 0 && (
+          {errorCount === 0 && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               All {summary.total} rows are valid ✓
             </span>
           )}
-          {summary.errors > 0 && (
+          {errorCount > 0 && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               See issues below each affected row
             </span>
-          )}
-          {hasUnmapped && onAddAllMissing && (
-            <Button
-              size="sm"
-              variant="default"
-              onClick={onAddAllMissing}
-              className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add All Missing
-            </Button>
           )}
         </div>
       </div>
     </div>
   );
+};
+
+ValidationResultsDisplay.propTypes = {
+  results: PropTypes.shape({
+    summary: PropTypes.shape({
+      total: PropTypes.number,
+      errors: PropTypes.number
+    })
+  })
 };
 
 /**
@@ -1095,41 +915,54 @@ const ValidationResultsDisplay = ({ results, onAddAllMissing, hasUnmapped }) => 
 const RowValidationDisplay = ({ issues }) => {
   if (!issues || issues.length === 0) return null;
 
+  const getIssueStyles = (type) => {
+    switch (type) {
+      case 'error':
+        return {
+          containerClass: 'border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-900/20',
+          Icon: AlertCircle,
+          iconClass: 'w-4 h-4 text-red-600 dark:text-red-400',
+          titleClass: 'text-red-900 dark:text-red-200',
+          suggestionClass: 'text-red-700 dark:text-red-300'
+        };
+      case 'warning':
+        return {
+          containerClass: 'border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-900/20',
+          Icon: AlertTriangle,
+          iconClass: 'w-4 h-4 text-amber-600 dark:text-amber-400',
+          titleClass: 'text-amber-900 dark:text-amber-200',
+          suggestionClass: 'text-amber-700 dark:text-amber-300'
+        };
+      default:
+        return {
+          containerClass: 'border-blue-200 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-900/20',
+          Icon: Info,
+          iconClass: 'w-4 h-4 text-blue-600 dark:text-blue-400',
+          titleClass: 'text-blue-900 dark:text-blue-200',
+          suggestionClass: 'text-blue-700 dark:text-blue-300'
+        };
+    }
+  };
+
   return (
     <tr>
       <td colSpan="5" className="px-0 py-0">
         <div className="bg-gradient-to-r from-red-50 via-amber-50 to-blue-50 dark:from-red-950/10 dark:via-amber-950/10 dark:to-blue-950/10 px-4 py-3 space-y-2">
           {issues.map((issue) => (
-            <div 
-              key={issue.id} 
-              className={`flex gap-3 p-2.5 rounded-md border text-xs ${
-                issue.type === 'error' ? 'border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-900/20' :
-                issue.type === 'warning' ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-900/20' :
-                'border-blue-200 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-900/20'
-              }`}
-            >
-              <div className="mt-0.5 flex-shrink-0">
-                {issue.type === 'error' ? <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" /> :
-                 issue.type === 'warning' ? <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" /> :
-                 <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold ${
-                  issue.type === 'error' ? 'text-red-900 dark:text-red-200' :
-                  issue.type === 'warning' ? 'text-amber-900 dark:text-amber-200' :
-                  'text-blue-900 dark:text-blue-200'
-                }`}>
-                  {issue.message}
-                </p>
-                <p className={`mt-0.5 ${
-                  issue.type === 'error' ? 'text-red-700 dark:text-red-300' :
-                  issue.type === 'warning' ? 'text-amber-700 dark:text-amber-300' :
-                  'text-blue-700 dark:text-blue-300'
-                }`}>
-                  💡 {issue.suggestion}
-                </p>
-              </div>
-            </div>
+            (() => {
+              const { containerClass, Icon, iconClass, titleClass, suggestionClass } = getIssueStyles(issue.type);
+              return (
+                <div key={issue.id} className={`flex gap-3 p-2.5 rounded-md border text-xs ${containerClass}`}>
+                  <div className="mt-0.5 flex-shrink-0">
+                    <Icon className={iconClass} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-semibold ${titleClass}`}>{issue.message}</p>
+                    <p className={`mt-0.5 ${suggestionClass}`}>💡 {issue.suggestion}</p>
+                  </div>
+                </div>
+              );
+            })()
           ))}
         </div>
       </td>
@@ -1137,21 +970,22 @@ const RowValidationDisplay = ({ issues }) => {
   );
 };
 
+RowValidationDisplay.propTypes = {
+  issues: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    type: PropTypes.oneOf(['error', 'warning', 'info']).isRequired,
+    message: PropTypes.string.isRequired,
+    suggestion: PropTypes.string
+  }))
+};
+
 /**
  * Main Modal Component
  */
 const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => {
-  const [stateDictionary, setStateDictionary] = useState({});
-  const [ruleDictionary, setRuleDictionary] = useState({});
   const [classificationRules, setClassificationRules] = useState(DEFAULT_CLASSIFICATION_RULES);
-  const [ruleMapping] = useState({
-    success: 'SUCCESS',
-    failure: 'FAILURE'
-  });
-  // Track which steps are classified as rules vs states vs behaviors
-  const [stepClassifications, setStepClassifications] = useState({});
   // Track active tab for dictionaries and classification
-  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'state' | 'rule' | 'classification' | 'rules' | 'rootsteps' | null
+  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'rules' | 'rootsteps' | null
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
   // Track selected root steps
@@ -1216,20 +1050,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   useEffect(() => {
     const loadPersistedData = async () => {
       try {
-        const persistedStateDictionary = await getItem('flowDiagram_stateDictionary');
-        const persistedRuleDictionary = await getItem('flowDiagram_ruleDictionary');
-        const persistedStepClassifications = await getItem('flowDiagram_stepClassifications');
         const persistedClassificationRules = await getItem('flowDiagram_classificationRules');
-        
-        if (persistedStateDictionary && Object.keys(persistedStateDictionary).length > 0) {
-          setStateDictionary(persistedStateDictionary);
-        }
-        if (persistedRuleDictionary && Object.keys(persistedRuleDictionary).length > 0) {
-          setRuleDictionary(persistedRuleDictionary);
-        }
-        if (persistedStepClassifications && Object.keys(persistedStepClassifications).length > 0) {
-          setStepClassifications(persistedStepClassifications);
-        }
         if (persistedClassificationRules) {
           // Merge persisted rules with defaults to ensure new categories (like stateKeywords)
           // and new default keywords (like customer) are present even if not in old storage
@@ -1240,15 +1061,15 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
             stateKeywords: Array.from(new Set([
               ...DEFAULT_CLASSIFICATION_RULES.stateKeywords, 
               ...(persistedClassificationRules.stateKeywords || [])
-            ])).sort(),
+            ])).sort((a, b) => a.localeCompare(b)),
             behaviorKeywords: Array.from(new Set([
               ...DEFAULT_CLASSIFICATION_RULES.behaviorKeywords, 
               ...(persistedClassificationRules.behaviorKeywords || [])
-            ])).sort(),
+            ])).sort((a, b) => a.localeCompare(b)),
             ruleKeywords: Array.from(new Set([
               ...DEFAULT_CLASSIFICATION_RULES.ruleKeywords, 
               ...(persistedClassificationRules.ruleKeywords || [])
-            ])).sort()
+            ])).sort((a, b) => a.localeCompare(b))
           });
         }
       } catch (error) {
@@ -1260,66 +1081,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
       loadPersistedData();
     }
   }, [isOpen]);
-  
-  // Initialize with default dictionaries when modal opens (if not already persisted)
-  useEffect(() => {
-    if (isOpen && steps.length > 0) {
-      // Only generate defaults if dictionaries are empty
-      if (Object.keys(stateDictionary).length === 0 || Object.keys(ruleDictionary).length === 0) {
-        // Initialize from persisted classifications, then fill any gaps via auto-detection
-        const initialClassifications = Object.keys(stepClassifications).length > 0 
-          ? stepClassifications 
-          : {};
-        
-        // Fill in any missing classifications via auto-detection
-        steps.forEach(step => {
-          if (!initialClassifications[step.id]) {
-            initialClassifications[step.id] = detectStepType(step.name, classificationRules);
-          }
-        });
-        
-        if (Object.keys(stepClassifications).length === 0) {
-          setStepClassifications(initialClassifications);
-        }
-        
-        // Then generate dictionaries based on classifications
-        const { stateDictionary: defaultStates, ruleDictionary: defaultRules } = generateDefaultDictionaries(steps, initialClassifications);
-        if (Object.keys(stateDictionary).length === 0) {
-          setStateDictionary(defaultStates);
-        }
-        if (Object.keys(ruleDictionary).length === 0) {
-          setRuleDictionary(defaultRules);
-        }
-      }
-    }
-  }, [isOpen, steps, stateDictionary, ruleDictionary, stepClassifications, classificationRules]);
-  
-  // Persist state dictionary whenever it changes
-  useEffect(() => {
-    if (isOpen && Object.keys(stateDictionary).length > 0) {
-      setItem('flowDiagram_stateDictionary', stateDictionary).catch(error => {
-        console.error('Error persisting state dictionary:', error);
-      });
-    }
-  }, [stateDictionary, isOpen]);
-  
-  // Persist rule dictionary whenever it changes
-  useEffect(() => {
-    if (isOpen && Object.keys(ruleDictionary).length > 0) {
-      setItem('flowDiagram_ruleDictionary', ruleDictionary).catch(error => {
-        console.error('Error persisting rule dictionary:', error);
-      });
-    }
-  }, [ruleDictionary, isOpen]);
-  
-  // Persist step classifications whenever they change
-  useEffect(() => {
-    if (isOpen && Object.keys(stepClassifications).length > 0) {
-      setItem('flowDiagram_stepClassifications', stepClassifications).catch(error => {
-        console.error('Error persisting step classifications:', error);
-      });
-    }
-  }, [stepClassifications, isOpen]);
 
   // Persist classification rules whenever they change
   useEffect(() => {
@@ -1333,8 +1094,8 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
   // Generate CSV preview data using filtered steps and connections
   const csvRows = useMemo(() => {
     if (!isOpen) return [];
-    return convertToStateMachineRows(filteredSteps, filteredConnections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary);
-  }, [filteredSteps, filteredConnections, ruleMapping, stepClassifications, stateDictionary, ruleDictionary, isOpen]);
+    return convertToStateMachineRows(filteredSteps, filteredConnections, classificationRules);
+  }, [filteredSteps, filteredConnections, classificationRules, isOpen]);
   
   // Update editable rows when csvRows change
   useEffect(() => {
@@ -1372,33 +1133,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     }
   };
   
-  // Handle dictionary file upload
-  const handleDictionaryUpload = async (e, type) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      const text = await file.text();
-      const json = JSON.parse(text);
-      // Check if it's an object with string values
-      if (typeof json === 'object' && !Array.isArray(json) && 
-          Object.values(json).every(v => typeof v === 'string')) {
-        if (type === 'state') {
-          setStateDictionary(json);
-          toast.success('State dictionary loaded successfully');
-        } else {
-          setRuleDictionary(json);
-          toast.success('Rule dictionary loaded successfully');
-        }
-      } else {
-        toast.error('Invalid dictionary format. Expected object with string values: {"key": "description"}');
-      }
-    } catch (error) {
-      toast.error(`Error parsing JSON: ${error.message}`);
-    }
-    e.target.value = ''; // Reset input
-  };
-  
   // Export CSV
   const handleExportCSV = async () => {
     // Re-validate before export
@@ -1433,57 +1167,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
     }
   };
 
-  // Add all missing unmapped states and rules
-  const handleAddAllMissing = () => {
-    const { stateEntries, ruleEntries } = extractUnmappedItems(editableRows);
-    
-    const stateCount = Object.keys(stateEntries).length;
-    const ruleCount = Object.keys(ruleEntries).length;
-    
-    if (stateCount === 0 && ruleCount === 0) {
-      toast.info('No unmapped items found!');
-      return;
-    }
-    
-    // Add all state entries
-    if (stateCount > 0) {
-      setStateDictionary(prev => ({ ...prev, ...stateEntries }));
-    }
-    
-    // Add all rule entries
-    if (ruleCount > 0) {
-      setRuleDictionary(prev => ({ ...prev, ...ruleEntries }));
-    }
-    
-    // Build detailed message
-    const messages = [];
-    if (stateCount > 0) {
-      messages.push(`${stateCount} state${stateCount !== 1 ? 's' : ''}`);
-    }
-    if (ruleCount > 0) {
-      messages.push(`${ruleCount} rule${ruleCount !== 1 ? 's' : ''}`);
-    }
-    
-    toast.success(`Added ${messages.join(' and ')} to dictionaries!`);
-    
-    // Clear validation to force re-validation
-    setValidationResults(null);
-  };
-
-  // Jump to row in the preview table
-  // Export dictionaries
-  const handleExportStateDictionary = () => {
-    const timestamp = new Date().toISOString().split('T')[0];
-    exportDictionary(stateDictionary, `state_dictionary_${timestamp}.json`);
-    toast.success('State dictionary exported');
-  };
-  
-  const handleExportRuleDictionary = () => {
-    const timestamp = new Date().toISOString().split('T')[0];
-    exportDictionary(ruleDictionary, `rule_dictionary_${timestamp}.json`);
-    toast.success('Rule dictionary exported');
-  };
-
   // Export classification rules
   const handleExportClassificationRules = () => {
     const timestamp = new Date().toISOString().split('T')[0];
@@ -1516,7 +1199,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                   Convert to State Machine CSV
                 </DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
-                  Configure dictionaries and rule mappings to export your flow diagram as a state machine CSV file.
+                  Export your flow diagram as a state machine CSV using step aliases (fallback to step name) and step types (state/rule/behavior).
                 </DialogDescription>
               </div>
               <Button
@@ -1545,36 +1228,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 }`}
               >
                 CSV Preview ({editableRows.length})
-              </button>
-              <button
-                onClick={() => setActiveTab(activeTab === 'state' ? null : 'state')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'state'
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                State Dictionary ({Object.keys(stateDictionary).length})
-              </button>
-              <button
-                onClick={() => setActiveTab(activeTab === 'rule' ? null : 'rule')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'rule'
-                    ? 'border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                Rule Dictionary ({Object.keys(ruleDictionary).length})
-              </button>
-              <button
-                onClick={() => setActiveTab(activeTab === 'classification' ? null : 'classification')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'classification'
-                    ? 'border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                Step Classification ({steps.length})
               </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'rules' ? null : 'rules')}
@@ -1617,15 +1270,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                       </Button>
                     </div>
                     {validationResults && (
-                      <ValidationResultsDisplay 
-                        results={validationResults} 
-                        onAddAllMissing={handleAddAllMissing}
-                        hasUnmapped={editableRows.some(row => 
-                          row.sourceNode.includes('[UNKNOWN_') || 
-                          row.destinationNode.includes('[UNKNOWN_') || 
-                          row.ruleList.includes('[UNKNOWN_')
-                        )}
-                      />
+                      <ValidationResultsDisplay results={validationResults} />
                     )}
                   </div>
 
@@ -1679,7 +1324,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                               const rowError = rowIssues.find(i => i.type === 'error');
 
                               return (
-                                <React.Fragment key={`row-group-${index}`}>
+                                <React.Fragment key={`row-group-${row.priority ?? index}`}>
                                   <tr 
                                     className={`border-t border-gray-200 dark:border-gray-700 transition-colors ${
                                       rowError ? 'bg-red-50/50 dark:bg-red-900/10' : ''
@@ -1692,7 +1337,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                                       <Input
                                         value={row.sourceNode}
                                         onChange={(e) => handleCellEdit(index, 'sourceNode', e.target.value)}
-                                        className={`h-8 text-sm ${row.sourceNode.includes('[UNKNOWN_STATE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : ''}`}
+                                        className="h-8 text-sm"
                                       />
                                     </td>
                                     <td className="px-2 py-1 relative">
@@ -1702,7 +1347,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                                       <Input
                                         value={row.destinationNode}
                                         onChange={(e) => handleCellEdit(index, 'destinationNode', e.target.value)}
-                                        className={`h-8 text-sm ${row.destinationNode.includes('[UNKNOWN_STATE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : ''}`}
+                                        className="h-8 text-sm"
                                         placeholder="empty"
                                       />
                                     </td>
@@ -1713,10 +1358,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                                       <Input
                                         value={row.ruleList}
                                         onChange={(e) => handleCellEdit(index, 'ruleList', e.target.value)}
-                                        className={`h-8 text-sm ${
-                                          row.ruleList.includes('[UNKNOWN_RULE:') ? 'border-red-300 dark:border-red-900 focus-visible:ring-red-500' : 
-                                          !row.ruleList && row.destinationNode ? 'border-amber-300 dark:border-amber-900 bg-amber-50/30' : ''
-                                        }`}
+                                        className={`h-8 text-sm ${!row.ruleList && row.destinationNode ? 'border-amber-300 dark:border-amber-900 bg-amber-50/30' : ''}`}
                                         placeholder={!row.ruleList && row.destinationNode ? "Needs rule..." : ""}
                                       />
                                     </td>
@@ -1748,34 +1390,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                       </table>
                     </div>
                   </div>
-                </div>
-              )}
-              {activeTab === 'state' && (
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <DictionaryEditor
-                    dictionary={stateDictionary}
-                    onChange={setStateDictionary}
-                    title="State Dictionary"
-                    keyLabel="State Name"
-                    valueLabel="Description"
-                    onUpload={(e) => handleDictionaryUpload(e, 'state')}
-                    onDownload={handleExportStateDictionary}
-                    uploadId="upload-state-dict"
-                  />
-                </div>
-              )}
-              {activeTab === 'rule' && (
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <DictionaryEditor
-                    dictionary={ruleDictionary}
-                    onChange={setRuleDictionary}
-                    title="Rule Dictionary"
-                    keyLabel="Rule Name"
-                    valueLabel="Description"
-                    onUpload={(e) => handleDictionaryUpload(e, 'rule')}
-                    onDownload={handleExportRuleDictionary}
-                    uploadId="upload-rule-dict"
-                  />
                 </div>
               )}
               {activeTab === 'rootsteps' && (
@@ -1828,101 +1442,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                                 <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
                                 <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
                                   {descendantCount > 0 ? `${descendantCount}` : '-'}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-              {activeTab === 'classification' && (
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        Classify steps as State (node), Rule (condition), or Behavior (action that's skipped in CSV).
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                        <span>
-                          {filteredSteps.filter(s => (stepClassifications[s.id] || 'state') === 'state').length} States
-                        </span>
-                        <span>
-                          {filteredSteps.filter(s => stepClassifications[s.id] === 'rule').length} Rules
-                        </span>
-                        <span>
-                          {filteredSteps.filter(s => stepClassifications[s.id] === 'behavior').length} Behaviors
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const newClassifications = { ...stepClassifications };
-                        filteredSteps.forEach(step => {
-                          newClassifications[step.id] = detectStepType(step.name, classificationRules);
-                        });
-                        setStepClassifications(newClassifications);
-                        toast.success('Auto-detection completed');
-                      }}
-                      className="gap-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
-                      Auto-Detect Types
-                    </Button>
-                  </div>
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Step Name</th>
-                          <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium">Classification</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredSteps.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
-                              No steps available. Select root steps above.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredSteps.map(step => {
-                            const qualifiedName = getQualifiedStepName(step, steps);
-                            const classification = stepClassifications[step.id] || 'state';
-                            return (
-                              <tr key={step.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{qualifiedName}</td>
-                                <td className="px-3 py-2">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant={classification === 'state' ? 'default' : 'outline'}
-                                      onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'state' }))}
-                                      className="h-7 px-3"
-                                    >
-                                      State
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={classification === 'rule' ? 'default' : 'outline'}
-                                      onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'rule' }))}
-                                      className="h-7 px-3"
-                                    >
-                                      Rule
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={classification === 'behavior' ? 'default' : 'outline'}
-                                      onClick={() => setStepClassifications(prev => ({ ...prev, [step.id]: 'behavior' }))}
-                                      className="h-7 px-3"
-                                    >
-                                      Behavior
-                                    </Button>
-                                  </div>
                                 </td>
                               </tr>
                             );

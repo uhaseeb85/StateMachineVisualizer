@@ -33,10 +33,12 @@ const InlineStepCreator = ({
 }) => {
   const [formData, setFormData] = useState({
     name: '',
+    alias: '',
     description: '',
     parentId: currentStep?.id || '', // Auto-set to current step if available
     autoConnect: !!currentStep,
-    connectionType: 'success'
+    connectionType: 'success',
+    type: 'state'
   });
 
   const handleCreate = () => {
@@ -48,13 +50,14 @@ const InlineStepCreator = ({
     // Create the step data
     const stepData = {
       name: formData.name.trim(),
+      alias: formData.alias.trim() || undefined,
       description: formData.description.trim(),
       parentId: formData.parentId || null,
       assumptions: [],
       questions: [],
       imageUrls: [],
       imageCaptions: [],
-      type: 'state'
+      type: formData.type
     };
 
     // Call onCreate and get the new step ID
@@ -71,20 +74,24 @@ const InlineStepCreator = ({
     // Reset form
     setFormData({
       name: '',
+      alias: '',
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success'
+      connectionType: 'success',
+      type: 'state'
     });
   };
 
   const handleCancel = () => {
     setFormData({
       name: '',
+      alias: '',
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success'
+      connectionType: 'success',
+      type: 'state'
     });
     onCancel();
   };
@@ -114,6 +121,53 @@ const InlineStepCreator = ({
             autoFocus
             className="w-full"
           />
+        </div>
+
+        {/* Alias */}
+        <div>
+          <label className="text-sm font-medium mb-1 block">
+            Alias <span className="text-gray-400 text-xs">(used in CSV)</span>
+          </label>
+          <Input
+            placeholder="Optional (e.g., LOGIN_PAGE)"
+            value={formData.alias}
+            onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+            className="w-full"
+          />
+        </div>
+
+        {/* Type */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Type</label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={formData.type === 'state' ? 'default' : 'outline'}
+              onClick={() => setFormData({ ...formData, type: 'state' })}
+              className="h-8 px-3"
+            >
+              State
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={formData.type === 'rule' ? 'default' : 'outline'}
+              onClick={() => setFormData({ ...formData, type: 'rule' })}
+              className="h-8 px-3"
+            >
+              Rule
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={formData.type === 'behavior' ? 'default' : 'outline'}
+              onClick={() => setFormData({ ...formData, type: 'behavior' })}
+              className="h-8 px-3"
+            >
+              Behavior
+            </Button>
+          </div>
         </div>
 
         {/* Description */}
