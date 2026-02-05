@@ -101,6 +101,7 @@ const SimulationStepCard = ({
   const [formData, setFormData] = useState({
     name: step.name,
     description: step.description || '',
+    type: step.type || 'state',
     assumptions: step.assumptions || [],
     questions: step.questions || [],
     imageUrls: step.imageUrls || [],
@@ -119,6 +120,7 @@ const SimulationStepCard = ({
       setFormData({
         name: step.name,
         description: step.description || '',
+        type: step.type || 'state',
         assumptions: step.assumptions || [],
         questions: step.questions || [],
         imageUrls: step.imageUrls || [],
@@ -213,6 +215,7 @@ const SimulationStepCard = ({
     setFormData({
       name: step.name,
       description: step.description || '',
+      type: step.type || 'state',
       assumptions: step.assumptions || [],
       questions: step.questions || [],
       imageUrls: step.imageUrls || [],
@@ -380,6 +383,42 @@ const SimulationStepCard = ({
               />
             </div>
 
+            {/* Step Type */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                🧭 Step Type
+              </label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formData.type === 'state' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'state' })}
+                  className="h-8 px-3"
+                >
+                  State
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formData.type === 'rule' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'rule' })}
+                  className="h-8 px-3"
+                >
+                  Rule
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                  className="h-8 px-3"
+                >
+                  Behavior
+                </Button>
+              </div>
+            </div>
+
             {/* Assumptions Section */}
             <AssumptionsInlineEditor
               assumptions={formData.assumptions}
@@ -439,6 +478,7 @@ SimulationStepCard.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
+    type: PropTypes.oneOf(['state', 'rule', 'behavior']),
     parentId: PropTypes.string,
     assumptions: PropTypes.arrayOf(PropTypes.string),
     questions: PropTypes.arrayOf(PropTypes.string),

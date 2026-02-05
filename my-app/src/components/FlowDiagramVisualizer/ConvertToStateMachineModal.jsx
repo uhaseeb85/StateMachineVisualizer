@@ -228,8 +228,39 @@ const convertToStateMachineRows = (steps, connections) => {
       });
     }
   });
-  
-  return rows;
+
+  const dedupedRows = [];
+  const emptyRowSources = new Set();
+  const normalize = (value) => (value ?? '').toString().trim();
+  const isBlank = (value) => normalize(value) === '';
+
+  rows.forEach((row) => {
+    const normalizedSource = normalize(row.sourceNode);
+    const isEmptyRow =
+      isBlank(row.destinationNode) &&
+      isBlank(row.ruleList) &&
+      isBlank(row.operation);
+
+    if (isEmptyRow) {
+      if (emptyRowSources.has(normalizedSource)) {
+        return;
+      }
+      emptyRowSources.add(normalizedSource);
+    }
+
+    dedupedRows.push({
+      ...row,
+      sourceNode: normalizedSource,
+      destinationNode: normalize(row.destinationNode),
+      ruleList: normalize(row.ruleList),
+      operation: normalize(row.operation)
+    });
+  });
+
+  return dedupedRows.map((row, index) => ({
+    ...row,
+    priority: index
+  }));
 };
 
 /**

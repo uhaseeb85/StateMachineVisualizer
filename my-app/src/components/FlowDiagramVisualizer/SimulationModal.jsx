@@ -1211,6 +1211,7 @@ SimulationModal.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
+    type: PropTypes.oneOf(['state', 'rule', 'behavior']),
     parentId: PropTypes.string
   })).isRequired,
   connections: PropTypes.arrayOf(PropTypes.shape({
