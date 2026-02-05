@@ -59,7 +59,8 @@ const CreateStepOverlay = ({
     const newStepId = onCreate({
       name: formData.name.trim(),
       description: formData.description.trim(),
-      parentId: formData.parentId || null
+      parentId: formData.parentId || null,
+      type: 'state'
     });
 
     if (newStepId) {
