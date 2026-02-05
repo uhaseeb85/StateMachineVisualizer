@@ -36,8 +36,7 @@ const InlineStepCreator = ({
     description: '',
     parentId: currentStep?.id || '', // Auto-set to current step if available
     autoConnect: !!currentStep,
-    connectionType: 'success',
-    type: 'state'
+    connectionType: 'success'
   });
 
   const handleCreate = () => {
@@ -55,7 +54,7 @@ const InlineStepCreator = ({
       questions: [],
       imageUrls: [],
       imageCaptions: [],
-      type: formData.type
+      type: 'state'
     };
 
     // Call onCreate and get the new step ID
@@ -75,8 +74,7 @@ const InlineStepCreator = ({
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success',
-      type: 'state'
+      connectionType: 'success'
     });
   };
 
@@ -86,8 +84,7 @@ const InlineStepCreator = ({
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success',
-      type: 'state'
+      connectionType: 'success'
     });
     onCancel();
   };
@@ -131,48 +128,6 @@ const InlineStepCreator = ({
             rows={2}
             className="w-full"
           />
-        </div>
-
-        {/* Step Type */}
-        <div>
-          <label className="text-sm font-medium mb-1 block">
-            Step Type
-          </label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, type: 'state'})}
-              className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
-                formData.type === 'state'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              State
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, type: 'rule'})}
-              className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
-                formData.type === 'rule'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              Rule
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, type: 'behavior'})}
-              className={`flex-1 px-3 py-2 rounded-md border transition-colors ${
-                formData.type === 'behavior'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              Behavior
-            </button>
-          </div>
         </div>
 
         {/* Parent Step Selection */}

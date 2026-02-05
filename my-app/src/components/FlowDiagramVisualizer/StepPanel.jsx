@@ -1492,45 +1492,6 @@ const StepPanel = ({
                 />
               </div>
 
-              {/* Step Type Selector */}
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  🏷️ Step Type
-                </label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={(selectedStep.type || 'state') === 'state' ? 'default' : 'outline'}
-                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'state' })}
-                    className="flex-1"
-                  >
-                    State
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={(selectedStep.type || 'state') === 'rule' ? 'default' : 'outline'}
-                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'rule' })}
-                    className="flex-1"
-                  >
-                    Rule
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={(selectedStep.type || 'state') === 'behavior' ? 'default' : 'outline'}
-                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'behavior' })}
-                    className="flex-1"
-                  >
-                    Behavior
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  State: Main flow nodes • Rule: Conditions/logic • Behavior: Actions/outcomes
-                </p>
-              </div>
-
               {/* Connections Section */}
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Connections</h3>

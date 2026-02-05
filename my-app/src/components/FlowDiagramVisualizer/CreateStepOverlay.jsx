@@ -44,8 +44,7 @@ const CreateStepOverlay = ({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: null,
-    type: 'state'
+    parentId: null
   });
   const [autoConnect, setAutoConnect] = useState(!!currentStep);
   const [connectionType, setConnectionType] = useState('success');
@@ -126,42 +125,6 @@ const CreateStepOverlay = ({
               className="w-full min-h-[60px]"
               rows={2}
             />
-          </div>
-
-          {/* Step Type */}
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              🏷️ Step Type
-            </label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={formData.type === 'state' ? 'default' : 'outline'}
-                onClick={() => setFormData({ ...formData, type: 'state' })}
-                className="flex-1"
-              >
-                State
-              </Button>
-              <Button
-                type="button"
-                variant={formData.type === 'rule' ? 'default' : 'outline'}
-                onClick={() => setFormData({ ...formData, type: 'rule' })}
-                className="flex-1"
-              >
-                Rule
-              </Button>
-              <Button
-                type="button"
-                variant={formData.type === 'behavior' ? 'default' : 'outline'}
-                onClick={() => setFormData({ ...formData, type: 'behavior' })}
-                className="flex-1"
-              >
-                Behavior
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              State: Main flow nodes • Rule: Conditions/logic • Behavior: Actions/outcomes
-            </p>
           </div>
 
           {/* Parent Step Selection */}

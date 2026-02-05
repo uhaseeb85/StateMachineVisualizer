@@ -209,18 +209,19 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
                   Click the <strong>"Auto-Detect Types"</strong> button to automatically classify steps based on
                   naming conventions:
                 </p>
-                <div className="space-y-2 text-xs">
+                <div className="space-y-3 mt-2 text-xs">
                   <div>
-                    <strong className="text-blue-600 dark:text-blue-400">State Priority Rules:</strong>
+                    <strong className="text-blue-600 dark:text-blue-400">State Keywords & Rules:</strong>
                     <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 mt-1 font-mono">
                       • Starts with "ask" (e.g., "ask user for SSN")<br />
-                      • ALL CAPS names (e.g., "DASHBOARD", "INPUT_PIN")
+                      • ALL CAPS names (e.g., "DASHBOARD")<br />
+                      • Keywords: page, screen, view, dashboard, modal, popup, tab, window
                     </div>
                   </div>
                   <div>
                     <strong className="text-amber-600 dark:text-amber-400">Behavior Keywords:</strong>
                     <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 mt-1 font-mono">
-                      enters, enter, provide, provides, submit, submits, click, clicks, input, inputs, select, selects, choose, chooses, upload, uploads
+                      answers, choose, chooses, click, clicks, customer, enter, enters, input, inputs, provide, provides, response, select, selects, submit, submits, upload, uploads
                     </div>
                   </div>
                   <div>
@@ -231,7 +232,7 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  The classification follows this order: Priority Rules (State) → Behavior Keywords → Rule Keywords.
+                  The classification follows this order: Priority Rules (State) → State Keywords → Behavior Keywords → Rule Keywords.
                 </p>
               </div>
 

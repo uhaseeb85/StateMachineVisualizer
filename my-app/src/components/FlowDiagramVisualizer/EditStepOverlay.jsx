@@ -47,7 +47,6 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const [formData, setFormData] = useState({
     name: step?.name || '',
     description: step?.description || '',
-    type: step?.type || 'state',
     assumptions: step?.assumptions || [],
     questions: step?.questions || [],
     imageUrls: step?.imageUrls || [],
@@ -223,42 +222,6 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               className="w-full min-h-[80px]"
               rows={3}
             />
-          </div>
-
-          {/* Step Type */}
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              🏷️ Step Type
-            </label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={formData.type === 'state' ? 'default' : 'outline'}
-                onClick={() => setFormData({ ...formData, type: 'state' })}
-                className="flex-1"
-              >
-                State
-              </Button>
-              <Button
-                type="button"
-                variant={formData.type === 'rule' ? 'default' : 'outline'}
-                onClick={() => setFormData({ ...formData, type: 'rule' })}
-                className="flex-1"
-              >
-                Rule
-              </Button>
-              <Button
-                type="button"
-                variant={formData.type === 'behavior' ? 'default' : 'outline'}
-                onClick={() => setFormData({ ...formData, type: 'behavior' })}
-                className="flex-1"
-              >
-                Behavior
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              State: Main flow nodes • Rule: Conditions/logic • Behavior: Actions/outcomes
-            </p>
           </div>
 
           {/* Connections Section */}
