@@ -536,7 +536,7 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
   };
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col flex-1 overflow-hidden">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</h4>
         <div className="flex gap-2">
@@ -557,7 +557,7 @@ const DictionaryEditor = ({ dictionary, onChange, title, keyLabel = "Key", value
           </Button>
         </div>
       </div>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
             <tr>
@@ -787,7 +787,7 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 flex flex-col flex-1 overflow-hidden">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Keyword Classification Rules</h4>
         <div className="flex gap-2">
@@ -821,8 +821,8 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-6 flex-1 overflow-hidden">
+        <div className="space-y-3 flex flex-col overflow-hidden">
           <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500"></div>
             State Keywords
@@ -845,7 +845,7 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
               <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
             </Button>
           </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-48 overflow-y-auto">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
             {!rules.stateKeywords || rules.stateKeywords.length === 0 ? (
               <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No state keywords</div>
             ) : (
@@ -863,7 +863,7 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 flex flex-col overflow-hidden">
           <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-amber-500"></div>
             Behavior Keywords
@@ -886,7 +886,7 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
               <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
             </Button>
           </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-48 overflow-y-auto">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
             {rules.behaviorKeywords.length === 0 ? (
               <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No behavior keywords</div>
             ) : (
@@ -904,7 +904,7 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 flex flex-col overflow-hidden">
           <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-purple-500"></div>
             Rule Keywords
@@ -927,7 +927,7 @@ const ClassificationRulesEditor = ({ rules, onChange, onExport, onRestoreDefault
               <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />
             </Button>
           </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-48 overflow-y-auto">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
             {rules.ruleKeywords.length === 0 ? (
               <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No rule keywords</div>
             ) : (
@@ -1598,9 +1598,9 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
               </button>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col flex-1 overflow-hidden">
               {activeTab === 'csv' && (
-                <div className="space-y-6">
+                <div className="space-y-6 flex flex-col flex-1 overflow-hidden">
                   {/* Validation Section */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -1630,7 +1630,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                   </div>
 
                   {/* CSV Preview Section */}
-                  <div className="space-y-3">
+                  <div className="space-y-3 flex flex-col flex-1 overflow-hidden">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
                         CSV Preview ({editableRows.length} rows)
@@ -1648,7 +1648,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                     </div>
                     <div 
                       ref={tableContainerRef}
-                      className="border border-gray-200 dark:border-gray-700 rounded-md max-h-[60vh] overflow-auto shadow-inner bg-gray-50/30"
+                      className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-auto shadow-inner bg-gray-50/30"
                     >
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
@@ -1751,31 +1751,35 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 </div>
               )}
               {activeTab === 'state' && (
-                <DictionaryEditor
-                  dictionary={stateDictionary}
-                  onChange={setStateDictionary}
-                  title="State Dictionary"
-                  keyLabel="State Name"
-                  valueLabel="Description"
-                  onUpload={(e) => handleDictionaryUpload(e, 'state')}
-                  onDownload={handleExportStateDictionary}
-                  uploadId="upload-state-dict"
-                />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <DictionaryEditor
+                    dictionary={stateDictionary}
+                    onChange={setStateDictionary}
+                    title="State Dictionary"
+                    keyLabel="State Name"
+                    valueLabel="Description"
+                    onUpload={(e) => handleDictionaryUpload(e, 'state')}
+                    onDownload={handleExportStateDictionary}
+                    uploadId="upload-state-dict"
+                  />
+                </div>
               )}
               {activeTab === 'rule' && (
-                <DictionaryEditor
-                  dictionary={ruleDictionary}
-                  onChange={setRuleDictionary}
-                  title="Rule Dictionary"
-                  keyLabel="Rule Name"
-                  valueLabel="Description"
-                  onUpload={(e) => handleDictionaryUpload(e, 'rule')}
-                  onDownload={handleExportRuleDictionary}
-                  uploadId="upload-rule-dict"
-                />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <DictionaryEditor
+                    dictionary={ruleDictionary}
+                    onChange={setRuleDictionary}
+                    title="Rule Dictionary"
+                    keyLabel="Rule Name"
+                    valueLabel="Description"
+                    onUpload={(e) => handleDictionaryUpload(e, 'rule')}
+                    onDownload={handleExportRuleDictionary}
+                    uploadId="upload-rule-dict"
+                  />
+                </div>
               )}
               {activeTab === 'rootsteps' && (
-                <div>
+                <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Select which root steps and their descendants should be included in the conversion.
@@ -1789,7 +1793,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                       {selectedRootSteps.size === rootSteps.length ? 'Deselect All' : 'Select All'}
                     </Button>
                   </div>
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                         <tr>
@@ -1835,7 +1839,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 </div>
               )}
               {activeTab === 'classification' && (
-                <div>
+                <div className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -1870,7 +1874,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                       Auto-Detect Types
                     </Button>
                   </div>
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-96 overflow-y-auto">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                         <tr>
@@ -1930,12 +1934,14 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections }) => 
                 </div>
               )}
               {activeTab === 'rules' && (
-                <ClassificationRulesEditor
-                  rules={classificationRules}
-                  onChange={setClassificationRules}
-                  onExport={handleExportClassificationRules}
-                  onRestoreDefaults={handleRestoreClassificationRulesDefaults}
-                />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <ClassificationRulesEditor
+                    rules={classificationRules}
+                    onChange={setClassificationRules}
+                    onExport={handleExportClassificationRules}
+                    onRestoreDefaults={handleRestoreClassificationRulesDefaults}
+                  />
+                </div>
               )}
             </div>
           </div>
