@@ -100,6 +100,7 @@ const SimulationStepCard = ({
   // Form data for editing
   const [formData, setFormData] = useState({
     name: step.name,
+    alias: step.alias || '',
     description: step.description || '',
     type: step.type || 'state',
     assumptions: step.assumptions || [],
@@ -119,6 +120,7 @@ const SimulationStepCard = ({
     if (isExpanded) {
       setFormData({
         name: step.name,
+        alias: step.alias || '',
         description: step.description || '',
         type: step.type || 'state',
         assumptions: step.assumptions || [],
@@ -214,6 +216,7 @@ const SimulationStepCard = ({
     // Reset form data to original
     setFormData({
       name: step.name,
+      alias: step.alias || '',
       description: step.description || '',
       type: step.type || 'state',
       assumptions: step.assumptions || [],
@@ -383,6 +386,20 @@ const SimulationStepCard = ({
               />
             </div>
 
+            {/* Alias */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                🏷️ Alias
+              </label>
+              <Input
+                value={formData.alias}
+                onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+                placeholder="Optional (e.g., LOGIN_PAGE)"
+                className="w-full"
+                spellCheck={false}
+              />
+            </div>
+
             {/* Step Type */}
             <div>
               <label className="text-sm font-medium mb-2 block">
@@ -477,6 +494,7 @@ SimulationStepCard.propTypes = {
   step: PropTypes.shape({
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
+    alias: PropTypes.string,
     description: PropTypes.string,
     type: PropTypes.oneOf(['state', 'rule', 'behavior']),
     parentId: PropTypes.string,

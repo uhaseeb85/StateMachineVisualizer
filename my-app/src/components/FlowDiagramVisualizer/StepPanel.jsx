@@ -1450,7 +1450,21 @@ const StepPanel = ({
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Alias (used in CSV)</label>
+                <label className="text-sm font-medium mb-1 block">Description</label>
+                <Textarea
+                  key={selectedStep.id}
+                  placeholder="Step description..."
+                  defaultValue={selectedStep.description || ''}
+                  onBlur={(e) => handleUpdateStep(selectedStep.id, { description: e.target.value })}
+                  className="min-h-[80px] w-full resize-y bg-background text-foreground"
+                  rows={4}
+                  disabled={false}
+                  spellCheck={false}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Alias</label>
                 <Input
                   key={`alias-${selectedStep.id}`}
                   placeholder="Optional (e.g., LOGIN_PAGE)"
@@ -1495,20 +1509,6 @@ const StepPanel = ({
                     Behavior
                   </Button>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-1 block">Description</label>
-                <Textarea
-                  key={selectedStep.id}
-                  placeholder="Step description..."
-                  defaultValue={selectedStep.description || ''}
-                  onBlur={(e) => handleUpdateStep(selectedStep.id, { description: e.target.value })}
-                  className="min-h-[80px] w-full resize-y bg-background text-foreground"
-                  rows={4}
-                  disabled={false}
-                  spellCheck={false}
-                />
               </div>
 
               {/* Connections Section */}

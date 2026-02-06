@@ -74,54 +74,6 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const [newConnectionTarget, setNewConnectionTarget] = useState('');
   const [connectionMode, setConnectionMode] = useState('existing'); // 'existing' or 'create'
   const [newStepData, setNewStepData] = useState({
-    name: '',
-    alias: '',
-    description: '',
-    parentId: '',
-    type: 'state'
-  });
-  
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!step) return;
-    setFormData({
-      name: step.name || '',
-      alias: step.alias || '',
-      description: step.description || '',
-      type: step.type || 'state',
-      assumptions: step.assumptions || [],
-      questions: step.questions || [],
-      imageUrls: step.imageUrls || [],
-      imageCaptions: step.imageCaptions || []
-    });
-  }, [step?.id, isOpen]);
-
-  const handleSave = () => {
-    if (!formData.name.trim()) {
-      toast.error('Step name cannot be empty');
-      return;
-    }
-
-    onSave(step.id, formData);
-    toast.success('Step updated successfully');
-    onClose();
-  };
-
-  const handleAddAssumption = () => {
-    if (newAssumption.trim()) {
-      setFormData({
-        ...formData,
-        assumptions: [...formData.assumptions, newAssumption.trim()]
-      });
-      setNewAssumption('');
-    }
-  };
-
-  const handleRemoveAssumption = (index) => {
-    const updated = [...formData.assumptions];
-    updated.splice(index, 1);
-    setFormData({ ...formData, assumptions: updated });
   };
 
   const handleUpdateAssumption = (index) => {
@@ -136,6 +88,54 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const handleAddQuestion = () => {
     if (newQuestion.trim()) {
       setFormData({
+
+          {/* Alias */}
+          <div>
+            <label htmlFor="edit-step-alias" className="text-sm font-medium mb-1 block">
+              🏷️ Alias
+            </label>
+            <Input
+              id="edit-step-alias"
+              value={formData.alias}
+              onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+              placeholder="Optional (e.g., LOGIN_PAGE)"
+              className="w-full"
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <div className="text-sm font-medium mb-2 block">🧩 Type</div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'state' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'state' })}
+                className="h-8 px-3"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'rule' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'rule' })}
+                className="h-8 px-3"
+              >
+                Rule
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                className="h-8 px-3"
+              >
+                Behavior
+              </Button>
+            </div>
+          </div>
         ...formData,
         questions: [...formData.questions, newQuestion.trim()]
       });
@@ -243,7 +243,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           {/* Alias */}
           <div>
             <label htmlFor="edit-step-alias" className="text-sm font-medium mb-1 block">
-              🏷️ Alias (used in CSV)
+              🏷️ Alias
             </label>
             <Input
               id="edit-step-alias"
@@ -468,7 +468,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                           />
                         </div>
                         <div>
-                          <label htmlFor="edit-step-create-alias" className="text-xs font-medium mb-1 block">Alias (used in CSV):</label>
+                          <label htmlFor="edit-step-create-alias" className="text-xs font-medium mb-1 block">Alias:</label>
                           <Input
                             id="edit-step-create-alias"
                             value={newStepData.alias}

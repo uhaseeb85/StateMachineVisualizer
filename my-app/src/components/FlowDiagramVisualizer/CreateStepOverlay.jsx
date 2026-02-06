@@ -136,7 +136,7 @@ const CreateStepOverlay = ({
           {/* Alias */}
           <div>
             <label htmlFor="create-step-alias" className="text-sm font-medium mb-1 block">
-              🏷️ Alias (used in CSV)
+              🏷️ Alias
             </label>
             <Input
               id="create-step-alias"
