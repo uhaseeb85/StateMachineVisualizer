@@ -653,14 +653,26 @@ StepClassificationEditor.propTypes = {
 /**
  * Validation Logic for State Machine Rows
  */
-const validateStateMachineRows = (rows) => {
-  const errors = [];
+const validateStateMachineRows = (rows, steps = [], connections = [], selectedRootStepIds = []) => {
+  const issues = [];
+  const normalize = (value) => (value ?? '').toString().trim();
+  const isBlank = (value) => normalize(value) === '';
+  const addIssue = ({ id, row = null, type, message, suggestion }) => {
+    issues.push({ id, row, type, message, suggestion });
+  };
 
+  const stepMap = new Map(steps.map((step) => [step.id, step]));
+  const aliasPattern = /^[A-Za-z0-9_!]+$/;
+
+  // Row-level validations
   rows.forEach((row, index) => {
     const rowNum = index + 1;
+    const source = normalize(row.sourceNode);
+    const destination = normalize(row.destinationNode);
+    const ruleList = normalize(row.ruleList);
 
-    if (!row.sourceNode?.trim()) {
-      errors.push({
+    if (!source) {
+      addIssue({
         id: `err-src-empty-${index}`,
         row: index,
         type: 'error',
@@ -669,26 +681,175 @@ const validateStateMachineRows = (rows) => {
       });
     }
 
-    // Check for missing rules (behavior issues or direct state-to-state without TRUE)
-    if (!row.ruleList && row.destinationNode) {
-      errors.push({
+    if (!ruleList && destination) {
+      addIssue({
         id: `err-missing-rule-${index}`,
         row: index,
         type: 'error',
-        message: `Row ${rowNum}: Potential misplaced behavior detected.`,
-        suggestion: "Ensure there is a Rule step between the source state and subsequent behaviors/states."
+        message: `Row ${rowNum}: Destination exists but rule list is blank.`,
+        suggestion: 'Add a rule (or ensure a rule node exists between source and destination).'
+      });
+    }
+
+    if (source && destination && source === destination && (!ruleList || ruleList.toUpperCase() === 'TRUE')) {
+      addIssue({
+        id: `err-self-loop-${index}`,
+        row: index,
+        type: 'error',
+        message: `Row ${rowNum}: Self-loop without a rule.`,
+        suggestion: 'Add an explicit rule for self-loops or remove the self-connection.'
       });
     }
   });
 
+  // Alias format checks
+  steps.forEach((step) => {
+    const alias = normalize(step.alias);
+    if (alias && !aliasPattern.test(alias)) {
+      addIssue({
+        id: `err-alias-format-${step.id}`,
+        type: 'error',
+        message: `Alias "${alias}" contains illegal characters or spaces.`,
+        suggestion: 'Use only letters, numbers, and underscores in aliases.'
+      });
+    }
+  });
+
+  // Orphan sub-steps (missing/invalid parentId)
+  steps.forEach((step) => {
+    if (step.parentId && !stepMap.has(step.parentId)) {
+      addIssue({
+        id: `warn-orphan-${step.id}`,
+        type: 'warning',
+        message: `Step "${step.name}" is a sub-step with a missing parent.`,
+        suggestion: 'Fix the parent reference or move the step to root.'
+      });
+    }
+  });
+
+  // Build connection stats
+  const incomingCount = new Map();
+  const outgoingCount = new Map();
+  const transitionCount = new Map();
+
+  connections.forEach((conn) => {
+    incomingCount.set(conn.toStepId, (incomingCount.get(conn.toStepId) || 0) + 1);
+    outgoingCount.set(conn.fromStepId, (outgoingCount.get(conn.fromStepId) || 0) + 1);
+
+    const key = `${conn.fromStepId}|${conn.toStepId}|${conn.type}`;
+    transitionCount.set(key, (transitionCount.get(key) || 0) + 1);
+  });
+
+  // Duplicate transitions (same source->dest with same rule type)
+  transitionCount.forEach((count, key) => {
+    if (count > 1) {
+      const [fromId, toId, type] = key.split('|');
+      const fromStep = stepMap.get(fromId);
+      const toStep = stepMap.get(toId);
+      addIssue({
+        id: `warn-dup-transition-${key}`,
+        type: 'warning',
+        message: `Duplicate transition: "${fromStep?.name || fromId}" -> "${toStep?.name || toId}" (${type}).`,
+        suggestion: 'Remove duplicate connections or merge them.'
+      });
+    }
+  });
+
+  // Unreferenced steps (no incoming and no outgoing)
+  steps.forEach((step) => {
+    const hasIncoming = (incomingCount.get(step.id) || 0) > 0;
+    const hasOutgoing = (outgoingCount.get(step.id) || 0) > 0;
+    if (!hasIncoming && !hasOutgoing) {
+      addIssue({
+        id: `warn-unreferenced-${step.id}`,
+        type: 'warning',
+        message: `Step "${step.name}" has no incoming or outgoing connections.`,
+        suggestion: 'Connect it or remove it from the diagram.'
+      });
+    }
+  });
+
+  // Disconnected nodes (not reachable from selected roots)
+  const rootIds = selectedRootStepIds.length > 0
+    ? selectedRootStepIds
+    : steps.filter((s) => !s.parentId).map((s) => s.id);
+
+  if (rootIds.length > 0) {
+    const adjacency = new Map();
+    connections.forEach((conn) => {
+      if (!adjacency.has(conn.fromStepId)) {
+        adjacency.set(conn.fromStepId, []);
+      }
+      adjacency.get(conn.fromStepId).push(conn.toStepId);
+    });
+
+    const reachable = new Set();
+    const stack = [...rootIds];
+
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (reachable.has(current)) continue;
+      reachable.add(current);
+      const next = adjacency.get(current) || [];
+      next.forEach((id) => stack.push(id));
+    }
+
+    steps.forEach((step) => {
+      if (!reachable.has(step.id)) {
+        addIssue({
+          id: `warn-disconnected-${step.id}`,
+          type: 'warning',
+          message: `Step "${step.name}" is not reachable from selected roots.`,
+          suggestion: 'Connect it to the flow or exclude it by root selection.'
+        });
+      }
+    });
+  }
+
+  const errorCount = issues.filter((issue) => issue.type === 'error').length;
+  const warningCount = issues.filter((issue) => issue.type === 'warning').length;
+  const infoCount = issues.filter((issue) => issue.type === 'info').length;
+
   return {
-    valid: errors.length === 0,
-    errors,
+    valid: errorCount === 0,
+    issues,
+    globalIssues: issues.filter((issue) => issue.row === null || issue.row === undefined),
     summary: {
       total: rows.length,
-      errors: errors.length
+      errors: errorCount,
+      warnings: warningCount,
+      infos: infoCount
     }
   };
+};
+
+const getIssueStyles = (type) => {
+  switch (type) {
+    case 'error':
+      return {
+        containerClass: 'border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-900/20',
+        Icon: AlertCircle,
+        iconClass: 'w-4 h-4 text-red-600 dark:text-red-400',
+        titleClass: 'text-red-900 dark:text-red-200',
+        suggestionClass: 'text-red-700 dark:text-red-300'
+      };
+    case 'warning':
+      return {
+        containerClass: 'border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-900/20',
+        Icon: AlertTriangle,
+        iconClass: 'w-4 h-4 text-amber-600 dark:text-amber-400',
+        titleClass: 'text-amber-900 dark:text-amber-200',
+        suggestionClass: 'text-amber-700 dark:text-amber-300'
+      };
+    default:
+      return {
+        containerClass: 'border-blue-200 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-900/20',
+        Icon: Info,
+        iconClass: 'w-4 h-4 text-blue-600 dark:text-blue-400',
+        titleClass: 'text-blue-900 dark:text-blue-200',
+        suggestionClass: 'text-blue-700 dark:text-blue-300'
+      };
+  }
 };
 
 /**
@@ -697,15 +858,21 @@ const validateStateMachineRows = (rows) => {
 const ValidationResultsDisplay = ({ results }) => {
   if (!results) return null;
 
-  const { summary } = results;
+  const { summary, globalIssues = [] } = results;
   const errorCount = summary?.errors || 0;
+  const warningCount = summary?.warnings || 0;
   const errorPluralSuffix = errorCount === 1 ? '' : 's';
+  const warningPluralSuffix = warningCount === 1 ? '' : 's';
   const headerBgClass = errorCount > 0
     ? 'bg-red-50 dark:bg-red-950/20'
-    : 'bg-green-50 dark:bg-green-950/20';
+    : warningCount > 0
+      ? 'bg-amber-50 dark:bg-amber-950/20'
+      : 'bg-green-50 dark:bg-green-950/20';
   const titleText = errorCount > 0
     ? `${errorCount} Error${errorPluralSuffix} Found`
-    : 'Validation Passed';
+    : warningCount > 0
+      ? `${warningCount} Warning${warningPluralSuffix} Found`
+      : 'Validation Passed';
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -727,10 +894,15 @@ const ValidationResultsDisplay = ({ results }) => {
                 {errorCount} ERR
               </span>
             )}
+            {warningCount > 0 && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                {warningCount} WARN
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {errorCount === 0 && (
+          {errorCount === 0 && warningCount === 0 && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               All {summary.total} rows are valid ✓
             </span>
@@ -742,6 +914,24 @@ const ValidationResultsDisplay = ({ results }) => {
           )}
         </div>
       </div>
+      {globalIssues.length > 0 && (
+        <div className="px-4 py-3 space-y-2 border-t border-gray-200 dark:border-gray-700">
+          {globalIssues.map((issue) => {
+            const { containerClass, Icon, iconClass, titleClass, suggestionClass } = getIssueStyles(issue.type);
+            return (
+              <div key={issue.id} className={`flex gap-3 p-2.5 rounded-md border text-xs ${containerClass}`}>
+                <div className="mt-0.5 flex-shrink-0">
+                  <Icon className={iconClass} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-semibold ${titleClass}`}>{issue.message}</p>
+                  <p className={`mt-0.5 ${suggestionClass}`}>Tip: {issue.suggestion}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -750,7 +940,9 @@ ValidationResultsDisplay.propTypes = {
   results: PropTypes.shape({
     summary: PropTypes.shape({
       total: PropTypes.number,
-      errors: PropTypes.number
+      errors: PropTypes.number,
+      warnings: PropTypes.number,
+      infos: PropTypes.number
     })
   })
 };
@@ -760,35 +952,6 @@ ValidationResultsDisplay.propTypes = {
  */
 const RowValidationDisplay = ({ issues }) => {
   if (!issues || issues.length === 0) return null;
-
-  const getIssueStyles = (type) => {
-    switch (type) {
-      case 'error':
-        return {
-          containerClass: 'border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-900/20',
-          Icon: AlertCircle,
-          iconClass: 'w-4 h-4 text-red-600 dark:text-red-400',
-          titleClass: 'text-red-900 dark:text-red-200',
-          suggestionClass: 'text-red-700 dark:text-red-300'
-        };
-      case 'warning':
-        return {
-          containerClass: 'border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-900/20',
-          Icon: AlertTriangle,
-          iconClass: 'w-4 h-4 text-amber-600 dark:text-amber-400',
-          titleClass: 'text-amber-900 dark:text-amber-200',
-          suggestionClass: 'text-amber-700 dark:text-amber-300'
-        };
-      default:
-        return {
-          containerClass: 'border-blue-200 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-900/20',
-          Icon: Info,
-          iconClass: 'w-4 h-4 text-blue-600 dark:text-blue-400',
-          titleClass: 'text-blue-900 dark:text-blue-200',
-          suggestionClass: 'text-blue-700 dark:text-blue-300'
-        };
-    }
-  };
 
   return (
     <tr>
@@ -936,13 +1099,17 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
   // Export CSV
   const handleExportCSV = async () => {
     // Re-validate before export
-    const results = validateStateMachineRows(editableRows);
+    const results = validateStateMachineRows(
+      editableRows,
+      filteredSteps,
+      filteredConnections,
+      Array.from(selectedRootSteps)
+    );
+    setValidationResults(results);
     if (!results.valid) {
-      setValidationResults(results);
-      toast.error('Cannot export: State machine has critical errors. Please fix them below.', {
-        duration: 5000
+      toast.warning('Exporting with validation issues.', {
+        duration: 4000
       });
-      return;
     }
 
     try {
@@ -994,12 +1161,17 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
 
   // Run validation
   const handleValidate = () => {
-    const results = validateStateMachineRows(editableRows);
+    const results = validateStateMachineRows(
+      editableRows,
+      filteredSteps,
+      filteredConnections,
+      Array.from(selectedRootSteps)
+    );
     setValidationResults(results);
     if (results.valid) {
       toast.success('Validation passed!');
     } else {
-      toast.error(`Validation found ${results.errors.length} error(s)`);
+      toast.error(`Validation found ${results.summary.errors} error(s)`);
     }
   };
 
@@ -1142,7 +1314,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
                           ) : (
                             editableRows.map((row, index) => {
                               const rowIssues = validationResults 
-                                ? validationResults.errors.filter(i => i.row === index)
+                                ? validationResults.issues.filter(i => i.row === index)
                                 : [];
                               
                               const rowError = rowIssues.find(i => i.type === 'error');
