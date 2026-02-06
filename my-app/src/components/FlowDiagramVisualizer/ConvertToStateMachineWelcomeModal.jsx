@@ -59,7 +59,7 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
               <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
-                  <span><strong>Step Types:</strong> Mark steps as State, Rule, or Behavior</span>
+                  <span><strong>Step Classification:</strong> Mark steps as State, Rule, or Behavior with auto-classification</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
@@ -68,6 +68,10 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
                   <span><strong>Root Selection:</strong> Choose which parts of your diagram to convert</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 font-bold">•</span>
+                  <span><strong>Validation:</strong> Check state machine integrity with detailed error and warning reporting</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-500 font-bold">•</span>
@@ -82,18 +86,19 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
             <div className="flex items-start gap-3">
               <Network className="w-8 h-8 text-purple-500 flex-shrink-0 mt-1" />
               <div>
-                <h3 className="font-semibold text-lg mb-2">Understanding Step Types</h3>
+                <h3 className="font-semibold text-lg mb-2">Step Classification & Auto-Classification</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Steps are classified into three types, each serving a different purpose in the state machine:
+                  Steps are classified into three types, each serving a different purpose in the state machine.
+                  Use auto-classification to quickly categorize steps based on naming patterns.
                 </p>
               </div>
             </div>
 
             <div className="space-y-3">
               {/* State Type */}
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   <h4 className="font-semibold">State (Default)</h4>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -126,23 +131,41 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
               {/* Behavior Type */}
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-600 text-white">
+                  <div className="w-3 h-3 rounded-full bg-purple-600"></div>
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-600 text-white">
                     BEHAVIOR
                   </span>
-                  <h4 className="font-semibold">Behavior</h4>
+                  <h4 className="font-semibold">Behavior (Operations)</h4>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Actions and outcomes that are <strong>skipped</strong> during CSV generation. These represent
-                  user actions or system behaviors that occur between states but don't appear as nodes.
+                  Actions or side effects that occur during state transitions. These steps are typically
+                  skipped during conversion and should be placed between states and rules.
                 </p>
-                <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs font-mono mb-2">
-                  Examples: "customer enters SSN", "user clicks submit", "system provides confirmation"
+                <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs font-mono">
+                  Examples: "Send notification", "Send validation email", "Log attempt"
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-2 text-xs">
+              </div>
+
+              {/* Auto-Classification Rules */}
+              <div className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-purple-50 dark:bg-purple-950/30">
+                <h4 className="font-semibold mb-2">Auto-Classification Rules</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Click &quot;Run Auto-Classification&quot; in the Step Classification tab to automatically categorize steps:
+                </p>
+                <div className="space-y-1 text-xs bg-white dark:bg-gray-800 rounded p-3 border border-purple-100 dark:border-purple-900">
+                  <div className="font-mono">• Ends with <strong>?</strong> → <span className="text-blue-600 dark:text-blue-400 font-semibold">Rule</span></div>
+                  <div className="font-mono">• Starts with <strong>is</strong>, <strong>does</strong>, <strong>valid</strong>, <strong>invalid</strong> → <span className="text-blue-600 dark:text-blue-400 font-semibold">Rule</span></div>
+                  <div className="font-mono">• Starts with <strong>ask</strong> → <span className="text-green-600 dark:text-green-400 font-semibold">State</span></div>
+                  <div className="font-mono">• Starts with <strong>customer answers/ignored/rejected/provided</strong> → <span className="text-purple-600 dark:text-purple-400 font-semibold">Behavior</span></div>
+                  <div className="font-mono">• <strong>ALL CAPS</strong> → <span className="text-green-600 dark:text-green-400 font-semibold">State</span></div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
                   <strong>⚠️ Important:</strong> If a behavior is directly connected to a state without a rule,
                   the export preview will flag it as an error (rule list missing) so you can insert a Rule step.
-                </div>
+                </p>
               </div>
             </div>
           </TabsContent>
@@ -252,6 +275,26 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
             </div>
 
             <div className="space-y-3">
+              {/* Validation Section */}
+              <div className="border border-green-200 dark:border-green-800 rounded-lg p-4 bg-green-50 dark:bg-green-950/30">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <span>✓</span>
+                  <span>Validation</span>
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Before exporting, click <strong>&quot;Validate State Machine&quot;</strong> to check for:
+                </p>
+                <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  <li>• Empty or invalid source/destination nodes</li>
+                  <li>• Missing rules (transitions without conditions)</li>
+                  <li>• Behavior steps connected without rules</li>
+                  <li>• Duplicate aliases or naming issues</li>
+                </ul>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 italic">
+                  Issues are displayed with error/warning badges and suggestions for fixing.
+                </p>
+              </div>
+
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                 <h4 className="font-semibold mb-2">CSV Structure</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">

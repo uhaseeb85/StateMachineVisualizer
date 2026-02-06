@@ -29,17 +29,47 @@ import ConvertToStateMachineWelcomeModal from './ConvertToStateMachineWelcomeMod
 /**
  * Auto-classify steps based on naming rules
  * Rule 1: Ends with ? → rule
- * Rule 2: ALL CAPS → state
+ * Rule 2: Starts with "is" or "does" → rule
+ * Rule 3: Starts with "valid" or "invalid" → rule
+ * Rule 4: Starts with "ask" → state
+ * Rule 5: Starts with "customer answers/ignored/rejected/provided" → behavior
+ * Rule 6: ALL CAPS → state
  */
 const autoClassifyStep = (stepName) => {
   if (!stepName) return null;
   
+  const trimmedName = stepName.trim();
+  const lowerName = trimmedName.toLowerCase();
+  
   // Rule 1: Ends with ? → rule
-  if (stepName.trim().endsWith('?')) {
+  if (trimmedName.endsWith('?')) {
     return 'rule';
   }
+
+  // Rule 2: Starts with "is" or "does" → rule
+  if (lowerName.startsWith('is ') || lowerName.startsWith('does ') || 
+      lowerName === 'is' || lowerName === 'does') {
+    return 'rule';
+  }
+
+  // Rule 3: Starts with "valid" or "invalid" → rule
+  if (lowerName.startsWith('valid ') || lowerName.startsWith('invalid ') || 
+      lowerName === 'valid' || lowerName === 'invalid') {
+    return 'rule';
+  }
+
+  // Rule 4: Starts with "ask" → state
+  if (lowerName.startsWith('ask ') || lowerName === 'ask') {
+    return 'state';
+  }
+
+  // Rule 5: Starts with "customer answers/ignored/rejected/provided" → behavior
+  const behaviorPrefixes = ['customer answers', 'customer ignored', 'customer rejected', 'customer provided'];
+  if (behaviorPrefixes.some(p => lowerName.startsWith(p + ' ') || lowerName === p)) {
+    return 'behavior';
+  }
   
-  // Rule 2: ALL CAPS (with at least one letter) → state
+  // Rule 6: ALL CAPS (with at least one letter) → state
   if (/[A-Z]/.test(stepName) && stepName === stepName.toUpperCase()) {
     return 'state';
   }
@@ -568,6 +598,9 @@ const StepClassificationEditor = ({ steps, onUpdateStep, onRunAutoClassify }) =>
         </h5>
         <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
           <div>• Ends with ? (e.g., &quot;is eligible?&quot;) → <strong>Rule</strong></div>
+          <div>• Starts with &quot;is&quot;, &quot;does&quot;, &quot;valid&quot; or &quot;invalid&quot; → <strong>Rule</strong></div>
+          <div>• Starts with &quot;ask&quot; (e.g., &quot;ask email&quot;) → <strong>State</strong></div>
+          <div>• Starts with &quot;customer answers/ignored/rejected/provided&quot; → <strong>Behavior</strong></div>
           <div>• ALL CAPS (e.g., &quot;DASHBOARD&quot;) → <strong>State</strong></div>
           <div className="mt-2 italic">Auto-classification runs from this tab</div>
         </div>
