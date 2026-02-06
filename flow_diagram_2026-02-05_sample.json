@@ -1,0 +1,607 @@
+{
+  "steps": [
+    {
+      "id": "c565adaf-8071-4e25-8170-df3e83ee332d",
+      "name": "Start of flow",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": null,
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "root"
+    },
+    {
+      "id": "17648ac4-3880-4e77-bfa9-0df08429bc0e",
+      "name": "is eligible for SSN",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "c565adaf-8071-4e25-8170-df3e83ee332d",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "SSN_ELIGIBLE"
+    },
+    {
+      "id": "72a93417-1f71-43e7-8288-e9529c4bc582",
+      "name": "Ask SSN",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "17648ac4-3880-4e77-bfa9-0df08429bc0e",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "askSSN1040g"
+    },
+    {
+      "id": "ccc4777e-4f64-4be2-9c8b-d44ec5cf6b9c",
+      "name": "is eligible for 4DCA",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "c565adaf-8071-4e25-8170-df3e83ee332d",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "4DCA_ELIGIBLE"
+    },
+    {
+      "id": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "name": "ASk 4DCA",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "ccc4777e-4f64-4be2-9c8b-d44ec5cf6b9c",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "ask4DCA1050hh"
+    },
+    {
+      "id": "f9443ec1-5eba-473e-8e96-aab03027287c",
+      "name": "Customer Answers with SSN",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "72a93417-1f71-43e7-8288-e9529c4bc582",
+      "type": "behavior",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "84d4043b-4ba9-469c-b72d-35b552fa9e82",
+      "name": "Is SSN valid ?",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "f9443ec1-5eba-473e-8e96-aab03027287c",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "SSN"
+    },
+    {
+      "id": "0923f24a-6fb6-4a18-8274-684a8e9dffe8",
+      "name": "UPDATE_RELATIONSHIP",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "84d4043b-4ba9-469c-b72d-35b552fa9e82",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "UPDATE_RELATIONSHIP"
+    },
+    {
+      "id": "9872d191-93d9-4763-b279-6b681ad8e390",
+      "name": "is SSN not valid ?",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "f9443ec1-5eba-473e-8e96-aab03027287c",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "!SSN"
+    },
+    {
+      "id": "70a81abc-4ab1-4b73-b86c-0d417b937569",
+      "name": "is eligible for full SSN",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "9872d191-93d9-4763-b279-6b681ad8e390",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "FULL_SSN_ELIGIBLE"
+    },
+    {
+      "id": "8b5651b0-ced3-4b65-b67b-c69ca57de481",
+      "name": "is eligible for Digital ID",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "c565adaf-8071-4e25-8170-df3e83ee332d",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "DIGITAL_ID_ELIGIBLE"
+    },
+    {
+      "id": "3caad372-72e6-443b-b5bd-78fea39896b7",
+      "name": "Ask Digital id",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "8b5651b0-ced3-4b65-b67b-c69ca57de481",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "askDigitalId1070g"
+    },
+    {
+      "id": "e04db300-8f51-4457-8662-4e4ffa7902e2",
+      "name": "customer answers digital id",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "3caad372-72e6-443b-b5bd-78fea39896b7",
+      "type": "behavior",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "DIGITAL_ID"
+    },
+    {
+      "id": "0f1e7142-13d4-4ecd-bcbd-93d362228dc9",
+      "name": "customer ignored digital id",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "3caad372-72e6-443b-b5bd-78fea39896b7",
+      "type": "behavior",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "DIGITAL_ID_IGNORE"
+    },
+    {
+      "id": "d19d2b98-cb6c-4419-a802-ff70eec2aaeb",
+      "name": "Ask full SSN",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "70a81abc-4ab1-4b73-b86c-0d417b937569",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "askFullSSN1040g"
+    },
+    {
+      "id": "f345f1fb-115f-4618-8287-424619b23535",
+      "name": "Full SSN valid",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "d19d2b98-cb6c-4419-a802-ff70eec2aaeb",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "FULL_SSN"
+    },
+    {
+      "id": "b340352a-e4e3-4a75-b57f-2ce63393dfea",
+      "name": "Full SSN invalid",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "d19d2b98-cb6c-4419-a802-ff70eec2aaeb",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "!FULL_SSN"
+    },
+    {
+      "id": "8bed7ae3-fa8b-4c65-86d8-82ab2a6ddc90",
+      "name": "UPDATE",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "f345f1fb-115f-4618-8287-424619b23535",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "UPDATE"
+    },
+    {
+      "id": "d574bb72-9664-4c22-aa2a-19238ce34553",
+      "name": "FAIL_AUTH",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "b340352a-e4e3-4a75-b57f-2ce63393dfea",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "FAIL_AUTH"
+    },
+    {
+      "id": "9cd68a6b-a7f7-4497-97a2-540e54153007",
+      "name": "valid 4DCA",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "4DCA"
+    },
+    {
+      "id": "6b48e9dd-b29c-47d5-afd5-f18768f74fbb",
+      "name": "invalid 4DCA",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "!4DCA"
+    },
+    {
+      "id": "c3387a5a-a307-4bef-b8a0-083c8c5ae1fe",
+      "name": "Customer provided full DCA",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "type": "behavior",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "431c8b12-60ad-4707-8bad-7c830086804c",
+      "name": "UPDATE",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "9cd68a6b-a7f7-4497-97a2-540e54153007",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "75c8d5dd-52b4-43b9-a5d3-a2b3d6b5245f",
+      "name": "FAIL_AUTH",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "6b48e9dd-b29c-47d5-afd5-f18768f74fbb",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "87c7783a-eb97-4f7c-aca4-81bd26c4a3e0",
+      "name": "INQUIRY_RELATIONSHIP",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "0e4177ae-8e25-468e-aacb-47a224d3c156",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "INQUIRY_RELATIONSHIP"
+    },
+    {
+      "id": "14fba97f-6d95-4994-9c6a-d6b6f629df8b",
+      "name": "UPDATE_RELATIONHIP",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "32688d15-72a3-48f6-bd96-5927b9f23e9a",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "UPDATE_RELATIONSHIP"
+    },
+    {
+      "id": "9b7b2f6f-ec95-485d-8261-8ed68b702398",
+      "name": "is Valid phone number",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "9cd68a6b-a7f7-4497-97a2-540e54153007",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alias": "PHONE_NUMBER"
+    },
+    {
+      "id": "0e4177ae-8e25-468e-aacb-47a224d3c156",
+      "name": "is Full DCA valid ?",
+      "alias": "FULL_DCA",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "c3387a5a-a307-4bef-b8a0-083c8c5ae1fe",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "28b09ecf-5a8f-4208-81aa-1823d9f83d7b",
+      "name": "FAIL_AUTH",
+      "alias": "FAIL_AUTH",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "0e4177ae-8e25-468e-aacb-47a224d3c156",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "32688d15-72a3-48f6-bd96-5927b9f23e9a",
+      "name": "Digital id Allowed",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "e04db300-8f51-4457-8662-4e4ffa7902e2",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "2e9952b2-e7a1-4763-93cb-d5342111ee11",
+      "name": "Digital Id Rejected",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "e04db300-8f51-4457-8662-4e4ffa7902e2",
+      "type": "rule",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "e30ac014-5117-4934-a3be-de1dcb1640e2",
+      "name": "FAIL_AUTH",
+      "description": "",
+      "expectedResponse": "",
+      "parentId": "2e9952b2-e7a1-4763-93cb-d5342111ee11",
+      "type": "state",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "e4e6d6fa-162e-4204-bd96-d77243e23705",
+      "fromStepId": "3caad372-72e6-443b-b5bd-78fea39896b7",
+      "toStepId": "e04db300-8f51-4457-8662-4e4ffa7902e2",
+      "type": "success"
+    },
+    {
+      "id": "3abbd1de-579a-4b68-8679-d53ad342a2aa",
+      "fromStepId": "3caad372-72e6-443b-b5bd-78fea39896b7",
+      "toStepId": "0f1e7142-13d4-4ecd-bcbd-93d362228dc9",
+      "type": "success"
+    },
+    {
+      "id": "4193211e-fdc6-4add-9073-8b2526b1aa39",
+      "fromStepId": "c565adaf-8071-4e25-8170-df3e83ee332d",
+      "toStepId": "8b5651b0-ced3-4b65-b67b-c69ca57de481",
+      "type": "success"
+    },
+    {
+      "id": "e91f811d-271a-42f7-ad38-5f3f07ceabbc",
+      "fromStepId": "8b5651b0-ced3-4b65-b67b-c69ca57de481",
+      "toStepId": "3caad372-72e6-443b-b5bd-78fea39896b7",
+      "type": "success"
+    },
+    {
+      "id": "2c7e7b09-8e10-46dc-8dac-6c41cf7816ac",
+      "fromStepId": "17648ac4-3880-4e77-bfa9-0df08429bc0e",
+      "toStepId": "72a93417-1f71-43e7-8288-e9529c4bc582",
+      "type": "success"
+    },
+    {
+      "id": "36aa34a9-02aa-45f3-8920-565efcc71f25",
+      "fromStepId": "72a93417-1f71-43e7-8288-e9529c4bc582",
+      "toStepId": "f9443ec1-5eba-473e-8e96-aab03027287c",
+      "type": "success"
+    },
+    {
+      "id": "07916524-da5c-4d76-a7ef-aeef432fc56d",
+      "fromStepId": "f9443ec1-5eba-473e-8e96-aab03027287c",
+      "toStepId": "84d4043b-4ba9-469c-b72d-35b552fa9e82",
+      "type": "success"
+    },
+    {
+      "id": "cb31e143-dc76-47bd-a0cb-e55d9647a5e1",
+      "fromStepId": "f9443ec1-5eba-473e-8e96-aab03027287c",
+      "toStepId": "9872d191-93d9-4763-b279-6b681ad8e390",
+      "type": "success"
+    },
+    {
+      "id": "f12c6584-3d60-4bc2-b91d-1965454a562b",
+      "fromStepId": "84d4043b-4ba9-469c-b72d-35b552fa9e82",
+      "toStepId": "0923f24a-6fb6-4a18-8274-684a8e9dffe8",
+      "type": "success"
+    },
+    {
+      "id": "e4c9fc22-0989-4eae-953f-465060cf56a9",
+      "fromStepId": "9872d191-93d9-4763-b279-6b681ad8e390",
+      "toStepId": "70a81abc-4ab1-4b73-b86c-0d417b937569",
+      "type": "success"
+    },
+    {
+      "id": "0c2fa6de-826b-4461-b54d-97fc3b6e019e",
+      "fromStepId": "17648ac4-3880-4e77-bfa9-0df08429bc0e",
+      "toStepId": "ccc4777e-4f64-4be2-9c8b-d44ec5cf6b9c",
+      "type": "failure"
+    },
+    {
+      "id": "a8c59a1f-8f7b-4815-876c-d435ce8687f0",
+      "fromStepId": "8b5651b0-ced3-4b65-b67b-c69ca57de481",
+      "toStepId": "17648ac4-3880-4e77-bfa9-0df08429bc0e",
+      "type": "failure"
+    },
+    {
+      "id": "f840bd0e-9723-40ba-b04f-a5ac72238c94",
+      "fromStepId": "70a81abc-4ab1-4b73-b86c-0d417b937569",
+      "toStepId": "d19d2b98-cb6c-4419-a802-ff70eec2aaeb",
+      "type": "success"
+    },
+    {
+      "id": "33b0db43-d7e1-4730-a2c1-e39398f6f50f",
+      "fromStepId": "d19d2b98-cb6c-4419-a802-ff70eec2aaeb",
+      "toStepId": "f345f1fb-115f-4618-8287-424619b23535",
+      "type": "success"
+    },
+    {
+      "id": "e07cc09d-6647-4fed-b2c3-70259f374a1e",
+      "fromStepId": "d19d2b98-cb6c-4419-a802-ff70eec2aaeb",
+      "toStepId": "b340352a-e4e3-4a75-b57f-2ce63393dfea",
+      "type": "failure"
+    },
+    {
+      "id": "e20caa3e-0796-43ef-b097-988a637da907",
+      "fromStepId": "f345f1fb-115f-4618-8287-424619b23535",
+      "toStepId": "8bed7ae3-fa8b-4c65-86d8-82ab2a6ddc90",
+      "type": "success"
+    },
+    {
+      "id": "436e9ed9-814c-4047-af2e-49240dd47c50",
+      "fromStepId": "b340352a-e4e3-4a75-b57f-2ce63393dfea",
+      "toStepId": "d574bb72-9664-4c22-aa2a-19238ce34553",
+      "type": "success"
+    },
+    {
+      "id": "e6da5f5b-c5db-4ba5-8de7-3802f52d4ae3",
+      "fromStepId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "toStepId": "9cd68a6b-a7f7-4497-97a2-540e54153007",
+      "type": "success"
+    },
+    {
+      "id": "2e129498-5301-495d-83d0-2f4bb58b72fd",
+      "fromStepId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "toStepId": "c3387a5a-a307-4bef-b8a0-083c8c5ae1fe",
+      "type": "success"
+    },
+    {
+      "id": "ddc85351-8805-4fe2-86c2-ed67004f6934",
+      "fromStepId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "toStepId": "6b48e9dd-b29c-47d5-afd5-f18768f74fbb",
+      "type": "failure"
+    },
+    {
+      "id": "8d09d0b0-dbb8-4307-97c6-1256a71ca317",
+      "fromStepId": "ccc4777e-4f64-4be2-9c8b-d44ec5cf6b9c",
+      "toStepId": "f0c95cdf-e98a-4889-a58f-619c83cdf1d8",
+      "type": "success"
+    },
+    {
+      "id": "5759e959-9f69-4a4b-8135-0627ebe7b451",
+      "fromStepId": "6b48e9dd-b29c-47d5-afd5-f18768f74fbb",
+      "toStepId": "75c8d5dd-52b4-43b9-a5d3-a2b3d6b5245f",
+      "type": "success"
+    },
+    {
+      "id": "aabb5101-e956-4e41-90d1-a841bb1b52bc",
+      "fromStepId": "0f1e7142-13d4-4ecd-bcbd-93d362228dc9",
+      "toStepId": "17648ac4-3880-4e77-bfa9-0df08429bc0e",
+      "type": "success"
+    },
+    {
+      "id": "90d61f75-7d70-4808-9c38-8190f3a7fc3d",
+      "fromStepId": "9cd68a6b-a7f7-4497-97a2-540e54153007",
+      "toStepId": "9b7b2f6f-ec95-485d-8261-8ed68b702398",
+      "type": "success"
+    },
+    {
+      "id": "9931434e-918a-4dcd-808e-4ae820b15c92",
+      "fromStepId": "9b7b2f6f-ec95-485d-8261-8ed68b702398",
+      "toStepId": "431c8b12-60ad-4707-8bad-7c830086804c",
+      "type": "success"
+    },
+    {
+      "id": "d4a12264-09b1-4e48-ad43-12b6b6438004",
+      "fromStepId": "c3387a5a-a307-4bef-b8a0-083c8c5ae1fe",
+      "toStepId": "0e4177ae-8e25-468e-aacb-47a224d3c156",
+      "type": "success"
+    },
+    {
+      "id": "8de82c2e-7856-48eb-be7b-799d2d0d65eb",
+      "fromStepId": "0e4177ae-8e25-468e-aacb-47a224d3c156",
+      "toStepId": "87c7783a-eb97-4f7c-aca4-81bd26c4a3e0",
+      "type": "success"
+    },
+    {
+      "id": "29edd965-66c3-4248-b968-d3e0802d01bf",
+      "fromStepId": "0e4177ae-8e25-468e-aacb-47a224d3c156",
+      "toStepId": "28b09ecf-5a8f-4208-81aa-1823d9f83d7b",
+      "type": "failure"
+    },
+    {
+      "id": "e8b831cc-ac6a-49d7-8655-3320c719a0ff",
+      "fromStepId": "e04db300-8f51-4457-8662-4e4ffa7902e2",
+      "toStepId": "32688d15-72a3-48f6-bd96-5927b9f23e9a",
+      "type": "success"
+    },
+    {
+      "id": "5e3df7df-b9ed-47fe-9f7e-02bd3e7baeca",
+      "fromStepId": "e04db300-8f51-4457-8662-4e4ffa7902e2",
+      "toStepId": "2e9952b2-e7a1-4763-93cb-d5342111ee11",
+      "type": "success"
+    },
+    {
+      "id": "58e090d9-cfb9-4eab-b59a-3caea87d2974",
+      "fromStepId": "32688d15-72a3-48f6-bd96-5927b9f23e9a",
+      "toStepId": "14fba97f-6d95-4994-9c6a-d6b6f629df8b",
+      "type": "success"
+    },
+    {
+      "id": "71b6ea2e-5b81-4d34-b175-a50383c4a5b2",
+      "fromStepId": "2e9952b2-e7a1-4763-93cb-d5342111ee11",
+      "toStepId": "e30ac014-5117-4934-a3be-de1dcb1640e2",
+      "type": "success"
+    }
+  ]
+}

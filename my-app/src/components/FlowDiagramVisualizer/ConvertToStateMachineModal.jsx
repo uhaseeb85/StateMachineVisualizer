@@ -1087,19 +1087,44 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
     );
   }, [connections, filteredSteps]);
   
+  const hasManualEditsRef = useRef(false);
+
   // Generate CSV preview data using filtered steps and connections
   const csvRows = useMemo(() => {
     if (!isOpen) return [];
     return convertToStateMachineRows(filteredSteps, filteredConnections);
   }, [filteredSteps, filteredConnections, isOpen]);
-  
-  // Update editable rows when csvRows change
+
+  const stepTypeByLabel = useMemo(() => {
+    const map = new Map();
+    filteredSteps.forEach((step) => {
+      const label = (step.alias || '').trim() || step.name || '';
+      if (label) {
+        map.set(label, step.type || 'state');
+      }
+    });
+    return map;
+  }, [filteredSteps]);
+
+  // Refresh CSV preview on open to sync with Step Panel changes
   useEffect(() => {
+    if (!isOpen) return;
+    hasManualEditsRef.current = false;
+    setValidationResults(null);
+    const refreshedRows = convertToStateMachineRows(filteredSteps, filteredConnections);
+    setEditableRows(refreshedRows);
+  }, [isOpen, filteredSteps, filteredConnections]);
+  
+  // Update editable rows when csvRows change (unless user has edited cells)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (hasManualEditsRef.current) return;
     setEditableRows(csvRows);
-  }, [csvRows]);
+  }, [csvRows, isOpen]);
   
   // Handle cell edit
   const handleCellEdit = (rowIndex, field, value) => {
+    hasManualEditsRef.current = true;
     const newRows = [...editableRows];
     newRows[rowIndex] = { ...newRows[rowIndex], [field]: value };
     setEditableRows(newRows);
