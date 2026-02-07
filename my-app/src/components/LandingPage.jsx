@@ -156,7 +156,7 @@ const LandingPage = ({ onGetStarted }) => {
                   <p className="text-lg text-slate-300">
                     An enterprise-grade visual builder for state machines, flow diagrams, and log analysis.
                     <span className="block text-slate-200">
-                      Map decisions, validate transitions, and simulate outcomes with surgical clarity.
+                      Map decisions, validate transitions, and simulate outcomes with clarity.
                     </span>
                   </p>
                   <div className="flex flex-wrap gap-3">
