@@ -1,23 +1,58 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  GitBranch, 
-  Workflow, 
-  ArrowRight, 
-  Boxes, 
+import {
+  GitBranch,
+  Workflow,
+  ArrowRight,
+  Boxes,
   Network,
   FileJson,
   History,
   Lightbulb,
   Sparkles,
   Search,
-  FileText,
-  Brain
+  Brain,
+  Radar,
+  ShieldCheck,
+  Waypoints
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
-
+import storage from '@/utils/storageWrapper';
 const LandingPage = ({ onGetStarted }) => {
+  const [sessionInfo, setSessionInfo] = useState({
+    lastMode: 'flowDiagram',
+    flowFileName: null,
+    stateFileName: null
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSessionInfo = async () => {
+      try {
+        const lastMode = localStorage.getItem('visualizer_mode') || 'flowDiagram';
+        const flowFileName = await storage.getItem('flowDiagramData_currentFileName');
+        const stateFileName = await storage.getItem('stateMachineCurrentFileName');
+
+        if (!isMounted) return;
+
+        setSessionInfo({
+          lastMode,
+          flowFileName: flowFileName || null,
+          stateFileName: stateFileName || null
+        });
+      } catch (error) {
+        console.error('Failed to load session info:', error);
+      }
+    };
+
+    loadSessionInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const handleModeSelect = (mode) => {
     localStorage.setItem('visualizer_mode', mode);
     onGetStarted();
@@ -26,82 +61,164 @@ const LandingPage = ({ onGetStarted }) => {
   const features = [
     {
       icon: Boxes,
-      title: "State Management",
-      description: "Create and manage complex state machines with an intuitive interface",
-      color: "blue"
+      title: "State Logic Studio",
+      description: "Model complex systems with explicit states, rules, and behaviors.",
+      className: "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
     },
     {
-      icon: Network,
-      title: "Flow Visualization",
-      description: "Visualize API process flows and transitions interactively",
-      color: "green"
+      icon: Waypoints,
+      title: "Flow Command Map",
+      description: "Branch, merge, and validate API process routes in seconds.",
+      className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
     },
     {
       icon: FileJson,
-      title: "Import/Export",
-      description: "Support for JSON and CSV formats with data persistence",
-      color: "purple"
+      title: "Export-Grade IO",
+      description: "Round-trip CSV/JSON/Excel while preserving custom columns.",
+      className: "border-amber-500/40 bg-amber-500/10 text-amber-200"
     },
     {
       icon: History,
-      title: "Version Control",
-      description: "Track changes and maintain history of modifications",
-      color: "orange"
+      title: "Timeline Control",
+      description: "Undo, redo, and compare paths with precise history events.",
+      className: "border-violet-500/40 bg-violet-500/10 text-violet-200"
     },
     {
-      icon: Lightbulb,
-      title: "Path Validation",
-      description: "Interactive validation of state transitions and rules",
-      color: "yellow"
+      icon: ShieldCheck,
+      title: "Integrity Checks",
+      description: "Validate transitions, detect gaps, and surface rule issues.",
+      className: "border-rose-500/40 bg-rose-500/10 text-rose-200"
     },
     {
       icon: Sparkles,
-      title: "Simulation",
-      description: "Try out flows with real-time simulation and testing",
-      color: "pink"
+      title: "Live Simulation",
+      description: "Run scenarios with real-time state feedback and annotations.",
+      className: "border-sky-500/40 bg-sky-500/10 text-sky-200"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-[#0a0d12] text-slate-100">
       <div className="relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-        
-        <div className="relative pt-24 pb-16 sm:pt-32 sm:pb-24">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(64,220,255,0.18),_transparent_45%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,_rgba(22,255,196,0.12),_transparent_40%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_30%,_rgba(255,142,0,0.12),_transparent_45%)]" />
+          <div className="absolute inset-0 opacity-30 bg-[linear-gradient(transparent_0,_transparent_47%,_rgba(255,255,255,0.05)_48%,_transparent_49%),linear-gradient(90deg,_transparent_0,_transparent_47%,_rgba(255,255,255,0.05)_48%,_transparent_49%)] bg-[length:60px_60px]" />
+        </div>
+
+        <div className="relative pt-16 sm:pt-24 pb-16">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center">
-              <motion.h1 
-                className="text-4xl font-bold tracking-tight sm:text-6xl bg-clip-text text-transparent 
-                         bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+            <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6 }}
+                className="space-y-6"
               >
-                Visual Flow Builder
-              </motion.h1>
-              <motion.p 
-                className="mt-6 text-lg leading-8 text-gray-300"
-                initial={{ opacity: 0, y: 20 }}
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+                  <Radar className="h-3 w-3 text-cyan-300" />
+                  Next-Gen Flow Intelligence
+                </div>
+                <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight">
+                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-emerald-300 to-amber-300">
+                    Enterprise Intelligence Suite
+                  </span>
+                </h1>
+                <p className="text-lg text-slate-300 max-w-xl">
+                  An enterprise-grade visual builder for state machines, flow diagrams, and log analysis.
+                  Map decisions, validate transitions, and simulate outcomes with surgical clarity.
+                </p>
+                <div className="flex flex-wrap gap-6 pt-6 text-sm text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Validation-grade exports
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Network className="h-4 w-4 text-cyan-300" />
+                    Multi-mode modeling
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
+                className="relative"
               >
-                Design, visualize, and validate complex workflows with our intuitive interface.
-                Build state machines, flow diagrams, and analyze logs with ease.
-              </motion.p>
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                    <div className="flex items-center justify-between text-xs text-slate-400 mb-4">
+                      <span>Session Dock</span>
+                      <span className="text-emerald-300">Ready</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-white/10 bg-[#0f141b] p-4">
+                        <div className="flex items-center gap-3">
+                          {sessionInfo.lastMode === 'stateMachine' ? (
+                            <Workflow className="h-5 w-5 text-cyan-300" />
+                          ) : (
+                            <GitBranch className="h-5 w-5 text-emerald-300" />
+                          )}
+                          <div className="flex-1">
+                            <div className="text-sm font-semibold">Resume last session</div>
+                            <div className="text-xs text-slate-400">
+                              {sessionInfo.lastMode === 'stateMachine'
+                                ? 'State Machine Visualizer'
+                                : 'Flow Diagram Builder'}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="h-8 px-3 bg-white/10 text-slate-100 hover:bg-white/20"
+                            onClick={() => handleModeSelect(sessionInfo.lastMode)}
+                          >
+                            Resume
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-[#0f141b] p-4">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-3">
+                          Recent Files
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span>Flow Diagram</span>
+                            <span className="text-xs text-slate-500">
+                              {sessionInfo.flowFileName || 'No saved file'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span>State Machine</span>
+                            <span className="text-xs text-slate-500">
+                              {sessionInfo.stateFileName || 'No saved file'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl" />
+              </motion.div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Mode Selection */}
-      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Launch Bays</p>
+            <h2 className="text-2xl font-semibold">Pick your mission</h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* State Machine Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent p-10 hover:from-blue-500/20 
-                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
+            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-cyan-400/60 hover:bg-white/10 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px]"
             onClick={() => handleModeSelect('stateMachine')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, x: -20 }}
@@ -110,32 +227,31 @@ const LandingPage = ({ onGetStarted }) => {
           >
             <div className="flex-grow mb-10">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 rounded-lg bg-blue-500/20">
-                  <Workflow className="w-8 h-8 text-blue-400" />
+                <div className="p-3 rounded-lg bg-cyan-500/20">
+                  <Workflow className="w-8 h-8 text-cyan-300" />
                 </div>
                 <h3 className="text-2xl font-semibold">State Machine Visualizer</h3>
               </div>
-              <p className="text-gray-400 mb-8 text-lg">
-                Design and validate complex state machines with rules and transitions.
-                Perfect for modeling system behaviors and decision flows.
+              <p className="text-slate-300 mb-8 text-lg">
+                Design deterministic systems with explicit rules, state types, and guard paths.
               </p>
               <div className="h-[280px] relative">
                 <AnimatedDemo mode="stateMachine" />
               </div>
             </div>
             <Button 
-              className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 py-6
-                       group-hover:bg-blue-500 group-hover:text-white transition-all duration-300"
+              className="w-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 py-6
+                       group-hover:bg-cyan-400 group-hover:text-slate-900 transition-all duration-300"
             >
-              Start Building
+              Start State Modeling
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
 
           {/* Flow Diagram Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-green-500/10 to-transparent p-10 hover:from-green-500/20 
-                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
+            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-emerald-400/60 hover:bg-white/10 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px]"
             onClick={() => handleModeSelect('flowDiagram')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, y: 20 }}
@@ -144,32 +260,31 @@ const LandingPage = ({ onGetStarted }) => {
           >
             <div className="flex-grow mb-10">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 rounded-lg bg-green-500/20">
-                  <GitBranch className="w-8 h-8 text-green-400" />
+                <div className="p-3 rounded-lg bg-emerald-500/20">
+                  <GitBranch className="w-8 h-8 text-emerald-300" />
                 </div>
                 <h3 className="text-2xl font-semibold">Flow Diagram Builder</h3>
               </div>
-              <p className="text-gray-400 mb-8 text-lg">
-                Create linear or branching flow diagrams with success/failure paths.
-                Ideal for API flows and process documentation.
+              <p className="text-slate-300 mb-8 text-lg">
+                Build process maps with success/failure logic and instant validation.
               </p>
               <div className="h-[280px] relative">
                 <AnimatedDemo mode="flowDiagram" />
               </div>
             </div>
             <Button 
-              className="w-full bg-green-500/20 hover:bg-green-500/30 text-green-400 py-6
-                       group-hover:bg-green-500 group-hover:text-white transition-all duration-300"
+              className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 py-6
+                       group-hover:bg-emerald-400 group-hover:text-slate-900 transition-all duration-300"
             >
-              Start Building
+              Start Flow Mapping
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
           
           {/* Log Analyzer Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-purple-500/10 to-transparent p-10 hover:from-purple-500/20 
-                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
+            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-violet-400/60 hover:bg-white/10 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px]"
             onClick={() => handleModeSelect('logAnalyzer')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, x: 20 }}
@@ -178,32 +293,31 @@ const LandingPage = ({ onGetStarted }) => {
           >
             <div className="flex-grow mb-10">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 rounded-lg bg-purple-500/20">
-                  <Search className="w-8 h-8 text-purple-400" />
+                <div className="p-3 rounded-lg bg-violet-500/20">
+                  <Search className="w-8 h-8 text-violet-300" />
                 </div>
                 <h3 className="text-2xl font-semibold">Log Analyzer</h3>
               </div>
-              <p className="text-gray-400 mb-8 text-lg">
-                Analyze log files to identify patterns and troubleshoot issues.
-                Supports local files and Splunk integration.
+              <p className="text-slate-300 mb-8 text-lg">
+                Decode logs, cluster patterns, and surface anomalies instantly.
               </p>
               <div className="h-[280px] relative">
                 <AnimatedDemo mode="logAnalyzer" />
               </div>
             </div>
             <Button 
-              className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 py-6
-                       group-hover:bg-purple-500 group-hover:text-white transition-all duration-300"
+              className="w-full bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 py-6
+                       group-hover:bg-violet-400 group-hover:text-slate-900 transition-all duration-300"
             >
-              Start Analyzing
+              Start Log Analysis
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
           
           {/* AI Log Analysis Mode */}
           <motion.div 
-            className="group relative rounded-3xl bg-gradient-to-b from-indigo-500/10 to-transparent p-10 hover:from-indigo-500/20 
-                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[550px]"
+            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-sky-400/60 hover:bg-white/10 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px]"
             onClick={() => handleModeSelect('aiLogAnalysis')}
             whileHover={{ scale: 1.02 }}
             initial={{ opacity: 0, x: 20 }}
@@ -212,24 +326,23 @@ const LandingPage = ({ onGetStarted }) => {
           >
             <div className="flex-grow mb-10">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 rounded-lg bg-indigo-500/20">
-                  <Brain className="w-8 h-8 text-indigo-400" />
+                <div className="p-3 rounded-lg bg-sky-500/20">
+                  <Brain className="w-8 h-8 text-sky-300" />
                 </div>
                 <h3 className="text-2xl font-semibold">AI Log Analysis</h3>
               </div>
-              <p className="text-gray-400 mb-8 text-lg">
-                Analyze log files using AI to get intelligent insights and answers.
-                Ask questions about your logs in natural language.
+              <p className="text-slate-300 mb-8 text-lg">
+                Ask questions, get summaries, and extract operational signals.
               </p>
               <div className="h-[280px] relative">
                 <AnimatedDemo mode="aiLogAnalysis" />
               </div>
             </div>
             <Button 
-              className="w-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 py-6
-                       group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300"
+              className="w-full bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 py-6
+                       group-hover:bg-sky-400 group-hover:text-slate-900 transition-all duration-300"
             >
-              Start AI Analysis
+              Start AI Forensics
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
@@ -237,59 +350,56 @@ const LandingPage = ({ onGetStarted }) => {
       </div>
 
       {/* Features Grid */}
-      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-24">
-        <motion.h2 
-          className="text-3xl font-bold text-center mb-20"
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-20">
+        <motion.h2
+          className="text-3xl font-semibold text-center mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           Feature Highlights
         </motion.h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
-              className={`rounded-xl bg-${feature.color}-500/10 p-8 hover:bg-${feature.color}-500/20 
-                       transition-all duration-300 flex flex-col h-full min-h-[200px]`}
+              className={`rounded-2xl border p-6 transition-all duration-300 ${feature.className}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.5, delay: index * 0.08 }}
             >
-              <div className={`p-3 rounded-lg bg-${feature.color}-500/20 w-fit mb-6`}>
-                <feature.icon className={`w-8 h-8 text-${feature.color}-400`} />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-white/5">
+                  <feature.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-semibold">{feature.title}</h3>
               </div>
-              <h3 className="text-xl font-semibold mb-4">{feature.title}</h3>
-              <p className="text-gray-400 text-lg">{feature.description}</p>
+              <p className="text-sm text-slate-200/80">{feature.description}</p>
             </motion.div>
           ))}
         </div>
       </div>
 
       {/* Technologies and Credits Section */}
-      <div className="border-t border-gray-800">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
-          {/* About Section */}
-          <div className="max-w-2xl">
-            <h3 className="text-xl font-semibold mb-6">About</h3>
-            <div className="space-y-4 text-sm text-gray-300">
+      <div className="border-t border-white/10">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-14">
+          <div className="max-w-3xl">
+            <h3 className="text-xl font-semibold mb-4">Mission Brief</h3>
+            <div className="space-y-4 text-sm text-slate-300">
               <p>
-                Visual Flow Builder helps you create and understand complex workflows through interactive diagrams. 
-                Whether you're designing state machines, mapping out process flows, or analyzing logs, this tool makes it simple to 
-                visualize, validate, and share your work.
+                Visual Flow Builder is built for engineers who need clarity under pressure. Model the logic, validate the edge cases,
+                and publish a single, shareable source of truth across product and operations teams.
               </p>
-              <div className="space-y-2">
-                <p className="text-gray-400 font-medium">Acknowledgments:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-300">
-                  <li>Built with React</li>
-                  <li>Design elements from Shadcn UI</li>
-                  <li>Interface icons by Lucide</li>
-                  <li>Smooth animations by Framer</li>
-                </ul>
+              <div className="grid grid-cols-2 gap-4 text-xs text-slate-400">
+                <div>
+                  <div className="uppercase tracking-[0.2em]">Stack</div>
+                  <p className="mt-2">React • Shadcn UI • Framer Motion • Lucide</p>
+                </div>
+                <div>
+                  <div className="uppercase tracking-[0.2em]">Version</div>
+                  <p className="mt-2">1.0.0 (Flow to Graph CSV)</p>
+                </div>
               </div>
-              <p className="text-gray-400 mt-6">
-                Version 1.0.0
-              </p>
             </div>
           </div>
         </div>
