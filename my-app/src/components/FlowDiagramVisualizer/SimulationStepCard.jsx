@@ -369,6 +369,7 @@ const SimulationStepCard = ({
             onAddConnection={handleAddConnectionStaged}
             onRemoveConnection={handleRemoveConnectionStaged}
             onAddStep={onAddStep}
+            dictionaryHook={dictionaryHook}
           />
         )}
 

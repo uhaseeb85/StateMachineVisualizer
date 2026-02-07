@@ -368,238 +368,258 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
 
               {/* Inline Connection Creator */}
               {showConnectionCreator && onAddConnection && (
-                <div className="mb-3 p-3 bg-white dark:bg-gray-800 rounded-lg border-2 border-purple-300 dark:border-purple-600">
-               <div className="space-y-3">
-                    {/* Connection Type Selector */}
-                    <div>
-                      <div className="text-xs font-medium mb-2 block">Connection Type:</div>
-                      <div className="grid grid-cols-2 gap-2">
+                <div className="mb-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border-2 border-purple-300 dark:border-purple-600 shadow-md">
+                  <div className="space-y-4">
+                    {/* Header with Connection Type */}
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                        ➕ Add Connection
+                      </div>
+                      <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant={newConnectionType === 'success' ? 'default' : 'outline'}
-                          className={`h-10 flex items-center justify-center gap-1 ${
+                          variant={newConnectionType === 'success' ? 'default' : 'ghost'}
+                          className={`h-8 ${
                             newConnectionType === 'success' 
-                              ? 'bg-green-600 hover:bg-green-700' 
-                              : 'border-green-200 hover:bg-green-50'
+                              ? 'bg-green-600 hover:bg-green-700 text-white' 
+                              : 'hover:bg-green-100 text-green-700'
                           }`}
                           onClick={() => setNewConnectionType('success')}
                         >
-                          <CheckCircle2 className={`h-4 w-4 ${
-                            newConnectionType === 'success' ? 'text-white' : 'text-green-600'
-                          }`} />
-                          <span className={`text-xs ${
-                            newConnectionType === 'success' ? 'text-white' : 'text-green-700'
-                          }`}>
-                            Success
-                          </span>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                          Success
                         </Button>
-                        
                         <Button
                           size="sm"
-                          variant={newConnectionType === 'failure' ? 'default' : 'outline'}
-                          className={`h-10 flex items-center justify-center gap-1 ${
+                          variant={newConnectionType === 'failure' ? 'default' : 'ghost'}
+                          className={`h-8 ${
                             newConnectionType === 'failure' 
-                              ? 'bg-red-600 hover:bg-red-700' 
-                              : 'border-red-200 hover:bg-red-50'
+                              ? 'bg-red-600 hover:bg-red-700 text-white' 
+                              : 'hover:bg-red-100 text-red-700'
                           }`}
                           onClick={() => setNewConnectionType('failure')}
                         >
-                          <XCircle className={`h-4 w-4 ${
-                            newConnectionType === 'failure' ? 'text-white' : 'text-red-600'
-                          }`} />
-                          <span className={`text-xs ${
-                            newConnectionType === 'failure' ? 'text-white' : 'text-red-700'
-                          }`}>
-                            Failure
-                          </span>
+                          <XCircle className="h-3.5 w-3.5 mr-1" />
+                          Failure
                         </Button>
                       </div>
                     </div>
 
-                    {/* Mode Selector */}
-                    <div>
-                      <div className="text-xs font-medium mb-2 block">Target Mode:</div>
-                      <div className="flex gap-4 mb-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="connectionMode"
-                            value="existing"
-                            checked={connectionMode === 'existing'}
-                            onChange={(e) => {
-                              setConnectionMode(e.target.value);
-                              setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
-                            }}
-                            className="w-4 h-4 text-purple-600"
-                          />
-                          <span className="text-xs">Select Existing</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="connectionMode"
-                            value="create"
-                            checked={connectionMode === 'create'}
-                            onChange={(e) => {
-                              setConnectionMode(e.target.value);
-                              setNewConnectionTarget('');
-                            }}
-                            className="w-4 h-4 text-purple-600"
-                          />
-                          <span className="text-xs">Create New</span>
-                        </label>
-                      </div>
+                    {/* Tab-style Mode Selector */}
+                    <div className="flex gap-2 p-1 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConnectionMode('existing');
+                          setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
+                        }}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                          connectionMode === 'existing'
+                            ? 'bg-white dark:bg-gray-700 text-purple-900 dark:text-purple-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        🔗 Existing Step
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConnectionMode('create');
+                          setNewConnectionTarget('');
+                        }}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                          connectionMode === 'create'
+                            ? 'bg-white dark:bg-gray-700 text-purple-900 dark:text-purple-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        ✨ Create New
+                      </button>
                     </div>
 
-                    {/* Existing Step Selector */}
-                    {connectionMode === 'existing' && (
-                      <div>
-                        <label htmlFor="edit-step-connection-target" className="text-xs font-medium mb-1 block">Select Step:</label>
-                        <select
-                          id="edit-step-connection-target"
-                          value={newConnectionTarget}
-                          onChange={(e) => setNewConnectionTarget(e.target.value)}
-                          className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                                   bg-white dark:bg-gray-700 px-2 text-sm"
-                        >
-                          <option value="">Select target step...</option>
-                          
-                          {/* Root Steps */}
-                          <optgroup label="Root Steps">
-                            {allSteps
-                              .filter(s => !s.parentId && s.id !== step.id)
-                              .map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                          </optgroup>
-                          
-                          {/* Sub Steps */}
-                          {allSteps.some(s => s.parentId) && (
-                            <optgroup label="Sub Steps">
-                              {allSteps
-                                .filter(s => s.parentId && s.id !== step.id)
-                                .map(s => {
-                                  const parent = allSteps.find(p => p.id === s.parentId);
-                                  return (
-                                    <option key={s.id} value={s.id}>
-                                      {s.name} (in {parent?.name || 'Unknown'})
-                                    </option>
-                                  );
-                                })}
-                            </optgroup>
-                          )}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Create New Step Form */}
-                    {connectionMode === 'create' && (
-                      <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600">
+                    {/* Content Area */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                      {/* Existing Step Selector */}
+                      {connectionMode === 'existing' && (
                         <div>
-                          <label htmlFor="edit-step-create-name" className="text-xs font-medium mb-1 block">Step Name: *</label>
-                          <Input
-                            id="edit-step-create-name"
-                            value={newStepData.name}
-                            onChange={(e) => setNewStepData({ ...newStepData, name: e.target.value })}
-                            placeholder="Enter new step name..."
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="edit-step-create-alias" className="text-xs font-medium mb-1 block">Alias:</label>
-                          <Input
-                            id="edit-step-create-alias"
-                            value={newStepData.alias}
-                            onChange={(e) => setNewStepData({ ...newStepData, alias: e.target.value })}
-                            placeholder="Optional (e.g., LOGIN_PAGE)"
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <div className="text-xs font-medium mb-2 block">Type:</div>
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={newStepData.type === 'state' ? 'default' : 'outline'}
-                              onClick={() => setNewStepData({ ...newStepData, type: 'state' })}
-                              className="h-7 px-2 text-xs"
-                            >
-                              State
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={newStepData.type === 'rule' ? 'default' : 'outline'}
-                              onClick={() => setNewStepData({ ...newStepData, type: 'rule' })}
-                              className="h-7 px-2 text-xs"
-                            >
-                              Rule
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={newStepData.type === 'behavior' ? 'default' : 'outline'}
-                              onClick={() => setNewStepData({ ...newStepData, type: 'behavior' })}
-                              className="h-7 px-2 text-xs"
-                            >
-                              Behavior
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <label htmlFor="edit-step-create-description" className="text-xs font-medium mb-1 block">Description:</label>
-                          <Textarea
-                            id="edit-step-create-description"
-                            value={newStepData.description}
-                            onChange={(e) => setNewStepData({ ...newStepData, description: e.target.value })}
-                            placeholder="Enter description (optional)..."
-                            className="h-16 text-sm"
-                            rows={2}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="edit-step-create-parent" className="text-xs font-medium mb-1 block">Parent Step (optional):</label>
+                          <label htmlFor="edit-step-connection-target" className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">
+                            Select target step:
+                          </label>
                           <select
-                            id="edit-step-create-parent"
-                            value={newStepData.parentId}
-                            onChange={(e) => setNewStepData({ ...newStepData, parentId: e.target.value })}
-                            className="w-full h-8 rounded-md border border-gray-300 dark:border-gray-600 
-                                     bg-white dark:bg-gray-700 px-2 text-sm"
+                            id="edit-step-connection-target"
+                            value={newConnectionTarget}
+                            onChange={(e) => setNewConnectionTarget(e.target.value)}
+                            className="w-full h-10 rounded-md border-2 border-gray-300 dark:border-gray-600 
+                                     bg-white dark:bg-gray-700 px-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200
+                                     transition-all"
                           >
-                            <option value="">None (Root Step)</option>
-                            {allSteps
-                              .filter(s => !s.parentId && s.id !== step.id)
-                              .map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
+                            <option value="">Select a step...</option>
+                            
+                            {/* Root Steps */}
+                            <optgroup label="📁 Root Steps">
+                              {allSteps
+                                .filter(s => !s.parentId && s.id !== step.id)
+                                .map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </optgroup>
+                            
+                            {/* Sub Steps */}
+                            {allSteps.some(s => s.parentId) && (
+                              <optgroup label="📂 Sub Steps">
+                                {allSteps
+                                  .filter(s => s.parentId && s.id !== step.id)
+                                  .map(s => {
+                                    const parent = allSteps.find(p => p.id === s.parentId);
+                                    return (
+                                      <option key={s.id} value={s.id}>
+                                        ↳ {s.name} (in {parent?.name || 'Unknown'})
+                                      </option>
+                                    );
+                                  })}
+                              </optgroup>
+                            )}
                           </select>
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Create New Step Form */}
+                      {connectionMode === 'create' && (
+                        <div className="space-y-3">
+                          <div>
+                            <label htmlFor="edit-step-create-name" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                              Step Name <span className="text-red-500">*</span>
+                            </label>
+                            <StepNameAutocomplete
+                              value={newStepData.name}
+                              onChange={(e) => setNewStepData({ ...newStepData, name: e.target.value })}
+                              onSelect={(suggestion) => {
+                                setNewStepData({
+                                  ...newStepData,
+                                  name: suggestion.stepName,
+                                  type: suggestion.type,
+                                  alias: suggestion.alias || '',
+                                  description: suggestion.description || ''
+                                });
+                              }}
+                              dictionaryHook={dictionaryHook}
+                              placeholder="Enter step name..."
+                              className="w-full"
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor="edit-step-create-alias" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                                Alias
+                              </label>
+                              <Input
+                                id="edit-step-create-alias"
+                                value={newStepData.alias}
+                                onChange={(e) => setNewStepData({ ...newStepData, alias: e.target.value })}
+                                placeholder="e.g., LOGIN_PAGE"
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                                Type
+                              </label>
+                              <div className="flex gap-1">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={newStepData.type === 'state' ? 'default' : 'outline'}
+                                  onClick={() => setNewStepData({ ...newStepData, type: 'state' })}
+                                  className="h-9 px-2 text-xs flex-1"
+                                >
+                                  State
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={newStepData.type === 'rule' ? 'default' : 'outline'}
+                                  onClick={() => setNewStepData({ ...newStepData, type: 'rule' })}
+                                  className="h-9 px-2 text-xs flex-1"
+                                >
+                                  Rule
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={newStepData.type === 'behavior' ? 'default' : 'outline'}
+                                  onClick={() => setNewStepData({ ...newStepData, type: 'behavior' })}
+                                  className="h-9 px-2 text-xs flex-1"
+                                >
+                                  Behavior
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label htmlFor="edit-step-create-description" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                              Description
+                            </label>
+                            <Textarea
+                              id="edit-step-create-description"
+                              value={newStepData.description}
+                              onChange={(e) => setNewStepData({ ...newStepData, description: e.target.value })}
+                              placeholder="Optional description..."
+                              className="h-16 resize-none"
+                              rows={2}
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor="edit-step-create-parent" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                              Parent Step (optional)
+                            </label>
+                            <select
+                              id="edit-step-create-parent"
+                              value={newStepData.parentId}
+                              onChange={(e) => setNewStepData({ ...newStepData, parentId: e.target.value })}
+                              className="w-full h-9 rounded-md border-2 border-gray-300 dark:border-gray-600 
+                                       bg-white dark:bg-gray-700 px-3 text-sm"
+                            >
+                              <option value="">None (Root Step)</option>
+                              {allSteps
+                                .filter(s => !s.parentId && s.id !== step.id)
+                                .map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Preview */}
                     {(newConnectionTarget || (connectionMode === 'create' && newStepData.name)) && (
-                      <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs">
-                        <div className="text-gray-500 dark:text-gray-400 mb-1">Preview:</div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{step.name}</span>
-                          <span className={newConnectionType === 'success' ? 'text-green-600' : 'text-red-600'}>
+                      <div className="p-3 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+                        <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Preview:</div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">{step.name}</span>
+                          <span className={`text-lg ${newConnectionType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             →
                           </span>
-                          <span className="font-medium">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
                             {connectionMode === 'existing'
                               ? allSteps.find(s => s.id === newConnectionTarget)?.name
                               : newStepData.name
                             }
-                            {connectionMode === 'create' && <span className="text-purple-600 ml-1">(New)</span>}
                           </span>
+                          {connectionMode === 'create' && (
+                            <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full font-medium">
+                              NEW
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2">
                       <Button
                         size="sm"
                         onClick={() => {
@@ -655,6 +675,16 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                             });
 
                             if (newStepId) {
+                              // Update dictionary
+                              if (dictionaryHook) {
+                                dictionaryHook.upsertEntry(
+                                  newStepData.name.trim(),
+                                  newStepData.type,
+                                  newStepData.alias.trim(),
+                                  newStepData.description.trim()
+                                );
+                              }
+
                               // Create connection from current step to new step
                               onAddConnection(step.id, newStepId, newConnectionType);
                               toast.success(`Created "${newStepData.name}" and connected!`);
@@ -673,7 +703,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                             : 'bg-red-600 hover:bg-red-700'
                         }`}
                       >
-                        <LinkIcon className="h-3 w-3 mr-1" />
+                        <LinkIcon className="h-4 w-4 mr-1.5" />
                         {connectionMode === 'existing' ? 'Add Connection' : 'Create & Connect'}
                       </Button>
                       <Button
@@ -685,6 +715,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                           setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
                           setConnectionMode('existing');
                         }}
+                        className="px-6"
                       >
                         Cancel
                       </Button>
