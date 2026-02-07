@@ -472,7 +472,7 @@ const LandingPage = ({ onGetStarted }) => {
                 </div>
                 <div>
                   <div className="uppercase tracking-[0.2em]">Version</div>
-                  <p className="mt-2">1.0.0 (Flow to Graph CSV)</p>
+                  <p className="mt-2">2.0.0</p>
                 </div>
               </div>
               <div className="pt-4 text-xs text-slate-400">
