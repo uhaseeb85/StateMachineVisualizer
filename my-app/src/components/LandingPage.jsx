@@ -155,10 +155,6 @@ const LandingPage = ({ onGetStarted }) => {
                 transition={{ duration: 0.6 }}
                 className="space-y-6"
               >
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-300">
-                  <Radar className="h-3 w-3 text-cyan-300" />
-                  Next-Gen Flow Intelligence
-                </div>
                 <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight">
                   <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-emerald-300 to-amber-300">
                     Enterprise Intelligence Suite
