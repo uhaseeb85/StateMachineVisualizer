@@ -213,7 +213,8 @@ const SimulationStepCard = ({
       dictionaryHook.upsertEntry(
         formData.name.trim(),
         formData.type,
-        formData.alias?.trim() || ''
+        formData.alias?.trim() || '',
+        formData.description?.trim() || ''
       );
     }
     

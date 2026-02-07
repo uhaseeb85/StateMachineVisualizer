@@ -71,7 +71,8 @@ const InlineStepCreator = ({
         dictionaryHook.upsertEntry(
           formData.name.trim(),
           formData.type,
-          formData.alias.trim()
+          formData.alias.trim(),
+          formData.description.trim()
         );
       }
 
@@ -131,7 +132,8 @@ const InlineStepCreator = ({
                 ...formData,
                 name: suggestion.stepName,
                 type: suggestion.type,
-                alias: suggestion.alias || ''
+                alias: suggestion.alias || '',
+                description: suggestion.description || ''
               });
             }}
             onKeyDown={(e) => {

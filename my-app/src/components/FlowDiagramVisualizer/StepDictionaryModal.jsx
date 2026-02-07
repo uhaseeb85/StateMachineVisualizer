@@ -44,6 +44,7 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
   const [editingEntry, setEditingEntry] = useState(null);
   const [editedType, setEditedType] = useState('state');
   const [editedAlias, setEditedAlias] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
   const fileInputRef = useRef(null);
 
   if (!dictionaryHook) return null;
@@ -67,13 +68,14 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
     setEditingEntry(entry.stepName);
     setEditedType(entry.type);
     setEditedAlias(entry.alias || '');
+    setEditedDescription(entry.description || '');
   };
 
   /**
    * Save edited entry
    */
   const saveEdit = (stepName) => {
-    upsertEntry(stepName, editedType, editedAlias);
+    upsertEntry(stepName, editedType, editedAlias, editedDescription);
     setEditingEntry(null);
     toast.success('Entry updated');
   };
@@ -85,6 +87,7 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
     setEditingEntry(null);
     setEditedType('state');
     setEditedAlias('');
+    setEditedDescription('');
   };
 
   /**
@@ -257,7 +260,7 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
                   {editingEntry === entry.stepName ? (
                     // Edit Mode
                     <>
-                      <div className="flex-1 grid grid-cols-3 gap-3">
+                      <div className="flex-1 grid grid-cols-4 gap-3">
                         <div>
                           <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                             Step Name
@@ -297,6 +300,18 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
                             className="h-7 text-sm"
                           />
                         </div>
+                        
+                        <div>
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            Description
+                          </div>
+                          <Input
+                            value={editedDescription}
+                            onChange={(e) => setEditedDescription(e.target.value)}
+                            placeholder="Optional"
+                            className="h-7 text-sm"
+                          />
+                        </div>
                       </div>
 
                       <div className="flex gap-1">
@@ -322,7 +337,7 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
                   ) : (
                     // View Mode
                     <>
-                      <div className="flex-1 grid grid-cols-3 gap-3">
+                      <div className="flex-1 grid grid-cols-4 gap-3">
                         <div>
                           <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                             Step Name
@@ -350,6 +365,15 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
                           </div>
                           <div className="text-sm text-gray-700 dark:text-gray-300 truncate">
                             {entry.alias || <span className="italic text-gray-400">None</span>}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            Description
+                          </div>
+                          <div className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                            {entry.description || <span className="italic text-gray-400">None</span>}
                           </div>
                         </div>
                       </div>
@@ -389,7 +413,7 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
               <strong>💡 Tip:</strong> The dictionary provides auto-suggestions when creating steps and automatically updates when you modify step properties.
             </p>
             <p>
-              <strong>📥 Import Format:</strong> CSV or Excel with columns: <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Step Name</code>, <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Type</code>, <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Alias</code>
+              <strong>📥 Import Format:</strong> CSV or Excel with columns: <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Step Name</code>, <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Type</code>, <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Alias</code>, <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">Description</code>
             </p>
           </div>
         </div>

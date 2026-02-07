@@ -62,6 +62,7 @@ const StepPanel = ({
   // Add state for new step type and alias (for autocomplete)
   const [newStepType, setNewStepType] = useState('state');
   const [newStepAlias, setNewStepAlias] = useState('');
+  const [newStepDescription, setNewStepDescription] = useState('');
   // Replace simple move history with unified history that can track different operations
   const [operationHistory, setOperationHistory] = useState([]);
   // Add state for parent selection mode
@@ -231,7 +232,7 @@ const StepPanel = ({
     if (newStepName.trim()) {
       onAddStep({
         name: newStepName.trim(),
-        description: '',
+        description: newStepDescription.trim(),
         expectedResponse: '',
         parentId: null,
         type: newStepType,
@@ -240,12 +241,13 @@ const StepPanel = ({
       
       // Update dictionary
       if (dictionaryHook) {
-        dictionaryHook.upsertEntry(newStepName.trim(), newStepType, newStepAlias.trim());
+        dictionaryHook.upsertEntry(newStepName.trim(), newStepType, newStepAlias.trim(), newStepDescription.trim());
       }
       
       setNewStepName('');
       setNewStepType('state');
       setNewStepAlias('');
+      setNewStepDescription('');
       toast.success('Step added successfully');
     }
   };
@@ -264,7 +266,7 @@ const StepPanel = ({
       
       // Update dictionary
       if (dictionaryHook && step) {
-        dictionaryHook.upsertEntry(subStepName.trim(), 'state', '');
+        dictionaryHook.upsertEntry(subStepName.trim(), 'state', '', '');
       }
       
       setSubStepName('');
@@ -444,12 +446,13 @@ const StepPanel = ({
     // Call the update function
     onUpdateStep(stepId, updates);
     
-    // Update dictionary if name, type, or alias changed
-    if (dictionaryHook && (updates.name || updates.type || updates.alias !== undefined)) {
+    // Update dictionary if name, type, alias, or description changed
+    if (dictionaryHook && (updates.name || updates.type || updates.alias !== undefined || updates.description !== undefined)) {
       const finalName = updates.name || stepToUpdate.name;
       const finalType = updates.type || stepToUpdate.type || 'state';
       const finalAlias = updates.alias !== undefined ? updates.alias : stepToUpdate.alias;
-      dictionaryHook.upsertEntry(finalName, finalType, finalAlias || '');
+      const finalDescription = updates.description !== undefined ? updates.description : stepToUpdate.description;
+      dictionaryHook.upsertEntry(finalName, finalType, finalAlias || '', finalDescription || '');
     }
     
     // Update local state to reflect changes immediately
@@ -1341,6 +1344,7 @@ const StepPanel = ({
                   setNewStepName(suggestion.stepName);
                   setNewStepType(suggestion.type);
                   setNewStepAlias(suggestion.alias || '');
+                  setNewStepDescription(suggestion.description || '');
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
                 dictionaryHook={dictionaryHook}

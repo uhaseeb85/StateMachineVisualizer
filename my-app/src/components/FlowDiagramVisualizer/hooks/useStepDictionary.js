@@ -14,6 +14,7 @@ import storage from '@/utils/storageWrapper';
  * @property {string} stepName - Unique step name (case-insensitive key)
  * @property {'state' | 'rule' | 'behavior'} type - Step type
  * @property {string} alias - Optional alias for the step
+ * @property {string} description - Optional description for the step
  */
 
 /**
@@ -93,8 +94,9 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
    * @param {string} stepName - Step name
    * @param {'state' | 'rule' | 'behavior'} type - Step type
    * @param {string} alias - Optional alias
+   * @param {string} description - Optional description
    */
-  const upsertEntry = useCallback((stepName, type = 'state', alias = '') => {
+  const upsertEntry = useCallback((stepName, type = 'state', alias = '', description = '') => {
     if (!stepName?.trim()) return;
 
     const normalized = normalizeStepName(stepName);
@@ -113,7 +115,8 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
         newDictionary[existingIndex] = {
           stepName: stepName.trim(),
           type: type || 'state',
-          alias: alias?.trim() || ''
+          alias: alias?.trim() || '',
+          description: description?.trim() || ''
         };
         console.log('[useStepDictionary] Updated entry:', stepName);
       } else {
@@ -123,7 +126,8 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
           {
             stepName: stepName.trim(),
             type: type || 'state',
-            alias: alias?.trim() || ''
+            alias: alias?.trim() || '',
+            description: description?.trim() || ''
           }
         ];
         console.log('[useStepDictionary] Added new entry:', stepName);
@@ -184,7 +188,8 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
           newDictionary.push({
             stepName: step.name.trim(),
             type: step.type || 'state',
-            alias: step.alias?.trim() || ''
+            alias: step.alias?.trim() || '',
+            description: step.description?.trim() || ''
           });
           addedCount++;
         }
@@ -251,7 +256,8 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
                     type: ['state', 'rule', 'behavior'].includes(row['Type']?.toLowerCase()) 
                       ? row['Type'].toLowerCase() 
                       : 'state',
-                    alias: row['Alias']?.trim() || ''
+                    alias: row['Alias']?.trim() || '',
+                    description: row['Description']?.trim() || ''
                   }));
 
                 if (entries.length === 0) {
@@ -321,20 +327,22 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
           const rowData = {
             'Step Name': row.getCell(1).value,
             'Type': row.getCell(2).value,
-            'Alias': row.getCell(3).value
+            'Alias': row.getCell(3).value,
+            'Description': row.getCell(4).value
           };
           rows.push(rowData);
         });
 
         const entries = rows
           .filter(row => row['Step Name']?.toString().trim())
-          .map(row => ({
-            stepName: row['Step Name'].toString().trim(),
-            type: ['state', 'rule', 'behavior'].includes(row['Type']?.toString().toLowerCase()) 
-              ? row['Type'].toString().toLowerCase() 
-              : 'state',
-            alias: row['Alias']?.toString().trim() || ''
-          }));
+        .map(row => ({
+          stepName: row['Step Name'].toString().trim(),
+          type: ['state', 'rule', 'behavior'].includes(row['Type']?.toString().toLowerCase()) 
+            ? row['Type'].toString().toLowerCase() 
+            : 'state',
+          alias: row['Alias']?.toString().trim() || '',
+          description: row['Description']?.toString().trim() || ''
+        }));
 
         if (entries.length === 0) {
           toast.error('No valid entries found in Excel file');
@@ -395,7 +403,8 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
       const csvData = dictionary.map(entry => ({
         'Step Name': entry.stepName,
         'Type': entry.type,
-        'Alias': entry.alias || ''
+        'Alias': entry.alias || '',
+        'Description': entry.description || ''
       }));
 
       // Convert to CSV string

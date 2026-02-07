@@ -15,7 +15,7 @@ import { Check } from 'lucide-react';
  * @param {Object} props
  * @param {string} props.value - Current input value
  * @param {Function} props.onChange - Callback when value changes
- * @param {Function} props.onSelect - Callback when suggestion is selected (receives {stepName, type, alias})
+ * @param {Function} props.onSelect - Callback when suggestion is selected (receives {stepName, type, alias, description})
  * @param {Object} props.dictionaryHook - Step dictionary hook
  * @param {string} props.placeholder - Input placeholder
  * @param {string} props.className - Additional CSS classes
@@ -72,7 +72,7 @@ const StepNameAutocomplete = ({
   /**
    * Handle suggestion selection
    */
-  const handleSelectSuggestion = (suggestion) => {
+  const handleSelect = (suggestion) => {
     onChange({ target: { value: suggestion.stepName } });
     setShowSuggestions(false);
     setSelectedIndex(-1);
@@ -82,7 +82,8 @@ const StepNameAutocomplete = ({
       onSelect({
         stepName: suggestion.stepName,
         type: suggestion.type,
-        alias: suggestion.alias
+        alias: suggestion.alias,
+        description: suggestion.description
       });
     }
   };
@@ -115,7 +116,7 @@ const StepNameAutocomplete = ({
       case 'Enter':
         if (selectedIndex >= 0) {
           e.preventDefault();
-          handleSelectSuggestion(suggestions[selectedIndex]);
+          handleSelect(suggestions[selectedIndex]);
         } else if (onKeyDown) {
           // No suggestion selected, pass through
           onKeyDown(e);
@@ -180,40 +181,36 @@ const StepNameAutocomplete = ({
           <div className="py-1">
             {suggestions.map((suggestion, index) => (
               <div
-                key={`${suggestion.stepName}-${index}`}
-                className={`
-                  px-3 py-2 cursor-pointer transition-colors
-                  ${index === selectedIndex 
-                    ? 'bg-blue-50 dark:bg-blue-900/30' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }
-                `}
-                onClick={() => handleSelectSuggestion(suggestion)}
+                key={suggestion.stepName}
+                className={`px-3 py-2 cursor-pointer transition-colors ${
+                  selectedIndex === index
+                    ? 'bg-blue-100 dark:bg-blue-900/50'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+                onClick={() => handleSelect(suggestion)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-                      {suggestion.stepName}
-                    </div>
-                    {suggestion.alias && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        Alias: {suggestion.alias}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${getTypeBadgeColor(suggestion.type)}`}
-                    >
-                      {suggestion.type}
-                    </Badge>
-                    {index === selectedIndex && (
-                      <Check className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    )}
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {suggestion.stepName}
+                  </span>
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs ml-2 ${getTypeBadgeColor(suggestion.type)}`}
+                  >
+                    {suggestion.type}
+                  </Badge>
                 </div>
+                {suggestion.alias && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Alias: {suggestion.alias}
+                  </div>
+                )}
+                {suggestion.description && (
+                  <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                    {suggestion.description}
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import StepNameAutocomplete from './StepNameAutocomplete';
 import {
   X,
   Save,
@@ -216,6 +217,34 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
     setFormData({ ...formData, imageCaptions: updatedCaptions });
   };
 
+  const handleSave = () => {
+    if (!formData.name.trim()) {
+      toast.error('Step name cannot be empty');
+      return;
+    }
+
+    // Save the step
+    onSave(step.id, formData);
+
+    // Update dictionary if name, type, alias, or description changed
+    if (dictionaryHook && (
+      formData.name !== step.name ||
+      formData.type !== step.type ||
+      formData.alias !== step.alias ||
+      formData.description !== step.description
+    )) {
+      dictionaryHook.upsertEntry(
+        formData.name.trim(),
+        formData.type,
+        formData.alias?.trim() || '',
+        formData.description?.trim() || ''
+      );
+    }
+
+    toast.success('Step updated successfully');
+    onClose();
+  };
+
   if (!step) return null;
 
   return (
@@ -231,10 +260,19 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
             <label htmlFor="edit-step-name" className="text-sm font-medium mb-1 block">
               📝 Step Name
             </label>
-            <Input
-              id="edit-step-name"
+            <StepNameAutocomplete
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onSelect={(suggestion) => {
+                setFormData({
+                  ...formData,
+                  name: suggestion.stepName,
+                  type: suggestion.type,
+                  alias: suggestion.alias || '',
+                  description: suggestion.description || ''
+                });
+              }}
+              dictionaryHook={dictionaryHook}
               placeholder="Enter step name..."
               className="w-full"
             />
