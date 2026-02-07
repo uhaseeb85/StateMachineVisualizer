@@ -364,30 +364,63 @@ const ConnectionsInlineEditor = ({
                 >
                   <option value="">Select a step...</option>
                   
-                  {/* Root Steps */}
-                  <optgroup label="📁 Root Steps">
-                    {allSteps
-                      .filter(s => !s.parentId && s.id !== currentStep.id)
-                      .map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                  </optgroup>
-                  
-                  {/* Sub Steps */}
-                  {allSteps.some(s => s.parentId) && (
-                    <optgroup label="📂 Sub Steps">
-                      {allSteps
-                        .filter(s => s.parentId && s.id !== currentStep.id)
-                        .map(s => {
-                          const parent = allSteps.find(p => p.id === s.parentId);
-                          return (
-                            <option key={s.id} value={s.id}>
-                              ↳ {s.name} (in {parent?.name || 'Unknown'})
-                            </option>
-                          );
-                        })}
-                    </optgroup>
-                  )}
+                  {/* Hierarchical step tree */}
+                  {(() => {
+                    const available = allSteps.filter(s => s.id !== currentStep.id);
+                    const rootSteps = available.filter(s => !s.parentId);
+                    const subSteps = available.filter(s => s.parentId);
+                    
+                    // Find which root steps have children
+                    const parentIdsWithChildren = [...new Set(
+                      allSteps.filter(s => s.parentId).map(s => s.parentId)
+                    )];
+                    
+                    // Standalone root steps (no children)
+                    const standaloneRoots = rootSteps.filter(s => !parentIdsWithChildren.includes(s.id));
+                    
+                    // Parents with their available children
+                    const parentsWithChildren = parentIdsWithChildren
+                      .map(pid => {
+                        const parent = allSteps.find(s => s.id === pid);
+                        const children = subSteps.filter(s => s.parentId === pid);
+                        return { parent, children };
+                      })
+                      .filter(g => g.parent);
+                    
+                    // Orphan sub-steps (parent not in allSteps)
+                    const orphans = subSteps.filter(s => !allSteps.some(p => p.id === s.parentId));
+                    
+                    return (
+                      <>
+                        {standaloneRoots.length > 0 && (
+                          <optgroup label="📁 Root Steps">
+                            {standaloneRoots.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {parentsWithChildren.map(({ parent, children }) => (
+                          <optgroup key={parent.id} label={`📂 ${parent.name}`}>
+                            {parent.id !== currentStep.id && (
+                              <option value={parent.id}>{parent.name}</option>
+                            )}
+                            {children.map(child => (
+                              <option key={child.id} value={child.id}>
+                                &nbsp;&nbsp;↳ {child.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        {orphans.length > 0 && (
+                          <optgroup label="📄 Other Steps">
+                            {orphans.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    );
+                  })()}
                 </select>
               </div>
             )}
