@@ -46,6 +46,10 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [], onUp
   const [editedType, setEditedType] = useState('state');
   const [editedAlias, setEditedAlias] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [newStepName, setNewStepName] = useState('');
+  const [newType, setNewType] = useState('state');
+  const [newAlias, setNewAlias] = useState('');
+  const [newDescription, setNewDescription] = useState('');
   const fileInputRef = useRef(null);
 
   if (!dictionaryHook) return null;
@@ -100,6 +104,55 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [], onUp
     }
     
     setEditingEntry(null);
+  };
+
+  const normalizeStepName = (name) => name?.trim().toLowerCase() || '';
+
+  const resetNewEntry = () => {
+    setNewStepName('');
+    setNewType('state');
+    setNewAlias('');
+    setNewDescription('');
+  };
+
+  const handleAddEntry = () => {
+    const stepName = newStepName.trim();
+    if (!stepName) {
+      toast.error('Step name cannot be empty');
+      return;
+    }
+
+    const normalized = normalizeStepName(stepName);
+    const exists = dictionary.some(
+      (entry) => normalizeStepName(entry.stepName) === normalized
+    );
+
+    upsertEntry(stepName, newType, newAlias, newDescription);
+
+    if (onUpdateStep) {
+      const matchingSteps = steps.filter(
+        (step) => normalizeStepName(step.name) === normalized
+      );
+      matchingSteps.forEach((step) => {
+        onUpdateStep(step.id, {
+          type: newType,
+          alias: newAlias,
+          description: newDescription
+        });
+      });
+
+      if (matchingSteps.length > 0) {
+        toast.success(
+          `${exists ? 'Updated' : 'Added'} entry and ${matchingSteps.length} matching step(s)`
+        );
+      } else {
+        toast.success(`${exists ? 'Updated' : 'Added'} dictionary entry`);
+      }
+    } else {
+      toast.success(`${exists ? 'Updated' : 'Added'} dictionary entry`);
+    }
+
+    resetNewEntry();
   };
 
   /**
@@ -249,6 +302,53 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [], onUp
             <Trash2 className="h-4 w-4" />
             Clear All
           </Button>
+        </div>
+
+        {/* Add Entry */}
+        <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/60">
+          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+            Add Entry
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            <Input
+              value={newStepName}
+              onChange={(e) => setNewStepName(e.target.value)}
+              placeholder="Step name"
+              className="h-9"
+            />
+            <div className="flex gap-1">
+              {['state', 'rule', 'behavior'].map((type) => (
+                <Button
+                  key={type}
+                  size="sm"
+                  variant={newType === type ? 'default' : 'outline'}
+                  onClick={() => setNewType(type)}
+                  className="h-9 px-2 text-xs capitalize"
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
+            <Input
+              value={newAlias}
+              onChange={(e) => setNewAlias(e.target.value)}
+              placeholder="Alias (optional)"
+              className="h-9"
+            />
+            <Input
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              placeholder="Description (optional)"
+              className="h-9"
+            />
+            <Button
+              onClick={handleAddEntry}
+              disabled={!newStepName.trim()}
+              className="h-9"
+            >
+              Add Entry
+            </Button>
+          </div>
         </div>
 
         {/* Dictionary Table */}
