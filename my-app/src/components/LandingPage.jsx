@@ -1,24 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   GitBranch,
   Workflow,
   ArrowRight,
   Boxes,
-  Network,
   FileJson,
   History,
-  Lightbulb,
   Sparkles,
   Search,
   Brain,
-  Radar,
   ShieldCheck,
-  Waypoints
+  Waypoints,
+  FileText
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
 import storage from '@/utils/storageWrapper';
 const FEEDBACK_EMAIL = 'uhaseeb85@gmail.com';
@@ -28,12 +24,6 @@ const LandingPage = ({ onGetStarted }) => {
     lastMode: 'flowDiagram',
     flowFileName: null,
     stateFileName: null
-  });
-  const [feedbackForm, setFeedbackForm] = useState({
-    name: '',
-    email: '',
-    company: '',
-    message: ''
   });
 
   useEffect(() => {
@@ -68,34 +58,36 @@ const LandingPage = ({ onGetStarted }) => {
     onGetStarted();
   };
 
-  const handleFeedbackChange = (field) => (event) => {
-    const value = event.target.value;
-    setFeedbackForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const modeMeta = useMemo(() => ({
+    stateMachine: {
+      label: 'State Machine Visualizer',
+      icon: Workflow,
+      accent: 'text-cyan-300'
+    },
+    flowDiagram: {
+      label: 'Flow Diagram Builder',
+      icon: GitBranch,
+      accent: 'text-emerald-300'
+    },
+    logAnalyzer: {
+      label: 'Log Analyzer',
+      icon: Search,
+      accent: 'text-violet-300'
+    },
+    aiLogAnalysis: {
+      label: 'AI Log Analysis',
+      icon: Brain,
+      accent: 'text-sky-300'
+    },
+    htmlReports: {
+      label: 'Reports',
+      icon: FileText,
+      accent: 'text-amber-300'
+    }
+  }), []);
 
-  const handleFeedbackSubmit = (event) => {
-    event.preventDefault();
-    const { name, email, company, message } = feedbackForm;
-    const subject = 'Enterprise Intelligence Suite Feedback';
-    const body = [
-      `Name: ${name || 'N/A'}`,
-      `Email: ${email || 'N/A'}`,
-      `Company/Team: ${company || 'N/A'}`,
-      '',
-      message
-    ].join('\n');
-
-    const mailtoUrl = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoUrl;
-    setFeedbackForm({ name: '', email: '', company: '', message: '' });
-  };
-
-  const trimmedEmail = feedbackForm.email.trim();
-  const trimmedMessage = feedbackForm.message.trim();
-  const emailPattern = /\S+@\S+\.\S+/;
-  const isEmailValid = emailPattern.test(trimmedEmail);
-  const isMessageValid = trimmedMessage.length > 0;
-  const canSubmitFeedback = isEmailValid && isMessageValid;
+  const lastModeMeta = modeMeta[sessionInfo.lastMode] || modeMeta.flowDiagram;
+  const LastModeIcon = lastModeMeta.icon;
 
   const features = [
     {
@@ -164,16 +156,6 @@ const LandingPage = ({ onGetStarted }) => {
                   An enterprise-grade visual builder for state machines, flow diagrams, and log analysis.
                   Map decisions, validate transitions, and simulate outcomes with surgical clarity.
                 </p>
-                <div className="flex flex-wrap gap-6 pt-6 text-sm text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                    Validation-grade exports
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Network className="h-4 w-4 text-cyan-300" />
-                    Multi-mode modeling
-                  </div>
-                </div>
               </motion.div>
 
               <motion.div
@@ -190,17 +172,11 @@ const LandingPage = ({ onGetStarted }) => {
                     <div className="space-y-4">
                       <div className="rounded-2xl border border-white/10 bg-[#0f141b] p-4">
                         <div className="flex items-center gap-3">
-                          {sessionInfo.lastMode === 'stateMachine' ? (
-                            <Workflow className="h-5 w-5 text-cyan-300" />
-                          ) : (
-                            <GitBranch className="h-5 w-5 text-emerald-300" />
-                          )}
+                          <LastModeIcon className={`h-5 w-5 ${lastModeMeta.accent}`} />
                           <div className="flex-1">
                             <div className="text-sm font-semibold">Resume last session</div>
                             <div className="text-xs text-slate-400">
-                              {sessionInfo.lastMode === 'stateMachine'
-                                ? 'State Machine Visualizer'
-                                : 'Flow Diagram Builder'}
+                              {lastModeMeta.label}
                             </div>
                           </div>
                           <Button
@@ -313,6 +289,47 @@ const LandingPage = ({ onGetStarted }) => {
                        group-hover:bg-emerald-400 group-hover:text-slate-900 transition-all duration-300"
             >
               Start Flow Mapping
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </motion.div>
+
+          {/* Reports Mode */}
+          <motion.div 
+            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-amber-400/60 hover:bg-white/10 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px]"
+            onClick={() => handleModeSelect('htmlReports')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-amber-500/20">
+                  <FileText className="w-8 h-8 text-amber-300" />
+                </div>
+                <h3 className="text-2xl font-semibold">Reports</h3>
+              </div>
+              <p className="text-slate-300 mb-8 text-lg">
+                Store and browse metrics dashboards stored as HTML files.
+              </p>
+              <div className="h-[280px] relative rounded-2xl border border-white/10 bg-[#0f141b] p-6">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Reports</div>
+                <div className="mt-4 space-y-3">
+                  {['Quarterly Metrics', 'Latency Overview', 'Service Health'].map((label) => (
+                    <div key={label} className="flex items-center justify-between text-sm text-slate-300">
+                      <span>{label}</span>
+                      <span className="text-xs text-slate-500">HTML</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 py-6
+                       group-hover:bg-amber-400 group-hover:text-slate-900 transition-all duration-300"
+            >
+              View Reports
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
