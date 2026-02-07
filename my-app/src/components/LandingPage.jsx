@@ -247,7 +247,7 @@ const LandingPage = ({ onGetStarted }) => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Launch Bays</p>
-            <h2 className="text-2xl font-semibold">Pick your mission</h2>
+            <h2 className="text-2xl font-semibold">Choose your mode</h2>
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
