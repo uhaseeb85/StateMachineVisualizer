@@ -13,8 +13,7 @@ import {
   GitBranch,
   Settings,
   Undo,
-  Redo,
-  BookOpen
+  Redo
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -366,30 +365,6 @@ const TopActionBar = ({
               Tools
             </Button>
 
-            {/* Step Dictionary Button */}
-            <Button
-              onClick={onShowStepDictionary}
-              title="Manage step dictionary for auto-suggestions"
-              className="step-dictionary-button bg-gray-900 text-white text-sm
-                       dark:bg-gray-800 dark:text-gray-100
-                       hover:bg-blue-600 hover:scale-105
-                       dark:hover:bg-blue-600
-                       transform transition-all duration-200 ease-in-out
-                       border border-gray-800 dark:border-gray-700
-                       hover:border-blue-500 dark:hover:border-blue-500
-                       flex items-center gap-2 px-3 py-1.5 rounded-md"
-            >
-              <BookOpen className="w-4 h-4" />
-              Dictionary
-              {dictionaryHook && dictionaryHook.dictionary.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 dark:bg-blue-700 rounded-full">
-                  {dictionaryHook.dictionary.length}
-                </span>
-              )}
-            </Button>
-
-
-
             {/* Mode Switch Button */}
             <Button
               onClick={onChangeMode}
@@ -426,9 +401,10 @@ const TopActionBar = ({
         onShowActionHistory={onShowActionHistory}
         onShowComparer={onShowComparer}
         onConvertToStateMachine={handleConvertToStateMachine}
+        onShowStepDictionary={onShowStepDictionary}
         actionHistoryCount={actionHistoryCount}
+        dictionaryCount={dictionaryHook?.dictionary.length || 0}
         steps={steps}
-        // Pass needed props for Generate Flow Diagram
         rootElements={rootElements}
         selectedRootElement={selectedRootElement}
         setSelectedRootElement={setSelectedRootElement}
@@ -446,7 +422,6 @@ const TopActionBar = ({
         onUpdateClassificationRules={onUpdateClassificationRules}
       />
 
-
     </div>
   );
 };
@@ -459,7 +434,7 @@ TopActionBar.propTypes = {
   onShowAllAssumptionsQuestions: PropTypes.func.isRequired,
   onShowActionHistory: PropTypes.func.isRequired,
   onShowComparer: PropTypes.func.isRequired,
-  onShowStepDictionary: PropTypes.func,
+  onShowStepDictionary: PropTypes.func.isRequired,
   actionHistoryCount: PropTypes.number,
   onClear: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
