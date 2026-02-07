@@ -17,13 +17,23 @@ import {
   Waypoints
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import AnimatedDemo from './StateMachineVisualizer/AnimatedDemo';
 import storage from '@/utils/storageWrapper';
+const FEEDBACK_EMAIL = 'uhaseeb85@gmail.com';
+
 const LandingPage = ({ onGetStarted }) => {
   const [sessionInfo, setSessionInfo] = useState({
     lastMode: 'flowDiagram',
     flowFileName: null,
     stateFileName: null
+  });
+  const [feedbackForm, setFeedbackForm] = useState({
+    name: '',
+    email: '',
+    company: '',
+    message: ''
   });
 
   useEffect(() => {
@@ -57,6 +67,35 @@ const LandingPage = ({ onGetStarted }) => {
     localStorage.setItem('visualizer_mode', mode);
     onGetStarted();
   };
+
+  const handleFeedbackChange = (field) => (event) => {
+    const value = event.target.value;
+    setFeedbackForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFeedbackSubmit = (event) => {
+    event.preventDefault();
+    const { name, email, company, message } = feedbackForm;
+    const subject = 'Enterprise Intelligence Suite Feedback';
+    const body = [
+      `Name: ${name || 'N/A'}`,
+      `Email: ${email || 'N/A'}`,
+      `Company/Team: ${company || 'N/A'}`,
+      '',
+      message
+    ].join('\n');
+
+    const mailtoUrl = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+    setFeedbackForm({ name: '', email: '', company: '', message: '' });
+  };
+
+  const trimmedEmail = feedbackForm.email.trim();
+  const trimmedMessage = feedbackForm.message.trim();
+  const emailPattern = /\S+@\S+\.\S+/;
+  const isEmailValid = emailPattern.test(trimmedEmail);
+  const isMessageValid = trimmedMessage.length > 0;
+  const canSubmitFeedback = isEmailValid && isMessageValid;
 
   const features = [
     {
@@ -197,6 +236,7 @@ const LandingPage = ({ onGetStarted }) => {
                           </div>
                         </div>
                       </div>
+
                     </div>
                   </div>
                 <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl" />
@@ -398,6 +438,17 @@ const LandingPage = ({ onGetStarted }) => {
                 <div>
                   <div className="uppercase tracking-[0.2em]">Version</div>
                   <p className="mt-2">1.0.0 (Flow to Graph CSV)</p>
+                </div>
+              </div>
+              <div className="pt-4 text-xs text-slate-400">
+                <span className="uppercase tracking-[0.2em]">Developer Contact</span>
+                <div className="mt-2">
+                  <a
+                    href={`mailto:${FEEDBACK_EMAIL}`}
+                    className="text-cyan-300 hover:text-cyan-200"
+                  >
+                    {FEEDBACK_EMAIL}
+                  </a>
                 </div>
               </div>
             </div>
