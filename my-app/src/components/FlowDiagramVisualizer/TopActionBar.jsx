@@ -42,7 +42,9 @@ const TopActionBar = ({
   steps,
   connections,
   currentFileName,
-  onUpdateStep
+  onUpdateStep,
+  classificationRules,
+  onUpdateClassificationRules
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -415,6 +417,8 @@ const TopActionBar = ({
         steps={steps}
         connections={connections}
         onUpdateStep={onUpdateStep}
+        classificationRules={classificationRules}
+        onUpdateClassificationRules={onUpdateClassificationRules}
       />
 
 
@@ -442,7 +446,9 @@ TopActionBar.propTypes = {
   steps: PropTypes.array,
   connections: PropTypes.array,
   currentFileName: PropTypes.string,
-  onUpdateStep: PropTypes.func
+  onUpdateStep: PropTypes.func,
+  classificationRules: PropTypes.array,
+  onUpdateClassificationRules: PropTypes.func
 };
 
 export default TopActionBar;

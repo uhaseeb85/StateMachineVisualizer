@@ -150,14 +150,20 @@ const ConvertToStateMachineWelcomeModal = ({ isOpen, onClose }) => {
               <div className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-purple-50 dark:bg-purple-950/30">
                 <h4 className="font-semibold mb-2">Auto-Classification Rules</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Click &quot;Run Auto-Classification&quot; in the Step Classification tab to automatically categorize steps:
+                  Click &quot;Run Auto-Classification&quot; in the Step Classification tab to automatically categorize steps.
+                  <strong className="block mt-1">✨ These rules are now customizable!</strong>
+                  Go to the <strong>Classification Rules</strong> tab to edit, add, or remove rules.
                 </p>
                 <div className="space-y-1 text-xs bg-white dark:bg-gray-800 rounded p-3 border border-purple-100 dark:border-purple-900">
+                  <p className="font-semibold mb-1 text-purple-700 dark:text-purple-300">Default Rules:</p>
                   <div className="font-mono">• Ends with <strong>?</strong> → <span className="text-blue-600 dark:text-blue-400 font-semibold">Rule</span></div>
                   <div className="font-mono">• Starts with <strong>is</strong>, <strong>does</strong>, <strong>valid</strong>, <strong>invalid</strong> → <span className="text-blue-600 dark:text-blue-400 font-semibold">Rule</span></div>
                   <div className="font-mono">• Starts with <strong>ask</strong> → <span className="text-green-600 dark:text-green-400 font-semibold">State</span></div>
                   <div className="font-mono">• Starts with <strong>customer answers/ignored/rejected/provided</strong> → <span className="text-purple-600 dark:text-purple-400 font-semibold">Behavior</span></div>
                   <div className="font-mono">• <strong>ALL CAPS</strong> → <span className="text-green-600 dark:text-green-400 font-semibold">State</span></div>
+                  <p className="font-semibold mt-2 text-purple-700 dark:text-purple-300">
+                    💡 Tip: You can modify these rules or create your own in the Classification Rules tab!
+                  </p>
                 </div>
               </div>
 

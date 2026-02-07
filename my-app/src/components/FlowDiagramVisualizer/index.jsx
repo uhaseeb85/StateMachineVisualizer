@@ -64,6 +64,8 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     saveFlow,
     showSaveNotification,
     currentFileName,
+    classificationRules,
+    updateClassificationRules,
     // Undo/Redo functionality
     undo,
     redo,
@@ -233,6 +235,8 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           connections={connections}
           currentFileName={currentFileName}
           onUpdateStep={updateStep}
+          classificationRules={classificationRules}
+          onUpdateClassificationRules={updateClassificationRules}
         />
 
         {/* Main step panel for diagram editing */}

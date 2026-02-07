@@ -20,58 +20,123 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   AlertCircle, 
-  Info
+  Info,
+  Sliders,
+  PlayCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import ConvertToStateMachineWelcomeModal from './ConvertToStateMachineWelcomeModal';
 
 /**
- * Auto-classify steps based on naming rules
- * Rule 1: Ends with ? → rule
- * Rule 2: Starts with "is" or "does" → rule
- * Rule 3: Starts with "valid" or "invalid" → rule
- * Rule 4: Starts with "ask" → state
- * Rule 5: Starts with "customer answers/ignored/rejected/provided" → behavior
- * Rule 6: ALL CAPS → state
+ * Default classification rules for auto-categorizing steps
+ * These can be customized by the user in the Classification Rules tab
  */
-const autoClassifyStep = (stepName) => {
+export const DEFAULT_CLASSIFICATION_RULES = [
+  {
+    id: 'rule-1',
+    pattern: '?',
+    patternType: 'simple',
+    matchType: 'endsWith',
+    resultType: 'rule',
+    description: 'Questions are rules (ends with ?)',
+    enabled: true
+  },
+  {
+    id: 'rule-2',
+    pattern: 'is |does ',
+    patternType: 'simple',
+    matchType: 'startsWith',
+    resultType: 'rule',
+    description: 'Verb checks (starts with "is" or "does")',
+    enabled: true
+  },
+  {
+    id: 'rule-3',
+    pattern: 'valid |invalid ',
+    patternType: 'simple',
+    matchType: 'startsWith',
+    resultType: 'rule',
+    description: 'Validity checks (starts with "valid" or "invalid")',
+    enabled: true
+  },
+  {
+    id: 'rule-4',
+    pattern: 'ask ',
+    patternType: 'simple',
+    matchType: 'startsWith',
+    resultType: 'state',
+    description: 'User prompts (starts with "ask")',
+    enabled: true
+  },
+  {
+    id: 'rule-5',
+    pattern: 'customer answers|customer ignored|customer rejected|customer provided',
+    patternType: 'simple',
+    matchType: 'startsWith',
+    resultType: 'behavior',
+    description: 'Customer actions (starts with customer verbs)',
+    enabled: true
+  },
+  {
+    id: 'rule-6',
+    pattern: '^[A-Z][A-Z0-9_\\s]*$',
+    patternType: 'regex',
+    matchType: 'regex',
+    resultType: 'state',
+    description: 'All caps identifiers (STATES)',
+    enabled: true
+  }
+];
+
+/**
+ * Auto-classify steps based on classification rules
+ * @param {string} stepName - The name of the step to classify
+ * @param {Array} rules - Array of classification rules to apply
+ * @returns {string|null} - The classification type ('state', 'rule', 'behavior') or null if no match
+ */
+const autoClassifyStep = (stepName, rules = DEFAULT_CLASSIFICATION_RULES) => {
   if (!stepName) return null;
   
   const trimmedName = stepName.trim();
   const lowerName = trimmedName.toLowerCase();
   
-  // Rule 1: Ends with ? → rule
-  if (trimmedName.endsWith('?')) {
-    return 'rule';
-  }
-
-  // Rule 2: Starts with "is" or "does" → rule
-  if (lowerName.startsWith('is ') || lowerName.startsWith('does ') || 
-      lowerName === 'is' || lowerName === 'does') {
-    return 'rule';
-  }
-
-  // Rule 3: Starts with "valid" or "invalid" → rule
-  if (lowerName.startsWith('valid ') || lowerName.startsWith('invalid ') || 
-      lowerName === 'valid' || lowerName === 'invalid') {
-    return 'rule';
-  }
-
-  // Rule 4: Starts with "ask" → state
-  if (lowerName.startsWith('ask ') || lowerName === 'ask') {
-    return 'state';
-  }
-
-  // Rule 5: Starts with "customer answers/ignored/rejected/provided" → behavior
-  const behaviorPrefixes = ['customer answers', 'customer ignored', 'customer rejected', 'customer provided'];
-  if (behaviorPrefixes.some(p => lowerName.startsWith(p + ' ') || lowerName === p)) {
-    return 'behavior';
-  }
-  
-  // Rule 6: ALL CAPS (with at least one letter) → state
-  if (/[A-Z]/.test(stepName) && stepName === stepName.toUpperCase()) {
-    return 'state';
+  // Evaluate rules in order - first match wins
+  for (const rule of rules) {
+    if (!rule.enabled) continue;
+    
+    try {
+      let matches = false;
+      
+      if (rule.patternType === 'regex') {
+        // Regex pattern matching
+        const regex = new RegExp(rule.pattern, 'i');
+        matches = regex.test(trimmedName);
+      } else {
+        // Simple pattern matching
+        const patterns = rule.pattern.split('|').map(p => p.trim());
+        
+        if (rule.matchType === 'endsWith') {
+          matches = patterns.some(p => trimmedName.endsWith(p));
+        } else if (rule.matchType === 'startsWith') {
+          matches = patterns.some(p => {
+            const lowerPattern = p.toLowerCase();
+            return lowerName.startsWith(lowerPattern) || lowerName === lowerPattern.trim();
+          });
+        } else if (rule.matchType === 'contains') {
+          matches = patterns.some(p => lowerName.includes(p.toLowerCase()));
+        } else if (rule.matchType === 'equals') {
+          matches = patterns.some(p => lowerName === p.toLowerCase());
+        }
+      }
+      
+      if (matches) {
+        return rule.resultType;
+      }
+    } catch (error) {
+      console.error(`Error evaluating classification rule ${rule.id}:`, error);
+      // Continue to next rule on error
+    }
   }
   
   return null; // No rule matches, keep existing type
@@ -551,9 +616,345 @@ DictionaryEditor.propTypes = {
 };
 
 /**
+ * Classification Rules Editor Component
+ * Allows users to customize the auto-classification rules
+ */
+const ClassificationRulesEditor = ({ rules, onUpdateRules }) => {
+  const [localRules, setLocalRules] = useState(rules || DEFAULT_CLASSIFICATION_RULES);
+  const [testStepName, setTestStepName] = useState('');
+  const [testResult, setTestResult] = useState(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Update local rules when prop changes
+  useEffect(() => {
+    if (rules) {
+      setLocalRules(rules);
+    } else {
+      setLocalRules(DEFAULT_CLASSIFICATION_RULES);
+    }
+  }, [rules]);
+
+  const handleRuleChange = (ruleId, field, value) => {
+    const updatedRules = localRules.map(rule => 
+      rule.id === ruleId ? { ...rule, [field]: value } : rule
+    );
+    setLocalRules(updatedRules);
+    onUpdateRules(updatedRules);
+  };
+
+  const handleAddRule = () => {
+    const newRule = {
+      id: `rule-${Date.now()}`,
+      pattern: '',
+      patternType: 'simple',
+      matchType: 'startsWith',
+      resultType: 'state',
+      description: 'New rule',
+      enabled: true
+    };
+    const updatedRules = [...localRules, newRule];
+    setLocalRules(updatedRules);
+    onUpdateRules(updatedRules);
+    toast.success('New rule added');
+  };
+
+  const handleDeleteRule = (ruleId) => {
+    const updatedRules = localRules.filter(rule => rule.id !== ruleId);
+    setLocalRules(updatedRules);
+    onUpdateRules(updatedRules);
+    toast.success('Rule deleted');
+  };
+
+  const handleResetToDefaults = () => {
+    setLocalRules(DEFAULT_CLASSIFICATION_RULES);
+    onUpdateRules(DEFAULT_CLASSIFICATION_RULES);
+    setShowResetConfirm(false);
+    toast.success('Rules reset to defaults');
+  };
+
+  const handleTestClassification = () => {
+    if (!testStepName.trim()) {
+      toast.error('Please enter a step name to test');
+      return;
+    }
+    const result = autoClassifyStep(testStepName, localRules);
+    setTestResult(result || 'No match (would keep existing type)');
+  };
+
+  const getMatchTypeOptions = (patternType) => {
+    if (patternType === 'regex') {
+      return ['regex'];
+    }
+    return ['startsWith', 'endsWith', 'contains', 'equals'];
+  };
+
+  return (
+    <div className="space-y-4 flex flex-col flex-1 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            Classification Rules
+          </h4>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Rules are evaluated in order. First match determines the step type.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleAddRule}
+            className="h-7 px-3 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Add Rule
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setShowResetConfirm(true)}
+            className="h-7 px-3 text-xs"
+          >
+            <RotateCcw className="w-3 h-3 mr-1" />
+            Reset to Defaults
+          </Button>
+        </div>
+      </div>
+
+      {/* Reset Confirmation */}
+      {showResetConfirm && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <h5 className="font-semibold text-sm mb-2 text-yellow-900 dark:text-yellow-100">
+            Reset to Default Rules?
+          </h5>
+          <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-3">
+            This will replace all current rules with the original 6 default rules. This action cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              onClick={handleResetToDefaults}
+              className="h-7 px-3 text-xs"
+            >
+              Confirm Reset
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setShowResetConfirm(false)}
+              className="h-7 px-3 text-xs"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Test Classification Section */}
+      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <h5 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100 flex items-center gap-2">
+          <PlayCircle className="w-4 h-4" />
+          Test Classification
+        </h5>
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <Input
+              placeholder="Enter a step name to test..."
+              value={testStepName}
+              onChange={(e) => setTestStepName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleTestClassification();
+                }
+              }}
+              className="h-8 text-sm"
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            onClick={handleTestClassification}
+            className="h-8 px-3 text-xs"
+          >
+            Test
+          </Button>
+        </div>
+        {testResult && (
+          <div className="mt-2 text-sm">
+            <span className="text-blue-800 dark:text-blue-200">Result: </span>
+            <span className="font-semibold text-blue-900 dark:text-blue-100">
+              {typeof testResult === 'string' && testResult.includes('No match') 
+                ? testResult 
+                : <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">{testResult}</span>
+              }
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Rules Table */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md flex-1 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+            <tr>
+              <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium w-10">
+                #
+              </th>
+              <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">
+                Pattern
+              </th>
+              <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium w-28">
+                Type
+              </th>
+              <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium w-32">
+                Match
+              </th>
+              <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium w-40">
+                Result Type
+              </th>
+              <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">
+                Description
+              </th>
+              <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium w-20">
+                Enabled
+              </th>
+              <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300 font-medium w-12">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {localRules.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                  No rules defined. Click &quot;Add Rule&quot; to create one.
+                </td>
+              </tr>
+            ) : (
+              localRules.map((rule, index) => (
+                <tr key={rule.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
+                    {index + 1}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      value={rule.pattern}
+                      onChange={(e) => handleRuleChange(rule.id, 'pattern', e.target.value)}
+                      placeholder="Pattern..."
+                      className="h-8 text-xs"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={rule.patternType}
+                      onChange={(e) => {
+                        handleRuleChange(rule.id, 'patternType', e.target.value);
+                        if (e.target.value === 'regex') {
+                          handleRuleChange(rule.id, 'matchType', 'regex');
+                        }
+                      }}
+                      className="h-8 w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2"
+                    >
+                      <option value="simple">Simple</option>
+                      <option value="regex">Regex</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={rule.matchType}
+                      onChange={(e) => handleRuleChange(rule.id, 'matchType', e.target.value)}
+                      disabled={rule.patternType === 'regex'}
+                      className="h-8 w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 disabled:opacity-50"
+                    >
+                      {getMatchTypeOptions(rule.patternType).map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-1 justify-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={rule.resultType === 'state' ? 'default' : 'outline'}
+                        onClick={() => handleRuleChange(rule.id, 'resultType', 'state')}
+                        className="h-6 px-2 text-xs"
+                      >
+                        State
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={rule.resultType === 'rule' ? 'default' : 'outline'}
+                        onClick={() => handleRuleChange(rule.id, 'resultType', 'rule')}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Rule
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={rule.resultType === 'behavior' ? 'default' : 'outline'}
+                        onClick={() => handleRuleChange(rule.id, 'resultType', 'behavior')}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Behavior
+                      </Button>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      value={rule.description}
+                      onChange={(e) => handleRuleChange(rule.id, 'description', e.target.value)}
+                      placeholder="Description..."
+                      className="h-8 text-xs"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={rule.enabled}
+                      onChange={(e) => handleRuleChange(rule.id, 'enabled', e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteRule(rule.id)}
+                      className="h-6 w-6 p-0"
+                      title="Delete rule"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+ClassificationRulesEditor.propTypes = {
+  rules: PropTypes.array,
+  onUpdateRules: PropTypes.func.isRequired
+};
+
+/**
  * Step Classification Editor Component
  */
-const StepClassificationEditor = ({ steps, onUpdateStep, onRunAutoClassify }) => {
+const StepClassificationEditor = ({ steps, onUpdateStep, onRunAutoClassify, onNavigateToRules }) => {
   const getQualifiedName = (step, allSteps) => {
     if (!step.parentId) return step.name;
     const parent = allSteps.find(s => s.id === step.parentId);
@@ -593,16 +994,32 @@ const StepClassificationEditor = ({ steps, onUpdateStep, onRunAutoClassify }) =>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <h5 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">
-          Auto-Classification Rules
-        </h5>
+        <div className="flex items-start justify-between mb-2">
+          <h5 className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+            Auto-Classification Rules
+          </h5>
+          {onNavigateToRules && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={onNavigateToRules}
+              className="h-6 px-2 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+            >
+              <Sliders className="w-3 h-3 mr-1" />
+              Customize Rules
+            </Button>
+          )}
+        </div>
         <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
           <div>• Ends with ? (e.g., &quot;is eligible?&quot;) → <strong>Rule</strong></div>
           <div>• Starts with &quot;is&quot;, &quot;does&quot;, &quot;valid&quot; or &quot;invalid&quot; → <strong>Rule</strong></div>
           <div>• Starts with &quot;ask&quot; (e.g., &quot;ask email&quot;) → <strong>State</strong></div>
           <div>• Starts with &quot;customer answers/ignored/rejected/provided&quot; → <strong>Behavior</strong></div>
           <div>• ALL CAPS (e.g., &quot;DASHBOARD&quot;) → <strong>State</strong></div>
-          <div className="mt-2 italic">Auto-classification runs from this tab</div>
+          <div className="mt-2 italic text-[11px]">
+            These are the default rules. You can customize them in the Classification Rules tab.
+          </div>
         </div>
       </div>
 
@@ -680,7 +1097,8 @@ const StepClassificationEditor = ({ steps, onUpdateStep, onRunAutoClassify }) =>
 StepClassificationEditor.propTypes = {
   steps: PropTypes.array.isRequired,
   onUpdateStep: PropTypes.func,
-  onRunAutoClassify: PropTypes.func
+  onRunAutoClassify: PropTypes.func,
+  onNavigateToRules: PropTypes.func
 };
 
 /**
@@ -1024,9 +1442,9 @@ RowValidationDisplay.propTypes = {
 /**
  * Main Modal Component
  */
-const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpdateStep }) => {
+const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpdateStep, classificationRules, onUpdateClassificationRules }) => {
   // Track active tab for dictionaries and classification
-  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'rootsteps' | 'classify' | null
+  const [activeTab, setActiveTab] = useState('csv'); // 'csv' | 'rootsteps' | 'rules' | 'classify' | null
   // Store editable CSV rows
   const [editableRows, setEditableRows] = useState([]);
   // Track selected root steps
@@ -1186,10 +1604,11 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
       return;
     }
 
+    const rulesToUse = classificationRules || DEFAULT_CLASSIFICATION_RULES;
     const typeUpdates = new Map();
 
     filteredSteps.forEach(step => {
-      const suggestedType = autoClassifyStep(step.name);
+      const suggestedType = autoClassifyStep(step.name, rulesToUse);
       if (suggestedType && step.type !== suggestedType) {
         typeUpdates.set(step.id, suggestedType);
       }
@@ -1292,6 +1711,17 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
                 }`}
               >
                 Root Steps Selection ({selectedRootSteps.size}/{rootSteps.length})
+              </button>
+              <button
+                onClick={() => setActiveTab(activeTab === 'rules' ? null : 'rules')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'rules'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5 inline-block mr-1.5" />
+                Classification Rules
               </button>
               <button
                 onClick={() => setActiveTab(activeTab === 'classify' ? null : 'classify')}
@@ -1506,12 +1936,21 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
                   </div>
                 </div>
               )}
+              {activeTab === 'rules' && (
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <ClassificationRulesEditor
+                    rules={classificationRules || DEFAULT_CLASSIFICATION_RULES}
+                    onUpdateRules={onUpdateClassificationRules}
+                  />
+                </div>
+              )}
               {activeTab === 'classify' && (
                 <div className="flex flex-col flex-1 overflow-hidden">
                   <StepClassificationEditor
                     steps={filteredSteps}
                     onUpdateStep={onUpdateStep}
                     onRunAutoClassify={runAutoClassification}
+                    onNavigateToRules={() => setActiveTab('rules')}
                   />
                 </div>
               )}
@@ -1553,7 +1992,9 @@ ConvertToStateMachineModal.propTypes = {
     toStepId: PropTypes.string.isRequired,
     type: PropTypes.oneOf(['success', 'failure']).isRequired
   })).isRequired,
-  onUpdateStep: PropTypes.func
+  onUpdateStep: PropTypes.func,
+  classificationRules: PropTypes.array,
+  onUpdateClassificationRules: PropTypes.func
 };
 
 export default ConvertToStateMachineModal;

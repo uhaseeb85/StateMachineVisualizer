@@ -20,6 +20,7 @@ const useFlowDiagram = (storageKey) => {
   // State for managing steps and their connections in the flow diagram
   const [steps, setSteps] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [classificationRules, setClassificationRules] = useState(null);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -57,15 +58,18 @@ const useFlowDiagram = (storageKey) => {
         console.log('[useFlowDiagram] Saved filename:', savedFileName);
         
         if (savedData) {
-          const { steps: savedSteps, connections: savedConnections } = savedData;
+          const { steps: savedSteps, connections: savedConnections, classificationRules: savedRules } = savedData;
           console.log('[useFlowDiagram] Loaded steps:', savedSteps?.length || 0);
           console.log('[useFlowDiagram] Loaded connections:', savedConnections?.length || 0);
+          console.log('[useFlowDiagram] Loaded classification rules:', savedRules?.length || 'none');
           setSteps(savedSteps || []);
           setConnections(savedConnections || []);
+          setClassificationRules(savedRules || null);
         } else {
           console.log('[useFlowDiagram] No saved data found, initializing empty');
           setSteps([]);
           setConnections([]);
+          setClassificationRules(null);
         }
         
         if (savedFileName) {
@@ -188,7 +192,8 @@ const useFlowDiagram = (storageKey) => {
     // Save to IndexedDB
     storage.setItem(storageKey, {
       steps: previousState.steps,
-      connections: previousState.connections
+      connections: previousState.connections,
+      classificationRules
     });
 
     toast.success('Undo successful');
@@ -230,7 +235,8 @@ const useFlowDiagram = (storageKey) => {
     // Save to IndexedDB
     storage.setItem(storageKey, {
       steps: nextState.steps,
-      connections: nextState.connections
+      connections: nextState.connections,
+      classificationRules
     });
 
     toast.success('Redo successful');
@@ -243,7 +249,7 @@ const useFlowDiagram = (storageKey) => {
   const saveFlow = async () => {
     try {
       console.log('Saving flow diagram data');
-      await storage.setItem(storageKey, { steps, connections });
+      await storage.setItem(storageKey, { steps, connections, classificationRules });
       
       setShowSaveNotification(true);
       setTimeout(() => setShowSaveNotification(false), 2000);
@@ -283,7 +289,7 @@ const useFlowDiagram = (storageKey) => {
       console.log('Updated steps array:', newSteps);
       
       // Save to IndexedDB after adding a step
-      storage.setItem(storageKey, { steps: newSteps, connections }).catch(error => {
+      storage.setItem(storageKey, { steps: newSteps, connections, classificationRules }).catch(error => {
         console.error('Error saving to storage:', error);
       });
 
@@ -338,7 +344,7 @@ const useFlowDiagram = (storageKey) => {
       console.log('Updating steps from:', prev, 'to:', newSteps);
 
       // Save to IndexedDB after update
-      storage.setItem(storageKey, { steps: newSteps, connections }).catch(error => {
+      storage.setItem(storageKey, { steps: newSteps, connections, classificationRules }).catch(error => {
         console.error('Error saving to storage:', error);
       });
 
@@ -398,7 +404,8 @@ const useFlowDiagram = (storageKey) => {
       // Save to IndexedDB after removing a step and its connections
       storage.setItem(storageKey, { 
         steps: newSteps, 
-        connections: newConnections 
+        connections: newConnections,
+        classificationRules
       }).catch(error => {
         console.error('Error saving to storage:', error);
       });
@@ -418,6 +425,27 @@ const useFlowDiagram = (storageKey) => {
       
       return newSteps;
     });
+  };
+
+  /**
+   * Updates the classification rules for the flow diagram
+   * @param {Array} newRules - New array of classification rules
+   */
+  const updateClassificationRules = async (newRules) => {
+    console.log('Updating classification rules:', newRules);
+    setClassificationRules(newRules);
+    
+    try {
+      await storage.setItem(storageKey, { 
+        steps, 
+        connections, 
+        classificationRules: newRules 
+      });
+      console.log('Classification rules saved to IndexedDB');
+    } catch (error) {
+      console.error('Error saving classification rules:', error);
+      toast.error('Failed to save classification rules');
+    }
   };
 
   // Track last connection to prevent duplicates
@@ -493,7 +521,7 @@ const useFlowDiagram = (storageKey) => {
       console.log('New connections count:', newConnections.length);
       
       // Save to IndexedDB after adding a connection
-      storage.setItem(storageKey, { steps, connections: newConnections }).catch(error => {
+      storage.setItem(storageKey, { steps, connections: newConnections, classificationRules }).catch(error => {
         console.error('Error saving to storage:', error);
       });
 
@@ -542,7 +570,7 @@ const useFlowDiagram = (storageKey) => {
       );
       
       // Save to IndexedDB after removing a connection
-      storage.setItem(storageKey, { steps, connections: newConnections }).catch(error => {
+      storage.setItem(storageKey, { steps, connections: newConnections, classificationRules }).catch(error => {
         console.error('Error saving to storage:', error);
       });
 
@@ -1062,9 +1090,11 @@ const useFlowDiagram = (storageKey) => {
   return {
     steps,
     connections,
+    classificationRules,
     isLoading,
     addStep,
     updateStep,
+    updateClassificationRules,
     removeStep,
     addConnection,
     removeConnection,
