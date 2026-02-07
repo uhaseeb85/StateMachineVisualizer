@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import StepNameAutocomplete from './StepNameAutocomplete';
 import { 
   Plus,
   CheckCircle2,
@@ -39,7 +40,8 @@ const CreateStepOverlay = ({
   onCreate,
   allSteps,
   currentStep,
-  onAddConnection
+  onAddConnection,
+  dictionaryHook
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -67,6 +69,15 @@ const CreateStepOverlay = ({
     });
 
     if (newStepId) {
+      // Update dictionary
+      if (dictionaryHook) {
+        dictionaryHook.upsertEntry(
+          formData.name.trim(),
+          formData.type,
+          formData.alias.trim()
+        );
+      }
+
       // If auto-connect is enabled and we have a current step, create the connection
       if (autoConnect && currentStep && onAddConnection) {
         const success = onAddConnection(currentStep.id, newStepId, connectionType);
@@ -108,10 +119,18 @@ const CreateStepOverlay = ({
             <label htmlFor="create-step-name" className="text-sm font-medium mb-1 block">
               📝 Step Name *
             </label>
-            <Input
-              id="create-step-name"
+            <StepNameAutocomplete
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onSelect={(suggestion) => {
+                setFormData({
+                  ...formData,
+                  name: suggestion.stepName,
+                  type: suggestion.type,
+                  alias: suggestion.alias || ''
+                });
+              }}
+              dictionaryHook={dictionaryHook}
               placeholder="Enter step name..."
               className="w-full"
               autoFocus
@@ -333,7 +352,8 @@ CreateStepOverlay.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired
   }),
-  onAddConnection: PropTypes.func
+  onAddConnection: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default CreateStepOverlay;

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import StepNameAutocomplete from './StepNameAutocomplete';
 import {
   Plus,
   X,
@@ -40,6 +41,7 @@ const StepPanel = ({
   onAddConnection,
   onRemoveConnection,
   onSave,
+  dictionaryHook,
 }) => {
   const [selectedStep, setSelectedStep] = useState(null);
   const [connectionType, setConnectionType] = useState(null);
@@ -57,6 +59,9 @@ const StepPanel = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(33); // as percentage
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
   const containerRef = useRef(null);
+  // Add state for new step type and alias (for autocomplete)
+  const [newStepType, setNewStepType] = useState('state');
+  const [newStepAlias, setNewStepAlias] = useState('');
   // Replace simple move history with unified history that can track different operations
   const [operationHistory, setOperationHistory] = useState([]);
   // Add state for parent selection mode
@@ -229,8 +234,18 @@ const StepPanel = ({
         description: '',
         expectedResponse: '',
         parentId: null,
+        type: newStepType,
+        alias: newStepAlias.trim() || undefined,
       });
+      
+      // Update dictionary
+      if (dictionaryHook) {
+        dictionaryHook.upsertEntry(newStepName.trim(), newStepType, newStepAlias.trim());
+      }
+      
       setNewStepName('');
+      setNewStepType('state');
+      setNewStepAlias('');
       toast.success('Step added successfully');
     }
   };
@@ -238,12 +253,20 @@ const StepPanel = ({
   // Function to handle adding a sub-step
   const handleAddSubStep = (parentId) => {
     if (subStepName.trim()) {
-      onAddStep({
+      const step = onAddStep({
         name: subStepName.trim(),
         description: '',
         expectedResponse: '',
         parentId: parentId,
+        type: 'state',
+        alias: '',
       });
+      
+      // Update dictionary
+      if (dictionaryHook && step) {
+        dictionaryHook.upsertEntry(subStepName.trim(), 'state', '');
+      }
+      
       setSubStepName('');
       setAddingSubStepFor(null);
       setExpandedSteps(prev => ({
@@ -420,6 +443,14 @@ const StepPanel = ({
     
     // Call the update function
     onUpdateStep(stepId, updates);
+    
+    // Update dictionary if name, type, or alias changed
+    if (dictionaryHook && (updates.name || updates.type || updates.alias !== undefined)) {
+      const finalName = updates.name || stepToUpdate.name;
+      const finalType = updates.type || stepToUpdate.type || 'state';
+      const finalAlias = updates.alias !== undefined ? updates.alias : stepToUpdate.alias;
+      dictionaryHook.upsertEntry(finalName, finalType, finalAlias || '');
+    }
     
     // Update local state to reflect changes immediately
     setSelectedStep(updatedStep);
@@ -1303,11 +1334,17 @@ const StepPanel = ({
           {/* Add root step input */}
           <div className="space-y-2 sticky top-0 bg-background pb-4 border-b">
             <div className="flex gap-2">
-              <Input
-                placeholder="Enter step name..."
+              <StepNameAutocomplete
                 value={newStepName}
                 onChange={(e) => setNewStepName(e.target.value)}
+                onSelect={(suggestion) => {
+                  setNewStepName(suggestion.stepName);
+                  setNewStepType(suggestion.type);
+                  setNewStepAlias(suggestion.alias || '');
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
+                dictionaryHook={dictionaryHook}
+                placeholder="Enter step name..."
                 className="h-10 flex-1"
               />
               <Button
@@ -2047,6 +2084,7 @@ StepPanel.propTypes = {
   onAddConnection: PropTypes.func.isRequired,
   onRemoveConnection: PropTypes.func.isRequired,
   onSave: PropTypes.func,
+  dictionaryHook: PropTypes.object,
 };
 
 export default StepPanel;

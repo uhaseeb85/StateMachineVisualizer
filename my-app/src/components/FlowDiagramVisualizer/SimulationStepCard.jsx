@@ -92,7 +92,8 @@ const SimulationStepCard = ({
   connections = [],
   onAddConnection,
   onRemoveConnection,
-  onAddStep // Optional - enables create & connect in ConnectionsInlineEditor
+  onAddStep, // Optional - enables create & connect in ConnectionsInlineEditor
+  dictionaryHook
 }) => {
   const [showActions, setShowActions] = useState(false);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
@@ -202,6 +203,19 @@ const SimulationStepCard = ({
 
     // Save form data changes
     onSave(step.id, formData);
+    
+    // Update dictionary if name, type, or alias changed
+    if (dictionaryHook && (
+      formData.name !== step.name || 
+      formData.type !== step.type || 
+      formData.alias !== step.alias
+    )) {
+      dictionaryHook.upsertEntry(
+        formData.name.trim(),
+        formData.type,
+        formData.alias?.trim() || ''
+      );
+    }
     
     // Reset staged changes
     setStagedConnectionChanges({
@@ -521,7 +535,8 @@ SimulationStepCard.propTypes = {
   })),
   onAddConnection: PropTypes.func,
   onRemoveConnection: PropTypes.func,
-  onAddStep: PropTypes.func // Optional - enables create & connect feature
+  onAddStep: PropTypes.func, // Optional - enables create & connect feature
+  dictionaryHook: PropTypes.object
 };
 
 export default SimulationStepCard;

@@ -49,7 +49,7 @@ const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
  * @param {Function} props.onAddConnection - Callback to add a new connection
  * @param {Function} props.onAddStep - Callback to add a new step
  */
-const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection, onAddConnection, onAddStep }) => {
+const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection, onAddConnection, onAddStep, dictionaryHook }) => {
   const [formData, setFormData] = useState({
     name: step?.name || '',
     alias: step?.alias || '',
@@ -1002,7 +1002,8 @@ EditStepOverlay.propTypes = {
   })),
   onRemoveConnection: PropTypes.func,
   onAddConnection: PropTypes.func,
-  onAddStep: PropTypes.func
+  onAddStep: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default EditStepOverlay;

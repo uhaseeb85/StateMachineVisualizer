@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import StepNameAutocomplete from './StepNameAutocomplete';
 
 /**
  * InlineStepCreator Component
@@ -29,7 +30,8 @@ const InlineStepCreator = ({
   allSteps = [],
   onCreate,
   onCancel,
-  onAddConnection
+  onAddConnection,
+  dictionaryHook
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -63,12 +65,23 @@ const InlineStepCreator = ({
     // Call onCreate and get the new step ID
     const newStepId = onCreate(stepData);
 
-    // Auto-connect if requested
-    if (formData.autoConnect && currentStep && newStepId && onAddConnection) {
-      onAddConnection(currentStep.id, newStepId, formData.connectionType);
-      toast.success(`Created "${formData.name}" and connected from "${currentStep.name}"!`);
-    } else if (newStepId) {
-      toast.success(`Created "${formData.name}"!`);
+    if (newStepId) {
+      // Update dictionary
+      if (dictionaryHook) {
+        dictionaryHook.upsertEntry(
+          formData.name.trim(),
+          formData.type,
+          formData.alias.trim()
+        );
+      }
+
+      // Auto-connect if requested
+      if (formData.autoConnect && currentStep && onAddConnection) {
+        onAddConnection(currentStep.id, newStepId, formData.connectionType);
+        toast.success(`Created "${formData.name}" and connected from "${currentStep.name}"!`);
+      } else {
+        toast.success(`Created "${formData.name}"!`);
+      }
     }
 
     // Reset form
@@ -110,14 +123,23 @@ const InlineStepCreator = ({
           <label className="text-sm font-medium mb-1 block">
             Step Name <span className="text-red-500">*</span>
           </label>
-          <Input
-            placeholder="Enter step name..."
+          <StepNameAutocomplete
             value={formData.name}
             onChange={(e) => setFormData({...formData, name: e.target.value})}
+            onSelect={(suggestion) => {
+              setFormData({
+                ...formData,
+                name: suggestion.stepName,
+                type: suggestion.type,
+                alias: suggestion.alias || ''
+              });
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.ctrlKey) handleCreate();
               if (e.key === 'Escape') handleCancel();
             }}
+            dictionaryHook={dictionaryHook}
+            placeholder="Enter step name..."
             autoFocus
             className="w-full"
           />
@@ -325,7 +347,8 @@ InlineStepCreator.propTypes = {
   })),
   onCreate: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  onAddConnection: PropTypes.func
+  onAddConnection: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default InlineStepCreator;

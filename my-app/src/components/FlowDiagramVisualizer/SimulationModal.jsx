@@ -74,6 +74,7 @@ import InlineStepCreator from './InlineStepCreator';
  * @param {Function} props.onRemoveStep - Callback for removing a step
  * @param {Function} props.onAddConnection - Callback for adding a connection
  * @param {Function} props.onRemoveConnection - Callback for removing a connection
+ * @param {Object} props.dictionaryHook - Step dictionary hook for auto-suggestions
  */
 const SimulationModal = ({ 
   steps, 
@@ -83,7 +84,8 @@ const SimulationModal = ({
   onUpdateStep,
   onRemoveStep,
   onAddConnection,
-  onRemoveConnection
+  onRemoveConnection,
+  dictionaryHook
 }) => {
   // Modal state
   const [isOpen, setIsOpen] = useState(true);
@@ -996,6 +998,7 @@ const SimulationModal = ({
                             onAddConnection={onAddConnection}
                             onRemoveConnection={onRemoveConnection}
                             onAddStep={onAddStep}
+                            dictionaryHook={dictionaryHook}
                           />
                         </div>
                       );
@@ -1047,6 +1050,7 @@ const SimulationModal = ({
                     onCreate={handleCreateStepComplete}
                     onCancel={() => setCreatorPosition(null)}
                     onAddConnection={onAddConnection}
+                    dictionaryHook={dictionaryHook}
                   />
                 )}
 
@@ -1224,7 +1228,8 @@ SimulationModal.propTypes = {
   onUpdateStep: PropTypes.func,
   onRemoveStep: PropTypes.func,
   onAddConnection: PropTypes.func,
-  onRemoveConnection: PropTypes.func
+  onRemoveConnection: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default SimulationModal;

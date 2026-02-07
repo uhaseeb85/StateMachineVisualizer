@@ -13,7 +13,8 @@ import {
   GitBranch,
   Settings,
   Undo,
-  Redo
+  Redo,
+  BookOpen
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { toast } from 'sonner';
@@ -30,6 +31,7 @@ const TopActionBar = ({
   onShowAllAssumptionsQuestions,
   onShowActionHistory,
   onShowComparer,
+  onShowStepDictionary,
   actionHistoryCount,
   onClear,
   onImport,
@@ -44,7 +46,8 @@ const TopActionBar = ({
   currentFileName,
   onUpdateStep,
   classificationRules,
-  onUpdateClassificationRules
+  onUpdateClassificationRules,
+  dictionaryHook
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -363,6 +366,28 @@ const TopActionBar = ({
               Tools
             </Button>
 
+            {/* Step Dictionary Button */}
+            <Button
+              onClick={onShowStepDictionary}
+              title="Manage step dictionary for auto-suggestions"
+              className="step-dictionary-button bg-gray-900 text-white text-sm
+                       dark:bg-gray-800 dark:text-gray-100
+                       hover:bg-blue-600 hover:scale-105
+                       dark:hover:bg-blue-600
+                       transform transition-all duration-200 ease-in-out
+                       border border-gray-800 dark:border-gray-700
+                       hover:border-blue-500 dark:hover:border-blue-500
+                       flex items-center gap-2 px-3 py-1.5 rounded-md"
+            >
+              <BookOpen className="w-4 h-4" />
+              Dictionary
+              {dictionaryHook && dictionaryHook.dictionary.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 dark:bg-blue-700 rounded-full">
+                  {dictionaryHook.dictionary.length}
+                </span>
+              )}
+            </Button>
+
 
 
             {/* Mode Switch Button */}
@@ -434,6 +459,7 @@ TopActionBar.propTypes = {
   onShowAllAssumptionsQuestions: PropTypes.func.isRequired,
   onShowActionHistory: PropTypes.func.isRequired,
   onShowComparer: PropTypes.func.isRequired,
+  onShowStepDictionary: PropTypes.func,
   actionHistoryCount: PropTypes.number,
   onClear: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
@@ -448,7 +474,8 @@ TopActionBar.propTypes = {
   currentFileName: PropTypes.string,
   onUpdateStep: PropTypes.func,
   classificationRules: PropTypes.array,
-  onUpdateClassificationRules: PropTypes.func
+  onUpdateClassificationRules: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default TopActionBar;
