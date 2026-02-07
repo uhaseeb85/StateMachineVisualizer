@@ -152,10 +152,32 @@ const LandingPage = ({ onGetStarted }) => {
                     Enterprise Intelligence Suite
                   </span>
                 </h1>
-                <p className="text-lg text-slate-300 max-w-xl">
-                  An enterprise-grade visual builder for state machines, flow diagrams, and log analysis.
-                  Map decisions, validate transitions, and simulate outcomes with surgical clarity.
-                </p>
+                <div className="max-w-xl space-y-4">
+                  <p className="text-lg text-slate-300">
+                    An enterprise-grade visual builder for state machines, flow diagrams, and log analysis.
+                    <span className="block text-slate-200">
+                      Map decisions, validate transitions, and simulate outcomes with surgical clarity.
+                    </span>
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200">
+                      <Waypoints className="h-3 w-3" />
+                      Decision graphs
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
+                      <ShieldCheck className="h-3 w-3" />
+                      Flow diagrams
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                      <FileText className="h-3 w-3" />
+                      Reporting
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-200">
+                      <Search className="h-3 w-3" />
+                      Log analysis
+                    </div>
+                  </div>
+                </div>
               </motion.div>
 
               <motion.div
