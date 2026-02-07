@@ -165,13 +165,14 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
 
   /**
    * Sync dictionary from current steps
-   * Adds any steps not already in the dictionary
+   * Adds new steps and updates existing entries if properties changed
    * @param {Array} steps - Array of step objects
    */
   const syncFromSteps = useCallback((steps) => {
     if (!steps || !Array.isArray(steps)) return;
 
     let addedCount = 0;
+    let updatedCount = 0;
     
     setDictionary(prev => {
       const newDictionary = [...prev];
@@ -180,24 +181,50 @@ const useStepDictionary = (storageKey = 'flowDiagramStepDictionary') => {
         if (!step.name) return;
         
         const normalized = normalizeStepName(step.name);
-        const exists = newDictionary.some(
+        const existingIndex = newDictionary.findIndex(
           entry => normalizeStepName(entry.stepName) === normalized
         );
         
-        if (!exists) {
-          newDictionary.push({
-            stepName: step.name.trim(),
-            type: step.type || 'state',
-            alias: step.alias?.trim() || '',
-            description: step.description?.trim() || ''
-          });
+        const stepData = {
+          stepName: step.name.trim(),
+          type: step.type || 'state',
+          alias: step.alias?.trim() || '',
+          description: step.description?.trim() || ''
+        };
+        
+        if (existingIndex === -1) {
+          // New entry - add it
+          newDictionary.push(stepData);
           addedCount++;
+        } else {
+          // Existing entry - check if any properties changed
+          const existing = newDictionary[existingIndex];
+          const hasChanges = 
+            existing.type !== stepData.type ||
+            existing.alias !== stepData.alias ||
+            existing.description !== stepData.description;
+          
+          if (hasChanges) {
+            // Update existing entry
+            newDictionary[existingIndex] = stepData;
+            updatedCount++;
+          }
         }
       });
       
-      if (addedCount > 0) {
-        console.log('[useStepDictionary] Synced', addedCount, 'new entries from steps');
-        toast.success(`Added ${addedCount} step(s) to dictionary`);
+      const totalChanges = addedCount + updatedCount;
+      
+      if (totalChanges > 0) {
+        console.log('[useStepDictionary] Synced:', addedCount, 'added,', updatedCount, 'updated');
+        
+        if (addedCount > 0 && updatedCount > 0) {
+          toast.success(`Added ${addedCount} and updated ${updatedCount} step(s)`);
+        } else if (addedCount > 0) {
+          toast.success(`Added ${addedCount} step(s) to dictionary`);
+        } else if (updatedCount > 0) {
+          toast.success(`Updated ${updatedCount} step(s) in dictionary`);
+        }
+        
         saveDictionary(newDictionary);
       } else {
         toast.info('Dictionary is already up to date');

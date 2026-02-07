@@ -38,8 +38,9 @@ import { toast } from 'sonner';
  * @param {Function} props.onClose - Callback when modal is closed
  * @param {Object} props.dictionaryHook - Step dictionary hook
  * @param {Array} props.steps - Current flow diagram steps (for sync)
+ * @param {Function} props.onUpdateStep - Callback to update step properties
  */
-const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) => {
+const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [], onUpdateStep }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEntry, setEditingEntry] = useState(null);
   const [editedType, setEditedType] = useState('state');
@@ -72,12 +73,33 @@ const StepDictionaryModal = ({ isOpen, onClose, dictionaryHook, steps = [] }) =>
   };
 
   /**
-   * Save edited entry
+   * Save edited entry and sync to matching steps
    */
   const saveEdit = (stepName) => {
+    // Update dictionary
     upsertEntry(stepName, editedType, editedAlias, editedDescription);
+    
+    // Sync changes to all matching steps if onUpdateStep is provided
+    if (onUpdateStep) {
+      const matchingSteps = steps.filter(step => step.name === stepName);
+      matchingSteps.forEach(step => {
+        onUpdateStep(step.id, {
+          type: editedType,
+          alias: editedAlias,
+          description: editedDescription
+        });
+      });
+      
+      if (matchingSteps.length > 0) {
+        toast.success(`Updated dictionary entry and ${matchingSteps.length} matching step(s)`);
+      } else {
+        toast.success('Dictionary entry updated');
+      }
+    } else {
+      toast.success('Dictionary entry updated');
+    }
+    
     setEditingEntry(null);
-    toast.success('Entry updated');
   };
 
   /**
@@ -442,7 +464,8 @@ StepDictionaryModal.propTypes = {
     exportDictionary: PropTypes.func.isRequired,
     clearDictionary: PropTypes.func.isRequired
   }),
-  steps: PropTypes.array
+  steps: PropTypes.array,
+  onUpdateStep: PropTypes.func
 };
 
 export default StepDictionaryModal;

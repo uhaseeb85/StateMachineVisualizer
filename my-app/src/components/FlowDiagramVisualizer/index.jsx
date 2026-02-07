@@ -334,6 +334,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             onClose={() => setShowStepDictionary(false)}
             dictionaryHook={dictionaryHook}
             steps={steps}
+            onUpdateStep={updateStep}
           />
         )}
 
