@@ -9,6 +9,7 @@ import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import StepNameAutocomplete from './StepNameAutocomplete';
 import { CheckCircle2, XCircle, X, Plus, Link, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +23,7 @@ import { toast } from 'sonner';
  * @param {Function} props.onAddConnection - Callback to add a connection
  * @param {Function} props.onRemoveConnection - Callback to remove a connection
  * @param {Function} props.onAddStep - Callback to add a new step (optional)
+ * @param {Object} props.dictionaryHook - Step dictionary hook for autocomplete
  */
 const ConnectionsInlineEditor = ({ 
   currentStep, 
@@ -30,7 +32,8 @@ const ConnectionsInlineEditor = ({
   stagedChanges = null, // If provided, we're in staging mode
   onAddConnection,
   onRemoveConnection,
-  onAddStep = null // Optional - enables create & connect feature
+  onAddStep = null, // Optional - enables create & connect feature
+  dictionaryHook
 }) => {
   const [addingConnection, setAddingConnection] = useState(false);
   const [connectionMode, setConnectionMode] = useState('existing'); // 'existing' or 'new'
@@ -38,9 +41,13 @@ const ConnectionsInlineEditor = ({
   const [newConnectionTarget, setNewConnectionTarget] = useState('');
   
   // New step creation form data
-  const [newStepName, setNewStepName] = useState('');
-  const [newStepDescription, setNewStepDescription] = useState('');
-  const [parentStepId, setParentStepId] = useState(currentStep?.id || '');
+  const [newStepData, setNewStepData] = useState({
+    name: '',
+    alias: '',
+    description: '',
+    parentId: currentStep?.id || '',
+    type: 'state'
+  });
 
   // Calculate effective connections (accounting for staged changes)
   const existingConnections = connections.filter(c => c.fromStepId === currentStep.id);
@@ -100,7 +107,7 @@ const ConnectionsInlineEditor = ({
   };
 
   const handleCreateAndConnect = () => {
-    if (!newStepName.trim()) {
+    if (!newStepData.name.trim()) {
       toast.error('Step name is required');
       return;
     }
@@ -112,9 +119,11 @@ const ConnectionsInlineEditor = ({
 
     // Create the new step
     const stepData = {
-      name: newStepName.trim(),
-      description: newStepDescription.trim(),
-      parentId: parentStepId || null,
+      name: newStepData.name.trim(),
+      alias: newStepData.alias.trim() || undefined,
+      description: newStepData.description.trim(),
+      parentId: newStepData.parentId || null,
+      type: newStepData.type,
       assumptions: [],
       questions: [],
       imageUrls: [],
@@ -124,17 +133,32 @@ const ConnectionsInlineEditor = ({
     const newStepId = onAddStep(stepData);
 
     if (newStepId) {
+      // Update dictionary
+      if (dictionaryHook) {
+        dictionaryHook.upsertEntry(
+          newStepData.name.trim(),
+          newStepData.type,
+          newStepData.alias.trim(),
+          newStepData.description.trim()
+        );
+      }
+
       // Connect to the newly created step
       onAddConnection(currentStep.id, newStepId, newConnectionType);
       
       // Only show toast if not in staging mode
       if (!stagedChanges) {
-        toast.success(`Created "${newStepName}" and connected!`);
+        toast.success(`Created "${newStepData.name}" and connected!`);
       }
 
       // Reset form
-      setNewStepName('');
-      setNewStepDescription('');
+      setNewStepData({
+        name: '',
+        alias: '',
+        description: '',
+        parentId: currentStep?.id || '',
+        type: 'state'
+      });
       setAddingConnection(false);
       setConnectionMode('existing');
     }
@@ -253,247 +277,321 @@ const ConnectionsInlineEditor = ({
 
       {/* Add New Connection Form */}
       {addingConnection ? (
-        <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border-2 border-purple-300 dark:border-purple-600 space-y-3">
-          {/* Mode Toggle - only show if onAddStep is available */}
-          {onAddStep && (
-            <div className="flex gap-2 mb-3">
-              <Button
-                size="sm"
-                variant={connectionMode === 'existing' ? 'default' : 'outline'}
-                className={`flex-1 h-9 ${
-                  connectionMode === 'existing'
-                    ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'border-purple-200 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                }`}
-                onClick={() => setConnectionMode('existing')}
-              >
-                <Link className="h-4 w-4 mr-1" />
-                <span className="text-xs font-medium">Existing Step</span>
-              </Button>
-              <Button
-                size="sm"
-                variant={connectionMode === 'new' ? 'default' : 'outline'}
-                className={`flex-1 h-9 ${
-                  connectionMode === 'new'
-                    ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'border-purple-200 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                }`}
-                onClick={() => setConnectionMode('new')}
-              >
-                <PlusCircle className="h-4 w-4 mr-1" />
-                <span className="text-xs font-medium">New Step</span>
-              </Button>
+        <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border-2 border-purple-300 dark:border-purple-600 shadow-md space-y-4">
+          {/* Header with Connection Type */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+              ➕ Add Connection
             </div>
-          )}
-
-          {/* Connection Type Selection */}
-          <div>
-            <label className="text-xs font-medium mb-2 block">Connection Type:</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex gap-2">
               <Button
                 size="sm"
-                variant={newConnectionType === 'success' ? 'default' : 'outline'}
-                className={`h-9 flex items-center justify-center gap-1 ${
+                variant={newConnectionType === 'success' ? 'default' : 'ghost'}
+                className={`h-8 ${
                   newConnectionType === 'success' 
-                    ? 'bg-green-600 hover:bg-green-700' 
-                    : 'border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20'
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'hover:bg-green-100 text-green-700'
                 }`}
                 onClick={() => setNewConnectionType('success')}
               >
-                <CheckCircle2 className={`h-4 w-4 ${
-                  newConnectionType === 'success' ? 'text-white' : 'text-green-600'
-                }`} />
-                <span className={`text-xs ${
-                  newConnectionType === 'success' ? 'text-white' : 'text-green-700 dark:text-green-400'
-                }`}>
-                  Success
-                </span>
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                Success
               </Button>
-              
               <Button
                 size="sm"
-                variant={newConnectionType === 'failure' ? 'default' : 'outline'}
-                className={`h-9 flex items-center justify-center gap-1 ${
+                variant={newConnectionType === 'failure' ? 'default' : 'ghost'}
+                className={`h-8 ${
                   newConnectionType === 'failure' 
-                    ? 'bg-red-600 hover:bg-red-700' 
-                    : 'border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20'
+                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                    : 'hover:bg-red-100 text-red-700'
                 }`}
                 onClick={() => setNewConnectionType('failure')}
               >
-                <XCircle className={`h-4 w-4 ${
-                  newConnectionType === 'failure' ? 'text-white' : 'text-red-600'
-                }`} />
-                <span className={`text-xs ${
-                  newConnectionType === 'failure' ? 'text-white' : 'text-red-700 dark:text-red-400'
-                }`}>
-                  Failure
-                </span>
+                <XCircle className="h-3.5 w-3.5 mr-1" />
+                Failure
               </Button>
             </div>
           </div>
 
-          {/* Existing Step Mode */}
-          {connectionMode === 'existing' && (
-            <>
+          {/* Tab-style Mode Selector - only show if onAddStep is available */}
+          {onAddStep && (
+            <div className="flex gap-2 p-1 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+              <button
+                type="button"
+                onClick={() => {
+                  setConnectionMode('existing');
+                  setNewStepData({ name: '', alias: '', description: '', parentId: currentStep?.id || '', type: 'state' });
+                }}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  connectionMode === 'existing'
+                    ? 'bg-white dark:bg-gray-700 text-purple-900 dark:text-purple-100 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                🔗 Existing Step
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConnectionMode('new');
+                  setNewConnectionTarget('');
+                }}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  connectionMode === 'new'
+                    ? 'bg-white dark:bg-gray-700 text-purple-900 dark:text-purple-100 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                ✨ Create New
+              </button>
+            </div>
+          )}
+
+          {/* Content Area */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+            {/* Existing Step Mode */}
+            {connectionMode === 'existing' && (
               <div>
-                <label className="text-xs font-medium mb-1 block">Target Step:</label>
+                <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">
+                  Select target step:
+                </label>
                 <select
                   value={newConnectionTarget}
                   onChange={(e) => setNewConnectionTarget(e.target.value)}
-                  className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           bg-white dark:bg-gray-700 px-2 text-sm"
+                  className="w-full h-10 rounded-md border-2 border-gray-300 dark:border-gray-600 
+                           bg-white dark:bg-gray-700 px-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200
+                           transition-all"
                 >
                   <option value="">Select a step...</option>
                   
-                  {/* Root Steps */}
-                  <optgroup label="Root Steps">
-                    {allSteps
-                      .filter(s => !s.parentId && s.id !== currentStep.id)
-                      .map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                  </optgroup>
-                  
-                  {/* Sub Steps */}
-                  {allSteps.some(s => s.parentId) && (
-                    <optgroup label="Sub Steps">
-                      {allSteps
-                        .filter(s => s.parentId && s.id !== currentStep.id)
-                        .map(s => {
-                          const parent = allSteps.find(p => p.id === s.parentId);
-                          return (
-                            <option key={s.id} value={s.id}>
-                              {s.name} (in {parent?.name || 'Unknown'})
-                            </option>
-                          );
-                        })}
-                    </optgroup>
-                  )}
+                  {/* Hierarchical step tree */}
+                  {(() => {
+                    const available = allSteps.filter(s => s.id !== currentStep.id);
+                    const rootSteps = available.filter(s => !s.parentId);
+                    const subSteps = available.filter(s => s.parentId);
+                    
+                    // Find which root steps have children
+                    const parentIdsWithChildren = [...new Set(
+                      allSteps.filter(s => s.parentId).map(s => s.parentId)
+                    )];
+                    
+                    // Standalone root steps (no children)
+                    const standaloneRoots = rootSteps.filter(s => !parentIdsWithChildren.includes(s.id));
+                    
+                    // Parents with their available children
+                    const parentsWithChildren = parentIdsWithChildren
+                      .map(pid => {
+                        const parent = allSteps.find(s => s.id === pid);
+                        const children = subSteps.filter(s => s.parentId === pid);
+                        return { parent, children };
+                      })
+                      .filter(g => g.parent);
+                    
+                    // Orphan sub-steps (parent not in allSteps)
+                    const orphans = subSteps.filter(s => !allSteps.some(p => p.id === s.parentId));
+                    
+                    return (
+                      <>
+                        {standaloneRoots.length > 0 && (
+                          <optgroup label="📁 Root Steps">
+                            {standaloneRoots.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {parentsWithChildren.map(({ parent, children }) => (
+                          <optgroup key={parent.id} label={`📂 ${parent.name}`}>
+                            {parent.id !== currentStep.id && (
+                              <option value={parent.id}>{parent.name}</option>
+                            )}
+                            {children.map(child => (
+                              <option key={child.id} value={child.id}>
+                                &nbsp;&nbsp;↳ {child.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        {orphans.length > 0 && (
+                          <optgroup label="📄 Other Steps">
+                            {orphans.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    );
+                  })()}
                 </select>
               </div>
+            )}
 
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleAddConnection}
-                  disabled={!newConnectionTarget}
-                  className="flex-1"
-                >
-                  Add Connection
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setAddingConnection(false);
-                    setNewConnectionTarget('');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </>
-          )}
+            {/* New Step Mode */}
+            {connectionMode === 'new' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                    Step Name <span className="text-red-500">*</span>
+                  </label>
+                  <StepNameAutocomplete
+                    value={newStepData.name}
+                    onChange={(e) => setNewStepData({ ...newStepData, name: e.target.value })}
+                    onSelect={(suggestion) => {
+                      setNewStepData({
+                        ...newStepData,
+                        name: suggestion.stepName,
+                        type: suggestion.type,
+                        alias: suggestion.alias || '',
+                        description: suggestion.description || ''
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newStepData.name.trim()) {
+                        handleCreateAndConnect();
+                      }
+                    }}
+                    dictionaryHook={dictionaryHook}
+                    placeholder="Enter step name..."
+                    className="w-full"
+                    autoFocus
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                      Alias
+                    </label>
+                    <Input
+                      value={newStepData.alias}
+                      onChange={(e) => setNewStepData({ ...newStepData, alias: e.target.value })}
+                      placeholder="e.g., LOGIN_PAGE"
+                      className="h-9"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                      Type
+                    </label>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={newStepData.type === 'state' ? 'default' : 'outline'}
+                        onClick={() => setNewStepData({ ...newStepData, type: 'state' })}
+                        className="h-9 px-2 text-xs flex-1"
+                      >
+                        State
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={newStepData.type === 'rule' ? 'default' : 'outline'}
+                        onClick={() => setNewStepData({ ...newStepData, type: 'rule' })}
+                        className="h-9 px-2 text-xs flex-1"
+                      >
+                        Rule
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={newStepData.type === 'behavior' ? 'default' : 'outline'}
+                        onClick={() => setNewStepData({ ...newStepData, type: 'behavior' })}
+                        className="h-9 px-2 text-xs flex-1"
+                      >
+                        Behavior
+                      </Button>
+                    </div>
+                  </div>
+                </div>
 
-          {/* New Step Mode */}
-          {connectionMode === 'new' && (
-            <>
-              <div>
-                <label className="text-xs font-medium mb-1 block">
-                  New Step Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  value={newStepName}
-                  onChange={(e) => setNewStepName(e.target.value)}
-                  placeholder="Enter step name..."
-                  className="w-full h-9"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newStepName.trim()) {
-                      handleCreateAndConnect();
-                    }
-                  }}
-                  autoFocus
-                />
-              </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                    Description
+                  </label>
+                  <Textarea
+                    value={newStepData.description}
+                    onChange={(e) => setNewStepData({ ...newStepData, description: e.target.value })}
+                    placeholder="Optional description..."
+                    className="h-16 resize-none"
+                    rows={2}
+                  />
+                </div>
 
-              <div>
-                <label className="text-xs font-medium mb-1 block">
-                  Description <span className="text-gray-400 text-xs">(optional)</span>
-                </label>
-                <Textarea
-                  value={newStepDescription}
-                  onChange={(e) => setNewStepDescription(e.target.value)}
-                  placeholder="Enter description..."
-                  rows={2}
-                  className="w-full text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium mb-1 block">
-                  Parent Step <span className="text-gray-400 text-xs">(optional)</span>
-                </label>
-                <select
-                  value={parentStepId}
-                  onChange={(e) => setParentStepId(e.target.value)}
-                  className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                           bg-white dark:bg-gray-700 px-2 text-sm"
-                >
-                  <option value="">None (Root step)</option>
-                  
-                  {/* Root Steps */}
-                  <optgroup label="Root Steps">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                    Parent Step (optional)
+                  </label>
+                  <select
+                    value={newStepData.parentId}
+                    onChange={(e) => setNewStepData({ ...newStepData, parentId: e.target.value })}
+                    className="w-full h-9 rounded-md border-2 border-gray-300 dark:border-gray-600 
+                             bg-white dark:bg-gray-700 px-3 text-sm"
+                  >
+                    <option value="">None (Root Step)</option>
                     {allSteps
                       .filter(s => !s.parentId)
                       .map(s => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
-                  </optgroup>
-                  
-                  {/* Sub Steps */}
-                  {allSteps.some(s => s.parentId) && (
-                    <optgroup label="Sub Steps">
-                      {allSteps
-                        .filter(s => s.parentId)
-                        .map(s => {
-                          const parent = allSteps.find(p => p.id === s.parentId);
-                          return (
-                            <option key={s.id} value={s.id}>
-                              {s.name} (under {parent?.name || 'Unknown'})
-                            </option>
-                          );
-                        })}
-                    </optgroup>
-                  )}
-                </select>
+                  </select>
+                </div>
               </div>
+            )}
+          </div>
 
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleCreateAndConnect}
-                  disabled={!newStepName.trim()}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700"
-                >
-                  <PlusCircle className="h-4 w-4 mr-1" />
-                  Create & Connect
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setAddingConnection(false);
-                    setNewStepName('');
-                    setNewStepDescription('');
-                    setParentStepId(currentStep?.id || '');
-                    setConnectionMode('existing');
-                  }}
-                >
-                  Cancel
-                </Button>
+          {/* Preview */}
+          {((connectionMode === 'existing' && newConnectionTarget) || (connectionMode === 'new' && newStepData.name)) && (
+            <div className="p-3 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Preview:</div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{currentStep.name}</span>
+                <span className={`text-lg ${newConnectionType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  →
+                </span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {connectionMode === 'existing'
+                    ? allSteps.find(s => s.id === newConnectionTarget)?.name
+                    : newStepData.name
+                  }
+                </span>
+                {connectionMode === 'new' && (
+                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full font-medium">
+                    NEW
+                  </span>
+                )}
               </div>
-            </>
+            </div>
           )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              size="sm"
+              onClick={connectionMode === 'existing' ? handleAddConnection : handleCreateAndConnect}
+              disabled={connectionMode === 'existing' ? !newConnectionTarget : !newStepData.name.trim()}
+              className={`flex-1 ${
+                newConnectionType === 'success' 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              <Link className="h-4 w-4 mr-1.5" />
+              {connectionMode === 'existing' ? 'Add Connection' : 'Create & Connect'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setAddingConnection(false);
+                setNewConnectionTarget('');
+                setNewStepData({ name: '', alias: '', description: '', parentId: currentStep?.id || '', type: 'state' });
+                setConnectionMode('existing');
+              }}
+              className="px-6"
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       ) : (
         <Button
@@ -537,7 +635,8 @@ ConnectionsInlineEditor.propTypes = {
   }),
   onAddConnection: PropTypes.func.isRequired,
   onRemoveConnection: PropTypes.func.isRequired,
-  onAddStep: PropTypes.func // Optional - enables create & connect feature
+  onAddStep: PropTypes.func, // Optional - enables create & connect feature
+  dictionaryHook: PropTypes.object
 };
 
 export default ConnectionsInlineEditor;

@@ -92,7 +92,8 @@ const SimulationStepCard = ({
   connections = [],
   onAddConnection,
   onRemoveConnection,
-  onAddStep // Optional - enables create & connect in ConnectionsInlineEditor
+  onAddStep, // Optional - enables create & connect in ConnectionsInlineEditor
+  dictionaryHook
 }) => {
   const [showActions, setShowActions] = useState(false);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
@@ -100,7 +101,9 @@ const SimulationStepCard = ({
   // Form data for editing
   const [formData, setFormData] = useState({
     name: step.name,
+    alias: step.alias || '',
     description: step.description || '',
+    type: step.type || 'state',
     assumptions: step.assumptions || [],
     questions: step.questions || [],
     imageUrls: step.imageUrls || [],
@@ -118,7 +121,9 @@ const SimulationStepCard = ({
     if (isExpanded) {
       setFormData({
         name: step.name,
+        alias: step.alias || '',
         description: step.description || '',
+        type: step.type || 'state',
         assumptions: step.assumptions || [],
         questions: step.questions || [],
         imageUrls: step.imageUrls || [],
@@ -199,6 +204,20 @@ const SimulationStepCard = ({
     // Save form data changes
     onSave(step.id, formData);
     
+    // Update dictionary if name, type, or alias changed
+    if (dictionaryHook && (
+      formData.name !== step.name || 
+      formData.type !== step.type || 
+      formData.alias !== step.alias
+    )) {
+      dictionaryHook.upsertEntry(
+        formData.name.trim(),
+        formData.type,
+        formData.alias?.trim() || '',
+        formData.description?.trim() || ''
+      );
+    }
+    
     // Reset staged changes
     setStagedConnectionChanges({
       added: [],
@@ -212,7 +231,9 @@ const SimulationStepCard = ({
     // Reset form data to original
     setFormData({
       name: step.name,
+      alias: step.alias || '',
       description: step.description || '',
+      type: step.type || 'state',
       assumptions: step.assumptions || [],
       questions: step.questions || [],
       imageUrls: step.imageUrls || [],
@@ -348,6 +369,7 @@ const SimulationStepCard = ({
             onAddConnection={handleAddConnectionStaged}
             onRemoveConnection={handleRemoveConnectionStaged}
             onAddStep={onAddStep}
+            dictionaryHook={dictionaryHook}
           />
         )}
 
@@ -378,6 +400,56 @@ const SimulationStepCard = ({
                 className="w-full min-h-[80px]"
                 rows={3}
               />
+            </div>
+
+            {/* Alias */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                🏷️ Alias
+              </label>
+              <Input
+                value={formData.alias}
+                onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+                placeholder="Optional (e.g., LOGIN_PAGE)"
+                className="w-full"
+                spellCheck={false}
+              />
+            </div>
+
+            {/* Step Type */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                🧭 Step Type
+              </label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formData.type === 'state' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'state' })}
+                  className="h-8 px-3"
+                >
+                  State
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formData.type === 'rule' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'rule' })}
+                  className="h-8 px-3"
+                >
+                  Rule
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                  onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                  className="h-8 px-3"
+                >
+                  Behavior
+                </Button>
+              </div>
             </div>
 
             {/* Assumptions Section */}
@@ -438,7 +510,9 @@ SimulationStepCard.propTypes = {
   step: PropTypes.shape({
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
+    alias: PropTypes.string,
     description: PropTypes.string,
+    type: PropTypes.oneOf(['state', 'rule', 'behavior']),
     parentId: PropTypes.string,
     assumptions: PropTypes.arrayOf(PropTypes.string),
     questions: PropTypes.arrayOf(PropTypes.string),
@@ -463,7 +537,8 @@ SimulationStepCard.propTypes = {
   })),
   onAddConnection: PropTypes.func,
   onRemoveConnection: PropTypes.func,
-  onAddStep: PropTypes.func // Optional - enables create & connect feature
+  onAddStep: PropTypes.func, // Optional - enables create & connect feature
+  dictionaryHook: PropTypes.object
 };
 
 export default SimulationStepCard;

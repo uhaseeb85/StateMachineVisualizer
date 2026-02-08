@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import GenerateFlowDiagramModal from './GenerateFlowDiagramModal';
 import FlowDiagramToolsModal from './FlowDiagramToolsModal';
+import ConvertToStateMachineModal from './ConvertToStateMachineModal';
 
 const TopActionBar = ({
   onChangeMode,
@@ -29,6 +30,7 @@ const TopActionBar = ({
   onShowAllAssumptionsQuestions,
   onShowActionHistory,
   onShowComparer,
+  onShowStepDictionary,
   actionHistoryCount,
   onClear,
   onImport,
@@ -40,7 +42,11 @@ const TopActionBar = ({
   canRedo,
   steps,
   connections,
-  currentFileName
+  currentFileName,
+  onUpdateStep,
+  classificationRules,
+  onUpdateClassificationRules,
+  dictionaryHook
 }) => {
   const { theme, setTheme } = useTheme();
   const [showGenerateDropdown, setShowGenerateDropdown] = useState(false);
@@ -48,6 +54,7 @@ const TopActionBar = ({
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const dropdownRef = useRef(null);
   const [showAnalysisToolsModal, setShowAnalysisToolsModal] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
 
   // Close dropdown when clicking outside
@@ -160,6 +167,10 @@ const TopActionBar = ({
 
   const handleCloseAnalysisTools = () => {
     setShowAnalysisToolsModal(false);
+  };
+
+  const handleConvertToStateMachine = () => {
+    setShowConvertModal(true);
   };
 
   return (
@@ -354,8 +365,6 @@ const TopActionBar = ({
               Tools
             </Button>
 
-
-
             {/* Mode Switch Button */}
             <Button
               onClick={onChangeMode}
@@ -391,15 +400,27 @@ const TopActionBar = ({
         onShowAllAssumptionsQuestions={onShowAllAssumptionsQuestions}
         onShowActionHistory={onShowActionHistory}
         onShowComparer={onShowComparer}
+        onConvertToStateMachine={handleConvertToStateMachine}
+        onShowStepDictionary={onShowStepDictionary}
         actionHistoryCount={actionHistoryCount}
+        dictionaryCount={dictionaryHook?.dictionary.length || 0}
         steps={steps}
-        // Pass needed props for Generate Flow Diagram
         rootElements={rootElements}
         selectedRootElement={selectedRootElement}
         setSelectedRootElement={setSelectedRootElement}
         onGenerateFlowDiagram={handleGenerateFlowDiagram}
       />
 
+      {/* Convert to State Machine Modal */}
+      <ConvertToStateMachineModal
+        isOpen={showConvertModal}
+        onClose={() => setShowConvertModal(false)}
+        steps={steps}
+        connections={connections}
+        onUpdateStep={onUpdateStep}
+        classificationRules={classificationRules}
+        onUpdateClassificationRules={onUpdateClassificationRules}
+      />
 
     </div>
   );
@@ -413,6 +434,7 @@ TopActionBar.propTypes = {
   onShowAllAssumptionsQuestions: PropTypes.func.isRequired,
   onShowActionHistory: PropTypes.func.isRequired,
   onShowComparer: PropTypes.func.isRequired,
+  onShowStepDictionary: PropTypes.func.isRequired,
   actionHistoryCount: PropTypes.number,
   onClear: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
@@ -424,7 +446,11 @@ TopActionBar.propTypes = {
   canRedo: PropTypes.bool.isRequired,
   steps: PropTypes.array,
   connections: PropTypes.array,
-  currentFileName: PropTypes.string
+  currentFileName: PropTypes.string,
+  onUpdateStep: PropTypes.func,
+  classificationRules: PropTypes.array,
+  onUpdateClassificationRules: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default TopActionBar;

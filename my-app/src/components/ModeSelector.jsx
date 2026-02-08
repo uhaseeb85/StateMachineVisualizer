@@ -34,6 +34,20 @@ const ModeSelector = ({ onSelect, currentMode }) => {
             Select Flow Diagram Mode
           </Button>
         </Card>
+
+        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onSelect('htmlReports')}>
+          <h2 className="text-2xl font-semibold mb-4">HTML Reports</h2>
+          <p className="text-muted-foreground mb-4">
+            View stored HTML metrics dashboards and application reports.
+            Drop files into the reports folder to publish them.
+          </p>
+          <Button 
+            variant={currentMode === 'htmlReports' ? 'default' : 'outline'}
+            className="w-full"
+          >
+            Select HTML Reports Mode
+          </Button>
+        </Card>
       </div>
     </div>
   );

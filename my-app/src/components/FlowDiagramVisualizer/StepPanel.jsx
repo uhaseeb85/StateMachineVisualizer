@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import StepNameAutocomplete from './StepNameAutocomplete';
 import {
   Plus,
   X,
@@ -40,13 +41,14 @@ const StepPanel = ({
   onAddConnection,
   onRemoveConnection,
   onSave,
+  dictionaryHook,
 }) => {
-  const [newStepName, setNewStepName] = useState('');
   const [selectedStep, setSelectedStep] = useState(null);
   const [connectionType, setConnectionType] = useState(null);
   const [connectionSourceId, setConnectionSourceId] = useState(null);
   const [expandedSteps, setExpandedSteps] = useState({});
   const [addingSubStepFor, setAddingSubStepFor] = useState(null);
+  const [newStepName, setNewStepName] = useState('');
   const [subStepName, setSubStepName] = useState('');
   const [editingStepId, setEditingStepId] = useState(null);
   const [editedStepName, setEditedStepName] = useState('');
@@ -57,6 +59,10 @@ const StepPanel = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(33); // as percentage
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
   const containerRef = useRef(null);
+  // Add state for new step type and alias (for autocomplete)
+  const [newStepType, setNewStepType] = useState('state');
+  const [newStepAlias, setNewStepAlias] = useState('');
+  const [newStepDescription, setNewStepDescription] = useState('');
   // Replace simple move history with unified history that can track different operations
   const [operationHistory, setOperationHistory] = useState([]);
   // Add state for parent selection mode
@@ -224,13 +230,24 @@ const StepPanel = ({
   // Function to handle adding a new root-level step
   const handleAddRootStep = () => {
     if (newStepName.trim()) {
-      const stepId = onAddStep({
+      onAddStep({
         name: newStepName.trim(),
-        description: '',
+        description: newStepDescription.trim(),
         expectedResponse: '',
-        parentId: null
+        parentId: null,
+        type: newStepType,
+        alias: newStepAlias.trim() || undefined,
       });
+      
+      // Update dictionary
+      if (dictionaryHook) {
+        dictionaryHook.upsertEntry(newStepName.trim(), newStepType, newStepAlias.trim(), newStepDescription.trim());
+      }
+      
       setNewStepName('');
+      setNewStepType('state');
+      setNewStepAlias('');
+      setNewStepDescription('');
       toast.success('Step added successfully');
     }
   };
@@ -238,12 +255,20 @@ const StepPanel = ({
   // Function to handle adding a sub-step
   const handleAddSubStep = (parentId) => {
     if (subStepName.trim()) {
-      const stepId = onAddStep({
+      const step = onAddStep({
         name: subStepName.trim(),
         description: '',
         expectedResponse: '',
-        parentId: parentId
+        parentId: parentId,
+        type: 'state',
+        alias: '',
       });
+      
+      // Update dictionary
+      if (dictionaryHook && step) {
+        dictionaryHook.upsertEntry(subStepName.trim(), 'state', '', '');
+      }
+      
       setSubStepName('');
       setAddingSubStepFor(null);
       setExpandedSteps(prev => ({
@@ -420,6 +445,15 @@ const StepPanel = ({
     
     // Call the update function
     onUpdateStep(stepId, updates);
+    
+    // Update dictionary if name, type, alias, or description changed
+    if (dictionaryHook && (updates.name || updates.type || updates.alias !== undefined || updates.description !== undefined)) {
+      const finalName = updates.name || stepToUpdate.name;
+      const finalType = updates.type || stepToUpdate.type || 'state';
+      const finalAlias = updates.alias !== undefined ? updates.alias : stepToUpdate.alias;
+      const finalDescription = updates.description !== undefined ? updates.description : stepToUpdate.description;
+      dictionaryHook.upsertEntry(finalName, finalType, finalAlias || '', finalDescription || '');
+    }
     
     // Update local state to reflect changes immediately
     setSelectedStep(updatedStep);
@@ -1237,33 +1271,35 @@ const StepPanel = ({
 
         {/* Sub-step input form */}
         {addingSubStepFor === step.id && (
-          <div className="flex gap-2 mt-2" style={{ marginLeft: `${(level + 1) * 20}px` }}>
-            <Input
-              placeholder="Enter sub-step name..."
-              value={subStepName}
-              onChange={(e) => setSubStepName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddSubStep(step.id)}
-              className="h-8"
-              autoFocus
-            />
-            <Button
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => handleAddSubStep(step.id)}
-              disabled={!subStepName.trim()}
-            >
-              Add
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setAddingSubStepFor(null);
-                setSubStepName('');
-              }}
-            >
-              Cancel
-            </Button>
+          <div className="space-y-2 mt-2" style={{ marginLeft: `${(level + 1) * 20}px` }}>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter sub-step name..."
+                value={subStepName}
+                onChange={(e) => setSubStepName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddSubStep(step.id)}
+                className="h-8"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleAddSubStep(step.id)}
+                disabled={!subStepName.trim()}
+              >
+                Add
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setAddingSubStepFor(null);
+                  setSubStepName('');
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1299,31 +1335,31 @@ const StepPanel = ({
       <div className="border rounded-xl p-6 bg-background overflow-y-auto" style={{ width: `${leftPanelWidth}%` }}>
         <div className="space-y-4">
           {/* Add root step input */}
-          <div className="flex gap-2 sticky top-0 bg-background pb-4 border-b">
-            <Input
-              placeholder="Enter step name..."
-              value={newStepName}
-              onChange={(e) => setNewStepName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
-              className="h-10 flex-1"
-            />
-            <Button
-              onClick={handleAddRootStep}
-              disabled={!newStepName.trim()}
-              className="h-10"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Step
-            </Button>
-            <Button
-              onClick={undoLastOperation}
-              disabled={operationHistory.length === 0}
-              variant="outline"
-              className="h-10"
-              title="Undo last operation"
-            >
-              <Undo2 className="h-4 w-4" />
-            </Button>
+          <div className="space-y-2 sticky top-0 bg-background pb-4 border-b">
+            <div className="flex gap-2">
+              <StepNameAutocomplete
+                value={newStepName}
+                onChange={(e) => setNewStepName(e.target.value)}
+                onSelect={(suggestion) => {
+                  setNewStepName(suggestion.stepName);
+                  setNewStepType(suggestion.type);
+                  setNewStepAlias(suggestion.alias || '');
+                  setNewStepDescription(suggestion.description || '');
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddRootStep()}
+                dictionaryHook={dictionaryHook}
+                placeholder="Enter step name..."
+                className="h-10 flex-1"
+              />
+              <Button
+                onClick={handleAddRootStep}
+                disabled={!newStepName.trim()}
+                className="h-10"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Step
+              </Button>
+            </div>
           </div>
 
           {/* Connection Selection Indicator */}
@@ -1466,6 +1502,54 @@ const StepPanel = ({
                   disabled={false}
                   spellCheck={false}
                 />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Alias</label>
+                <Input
+                  key={`alias-${selectedStep.id}`}
+                  placeholder="Optional (e.g., LOGIN_PAGE)"
+                  defaultValue={selectedStep.alias || ''}
+                  onBlur={(e) => {
+                    const nextAlias = e.target.value.trim();
+                    handleUpdateStep(selectedStep.id, { alias: nextAlias || undefined });
+                  }}
+                  className="w-full bg-background text-foreground"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Type</div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={(selectedStep.type || 'state') === 'state' ? 'default' : 'outline'}
+                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'state' })}
+                    className="h-8 px-3"
+                  >
+                    State
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={(selectedStep.type || 'state') === 'rule' ? 'default' : 'outline'}
+                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'rule' })}
+                    className="h-8 px-3"
+                  >
+                    Rule
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={(selectedStep.type || 'state') === 'behavior' ? 'default' : 'outline'}
+                    onClick={() => handleUpdateStep(selectedStep.id, { type: 'behavior' })}
+                    className="h-8 px-3"
+                  >
+                    Behavior
+                  </Button>
+                </div>
               </div>
 
               {/* Connections Section */}
@@ -2004,6 +2088,7 @@ StepPanel.propTypes = {
   onAddConnection: PropTypes.func.isRequired,
   onRemoveConnection: PropTypes.func.isRequired,
   onSave: PropTypes.func,
+  dictionaryHook: PropTypes.object,
 };
 
 export default StepPanel;

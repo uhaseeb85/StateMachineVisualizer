@@ -22,6 +22,8 @@ import ActionHistoryModal from './ActionHistoryModal';
 import FlowDiagramComparer from './FlowDiagramComparer';
 import { Toaster } from 'sonner';
 import useFlowDiagram from './hooks/useFlowDiagram';
+import useStepDictionary from './hooks/useStepDictionary';
+import StepDictionaryModal from './StepDictionaryModal';
 import { TourProvider } from './TourProvider';
 import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 
@@ -47,6 +49,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
   const [showComparer, setShowComparer] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportFileName, setExportFileName] = useState('');
+  const [showStepDictionary, setShowStepDictionary] = useState(false);
 
   // Initialize flow diagram hook with storage key
   const {
@@ -64,6 +67,8 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     saveFlow,
     showSaveNotification,
     currentFileName,
+    classificationRules,
+    updateClassificationRules,
     // Undo/Redo functionality
     undo,
     redo,
@@ -75,6 +80,9 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
     exportHistoryToExcel,
     getEventCount
   } = useFlowDiagram(STORAGE_KEY);
+
+  // Initialize step dictionary hook
+  const dictionaryHook = useStepDictionary();
 
   /**
    * Run one-time migration from localStorage to IndexedDB on mount
@@ -136,6 +144,13 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
    */
   const handleShowComparer = () => {
     setShowComparer(true);
+  };
+
+  /**
+   * Handles showing the step dictionary modal
+   */
+  const handleShowStepDictionary = () => {
+    setShowStepDictionary(true);
   };
 
   /**
@@ -220,6 +235,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           onShowAllAssumptionsQuestions={handleShowAllAssumptionsQuestions}
           onShowActionHistory={handleShowActionHistory}
           onShowComparer={handleShowComparer}
+          onShowStepDictionary={handleShowStepDictionary}
           actionHistoryCount={getEventCount()}
           onClear={clearAll}
           onImport={importData}
@@ -232,6 +248,10 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
           steps={steps}
           connections={connections}
           currentFileName={currentFileName}
+          onUpdateStep={updateStep}
+          classificationRules={classificationRules}
+          onUpdateClassificationRules={updateClassificationRules}
+          dictionaryHook={dictionaryHook}
         />
 
         {/* Main step panel for diagram editing */}
@@ -245,6 +265,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             onAddConnection={addConnection}
             onRemoveConnection={removeConnection}
             onSave={saveFlow}
+            dictionaryHook={dictionaryHook}
           />
         </div>
 
@@ -259,6 +280,7 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             onRemoveStep={removeStep}
             onAddConnection={addConnection}
             onRemoveConnection={removeConnection}
+            dictionaryHook={dictionaryHook}
           />
         )}
 
@@ -303,6 +325,16 @@ const FlowDiagramVisualizerContent = ({ onChangeMode }) => {
             onClose={() => setShowComparer(false)}
             steps={steps}
             connections={connections}
+          />
+        )}
+
+        {showStepDictionary && (
+          <StepDictionaryModal
+            isOpen={showStepDictionary}
+            onClose={() => setShowStepDictionary(false)}
+            dictionaryHook={dictionaryHook}
+            steps={steps}
+            onUpdateStep={updateStep}
           />
         )}
 

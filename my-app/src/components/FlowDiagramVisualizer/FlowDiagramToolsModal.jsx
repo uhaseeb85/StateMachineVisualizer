@@ -7,7 +7,7 @@
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Route, GitBranch, X, ListX, ClipboardList, HelpCircle, Clock, GitCompare } from 'lucide-react'; // Updated icons
+import { Route, GitBranch, X, ListX, ClipboardList, HelpCircle, Clock, GitCompare, FileSpreadsheet, BookOpen } from 'lucide-react'; // Updated icons
 import { useState, useEffect } from 'react';
 
 // Root Element Selection Modal Component
@@ -137,7 +137,10 @@ const FlowDiagramToolsModal = ({
   onShowAllAssumptionsQuestions,
   onShowActionHistory,
   onShowComparer,
+  onConvertToStateMachine,
+  onShowStepDictionary,
   actionHistoryCount = 0,
+  dictionaryCount = 0,
   steps,
   // Props for Generate Flow Diagram
   rootElements,
@@ -295,6 +298,47 @@ const FlowDiagramToolsModal = ({
                 </p>
               </div>
             </div>
+
+            {/* Convert to State Machine Tool Option */}
+            <div 
+              className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
+              onClick={() => handleSelectTool(onConvertToStateMachine)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectTool(onConvertToStateMachine); }}
+            >
+              <FileSpreadsheet className="w-8 h-8 text-emerald-600 dark:text-emerald-500 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Convert to State Machine</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Export flow diagram as a state machine CSV with dictionary support.
+                </p>
+              </div>
+            </div>
+
+            {/* Step Dictionary Tool Option */}
+            <div 
+              className="p-4 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-start gap-4"
+              onClick={() => handleSelectTool(onShowStepDictionary)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectTool(onShowStepDictionary); }}
+            >
+              <BookOpen className="w-8 h-8 text-violet-600 dark:text-violet-500 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Step Dictionary</h3>
+                  {dictionaryCount > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-semibold bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200 rounded-full">
+                      {dictionaryCount}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Manage step dictionary for auto-suggestions and reusable step definitions.
+                </p>
+              </div>
+            </div>
           </div>
           
           <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -327,7 +371,10 @@ FlowDiagramToolsModal.propTypes = {
   onShowAllAssumptionsQuestions: PropTypes.func.isRequired,
   onShowActionHistory: PropTypes.func.isRequired,
   onShowComparer: PropTypes.func.isRequired,
+  onConvertToStateMachine: PropTypes.func.isRequired,
+  onShowStepDictionary: PropTypes.func.isRequired,
   actionHistoryCount: PropTypes.number,
+  dictionaryCount: PropTypes.number,
   steps: PropTypes.array,
   // Props for Generate Flow Diagram
   rootElements: PropTypes.array,

@@ -4,7 +4,7 @@
  * Provides quick editing of name, description, assumptions, questions, and screenshots
  */
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   Dialog,
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import StepNameAutocomplete from './StepNameAutocomplete';
 import {
   X,
   Save,
@@ -23,12 +24,18 @@ import {
   Pencil,
   Check,
   Image as ImageIcon,
-  Trash2,
   CheckCircle2,
   XCircle,
   Link as LinkIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+  reader.readAsDataURL(file);
+});
 
 /**
  * EditStepOverlay Component
@@ -43,10 +50,12 @@ import { toast } from 'sonner';
  * @param {Function} props.onAddConnection - Callback to add a new connection
  * @param {Function} props.onAddStep - Callback to add a new step
  */
-const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection, onAddConnection, onAddStep }) => {
+const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connections = [], onRemoveConnection, onAddConnection, onAddStep, dictionaryHook }) => {
   const [formData, setFormData] = useState({
     name: step?.name || '',
+    alias: step?.alias || '',
     description: step?.description || '',
+    type: step?.type || 'state',
     assumptions: step?.assumptions || [],
     questions: step?.questions || [],
     imageUrls: step?.imageUrls || [],
@@ -66,38 +75,6 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const [newConnectionTarget, setNewConnectionTarget] = useState('');
   const [connectionMode, setConnectionMode] = useState('existing'); // 'existing' or 'create'
   const [newStepData, setNewStepData] = useState({
-    name: '',
-    description: '',
-    parentId: ''
-  });
-  
-  const fileInputRef = useRef(null);
-
-  const handleSave = () => {
-    if (!formData.name.trim()) {
-      toast.error('Step name cannot be empty');
-      return;
-    }
-
-    onSave(step.id, formData);
-    toast.success('Step updated successfully');
-    onClose();
-  };
-
-  const handleAddAssumption = () => {
-    if (newAssumption.trim()) {
-      setFormData({
-        ...formData,
-        assumptions: [...formData.assumptions, newAssumption.trim()]
-      });
-      setNewAssumption('');
-    }
-  };
-
-  const handleRemoveAssumption = (index) => {
-    const updated = [...formData.assumptions];
-    updated.splice(index, 1);
-    setFormData({ ...formData, assumptions: updated });
   };
 
   const handleUpdateAssumption = (index) => {
@@ -112,6 +89,54 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
   const handleAddQuestion = () => {
     if (newQuestion.trim()) {
       setFormData({
+
+          {/* Alias */}
+          <div>
+            <label htmlFor="edit-step-alias" className="text-sm font-medium mb-1 block">
+              🏷️ Alias
+            </label>
+            <Input
+              id="edit-step-alias"
+              value={formData.alias}
+              onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+              placeholder="Optional (e.g., LOGIN_PAGE)"
+              className="w-full"
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <div className="text-sm font-medium mb-2 block">🧩 Type</div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'state' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'state' })}
+                className="h-8 px-3"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'rule' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'rule' })}
+                className="h-8 px-3"
+              >
+                Rule
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                className="h-8 px-3"
+              >
+                Behavior
+              </Button>
+            </div>
+          </div>
         ...formData,
         questions: [...formData.questions, newQuestion.trim()]
       });
@@ -134,33 +159,38 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
     }
   };
 
-  const handleImageUpload = (e) => {
+  const appendImage = (imageUrl) => {
+    if (typeof imageUrl !== 'string') return;
+    setFormData((prev) => ({
+      ...prev,
+      imageUrls: [...prev.imageUrls, imageUrl],
+      imageCaptions: [...prev.imageCaptions, '']
+    }));
+  };
+
+  const handleImageUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach(file => {
+    for (const file of Array.from(files)) {
       if (!file.type.match('image.*')) {
         toast.error(`File "${file.name}" is not an image`);
-        return;
+        continue;
       }
 
       if (file.size > 2 * 1024 * 1024) {
         toast.error(`Image "${file.name}" is larger than 2MB`);
-        return;
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
-        setFormData(prev => ({
-          ...prev,
-          imageUrls: [...prev.imageUrls, imageUrl],
-          imageCaptions: [...prev.imageCaptions, '']
-        }));
+      try {
+        const imageUrl = await readFileAsDataUrl(file);
+        appendImage(imageUrl);
         toast.success('Screenshot added');
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch {
+        toast.error(`Failed to upload "${file.name}"`);
+      }
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -187,6 +217,34 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
     setFormData({ ...formData, imageCaptions: updatedCaptions });
   };
 
+  const handleSave = () => {
+    if (!formData.name.trim()) {
+      toast.error('Step name cannot be empty');
+      return;
+    }
+
+    // Save the step
+    onSave(step.id, formData);
+
+    // Update dictionary if name, type, alias, or description changed
+    if (dictionaryHook && (
+      formData.name !== step.name ||
+      formData.type !== step.type ||
+      formData.alias !== step.alias ||
+      formData.description !== step.description
+    )) {
+      dictionaryHook.upsertEntry(
+        formData.name.trim(),
+        formData.type,
+        formData.alias?.trim() || '',
+        formData.description?.trim() || ''
+      );
+    }
+
+    toast.success('Step updated successfully');
+    onClose();
+  };
+
   if (!step) return null;
 
   return (
@@ -199,23 +257,82 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
         <div className="flex-1 overflow-y-auto px-6 space-y-4 py-4">
           {/* Step Name */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="edit-step-name" className="text-sm font-medium mb-1 block">
               📝 Step Name
             </label>
-            <Input
+            <StepNameAutocomplete
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onSelect={(suggestion) => {
+                setFormData({
+                  ...formData,
+                  name: suggestion.stepName,
+                  type: suggestion.type,
+                  alias: suggestion.alias || '',
+                  description: suggestion.description || ''
+                });
+              }}
+              dictionaryHook={dictionaryHook}
               placeholder="Enter step name..."
               className="w-full"
             />
           </div>
 
+          {/* Alias */}
+          <div>
+            <label htmlFor="edit-step-alias" className="text-sm font-medium mb-1 block">
+              🏷️ Alias
+            </label>
+            <Input
+              id="edit-step-alias"
+              value={formData.alias}
+              onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+              placeholder="Optional (e.g., LOGIN_PAGE)"
+              className="w-full"
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <div className="text-sm font-medium mb-2 block">🧩 Type</div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'state' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'state' })}
+                className="h-8 px-3"
+              >
+                State
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'rule' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'rule' })}
+                className="h-8 px-3"
+              >
+                Rule
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={formData.type === 'behavior' ? 'default' : 'outline'}
+                onClick={() => setFormData({ ...formData, type: 'behavior' })}
+                className="h-8 px-3"
+              >
+                Behavior
+              </Button>
+            </div>
+          </div>
+
           {/* Description */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
+            <label htmlFor="edit-step-description" className="text-sm font-medium mb-1 block">
               📄 Description
             </label>
             <Textarea
+              id="edit-step-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter step description..."
@@ -230,7 +347,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <LinkIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  <label className="text-sm font-semibold">🔗 Connections from this step</label>
+                  <div className="text-sm font-semibold">🔗 Connections from this step</div>
                 </div>
                 {onAddConnection && !showConnectionCreator && (
                   <Button
@@ -251,192 +368,291 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
 
               {/* Inline Connection Creator */}
               {showConnectionCreator && onAddConnection && (
-                <div className="mb-3 p-3 bg-white dark:bg-gray-800 rounded-lg border-2 border-purple-300 dark:border-purple-600">
-               <div className="space-y-3">
-                    {/* Connection Type Selector */}
-                    <div>
-                      <label className="text-xs font-medium mb-2 block">Connection Type:</label>
-                      <div className="grid grid-cols-2 gap-2">
+                <div className="mb-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border-2 border-purple-300 dark:border-purple-600 shadow-md">
+                  <div className="space-y-4">
+                    {/* Header with Connection Type */}
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                        ➕ Add Connection
+                      </div>
+                      <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant={newConnectionType === 'success' ? 'default' : 'outline'}
-                          className={`h-10 flex items-center justify-center gap-1 ${
+                          variant={newConnectionType === 'success' ? 'default' : 'ghost'}
+                          className={`h-8 ${
                             newConnectionType === 'success' 
-                              ? 'bg-green-600 hover:bg-green-700' 
-                              : 'border-green-200 hover:bg-green-50'
+                              ? 'bg-green-600 hover:bg-green-700 text-white' 
+                              : 'hover:bg-green-100 text-green-700'
                           }`}
                           onClick={() => setNewConnectionType('success')}
                         >
-                          <CheckCircle2 className={`h-4 w-4 ${
-                            newConnectionType === 'success' ? 'text-white' : 'text-green-600'
-                          }`} />
-                          <span className={`text-xs ${
-                            newConnectionType === 'success' ? 'text-white' : 'text-green-700'
-                          }`}>
-                            Success
-                          </span>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                          Success
                         </Button>
-                        
                         <Button
                           size="sm"
-                          variant={newConnectionType === 'failure' ? 'default' : 'outline'}
-                          className={`h-10 flex items-center justify-center gap-1 ${
+                          variant={newConnectionType === 'failure' ? 'default' : 'ghost'}
+                          className={`h-8 ${
                             newConnectionType === 'failure' 
-                              ? 'bg-red-600 hover:bg-red-700' 
-                              : 'border-red-200 hover:bg-red-50'
+                              ? 'bg-red-600 hover:bg-red-700 text-white' 
+                              : 'hover:bg-red-100 text-red-700'
                           }`}
                           onClick={() => setNewConnectionType('failure')}
                         >
-                          <XCircle className={`h-4 w-4 ${
-                            newConnectionType === 'failure' ? 'text-white' : 'text-red-600'
-                          }`} />
-                          <span className={`text-xs ${
-                            newConnectionType === 'failure' ? 'text-white' : 'text-red-700'
-                          }`}>
-                            Failure
-                          </span>
+                          <XCircle className="h-3.5 w-3.5 mr-1" />
+                          Failure
                         </Button>
                       </div>
                     </div>
 
-                    {/* Mode Selector */}
-                    <div>
-                      <label className="text-xs font-medium mb-2 block">Target Mode:</label>
-                      <div className="flex gap-4 mb-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="connectionMode"
-                            value="existing"
-                            checked={connectionMode === 'existing'}
-                            onChange={(e) => {
-                              setConnectionMode(e.target.value);
-                              setNewStepData({ name: '', description: '', parentId: '' });
-                            }}
-                            className="w-4 h-4 text-purple-600"
-                          />
-                          <span className="text-xs">Select Existing</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="connectionMode"
-                            value="create"
-                            checked={connectionMode === 'create'}
-                            onChange={(e) => {
-                              setConnectionMode(e.target.value);
-                              setNewConnectionTarget('');
-                            }}
-                            className="w-4 h-4 text-purple-600"
-                          />
-                          <span className="text-xs">Create New</span>
-                        </label>
-                      </div>
+                    {/* Tab-style Mode Selector */}
+                    <div className="flex gap-2 p-1 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConnectionMode('existing');
+                          setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
+                        }}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                          connectionMode === 'existing'
+                            ? 'bg-white dark:bg-gray-700 text-purple-900 dark:text-purple-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        🔗 Existing Step
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConnectionMode('create');
+                          setNewConnectionTarget('');
+                        }}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                          connectionMode === 'create'
+                            ? 'bg-white dark:bg-gray-700 text-purple-900 dark:text-purple-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        ✨ Create New
+                      </button>
                     </div>
 
-                    {/* Existing Step Selector */}
-                    {connectionMode === 'existing' && (
-                      <div>
-                        <label className="text-xs font-medium mb-1 block">Select Step:</label>
-                        <select
-                          value={newConnectionTarget}
-                          onChange={(e) => setNewConnectionTarget(e.target.value)}
-                          className="w-full h-9 rounded-md border border-gray-300 dark:border-gray-600 
-                                   bg-white dark:bg-gray-700 px-2 text-sm"
-                        >
-                          <option value="">Select target step...</option>
-                          
-                          {/* Root Steps */}
-                          <optgroup label="Root Steps">
-                            {allSteps
-                              .filter(s => !s.parentId && s.id !== step.id)
-                              .map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                          </optgroup>
-                          
-                          {/* Sub Steps */}
-                          {allSteps.some(s => s.parentId) && (
-                            <optgroup label="Sub Steps">
-                              {allSteps
-                                .filter(s => s.parentId && s.id !== step.id)
-                                .map(s => {
-                                  const parent = allSteps.find(p => p.id === s.parentId);
-                                  return (
-                                    <option key={s.id} value={s.id}>
-                                      {s.name} (in {parent?.name || 'Unknown'})
-                                    </option>
-                                  );
-                                })}
-                            </optgroup>
-                          )}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Create New Step Form */}
-                    {connectionMode === 'create' && (
-                      <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600">
+                    {/* Content Area */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                      {/* Existing Step Selector */}
+                      {connectionMode === 'existing' && (
                         <div>
-                          <label className="text-xs font-medium mb-1 block">Step Name: *</label>
-                          <Input
-                            value={newStepData.name}
-                            onChange={(e) => setNewStepData({ ...newStepData, name: e.target.value })}
-                            placeholder="Enter new step name..."
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium mb-1 block">Description:</label>
-                          <Textarea
-                            value={newStepData.description}
-                            onChange={(e) => setNewStepData({ ...newStepData, description: e.target.value })}
-                            placeholder="Enter description (optional)..."
-                            className="h-16 text-sm"
-                            rows={2}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium mb-1 block">Parent Step (optional):</label>
+                          <label htmlFor="edit-step-connection-target" className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">
+                            Select target step:
+                          </label>
                           <select
-                            value={newStepData.parentId}
-                            onChange={(e) => setNewStepData({ ...newStepData, parentId: e.target.value })}
-                            className="w-full h-8 rounded-md border border-gray-300 dark:border-gray-600 
-                                     bg-white dark:bg-gray-700 px-2 text-sm"
+                            id="edit-step-connection-target"
+                            value={newConnectionTarget}
+                            onChange={(e) => setNewConnectionTarget(e.target.value)}
+                            className="w-full h-10 rounded-md border-2 border-gray-300 dark:border-gray-600 
+                                     bg-white dark:bg-gray-700 px-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200
+                                     transition-all"
                           >
-                            <option value="">None (Root Step)</option>
-                            {allSteps
-                              .filter(s => !s.parentId && s.id !== step.id)
-                              .map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
+                            <option value="">Select a step...</option>
+                            
+                            {/* Hierarchical step tree */}
+                            {(() => {
+                              const available = allSteps.filter(s => s.id !== step.id);
+                              const rootSteps = available.filter(s => !s.parentId);
+                              const subSteps = available.filter(s => s.parentId);
+                              
+                              // Find which root steps have children
+                              const parentIdsWithChildren = [...new Set(
+                                allSteps.filter(s => s.parentId).map(s => s.parentId)
+                              )];
+                              
+                              // Standalone root steps (no children)
+                              const standaloneRoots = rootSteps.filter(s => !parentIdsWithChildren.includes(s.id));
+                              
+                              // Parents with their available children
+                              const parentsWithChildren = parentIdsWithChildren
+                                .map(pid => {
+                                  const parent = allSteps.find(s => s.id === pid);
+                                  const children = subSteps.filter(s => s.parentId === pid);
+                                  return { parent, children };
+                                })
+                                .filter(g => g.parent);
+                              
+                              // Orphan sub-steps (parent not in allSteps)
+                              const orphans = subSteps.filter(s => !allSteps.some(p => p.id === s.parentId));
+                              
+                              return (
+                                <>
+                                  {standaloneRoots.length > 0 && (
+                                    <optgroup label="📁 Root Steps">
+                                      {standaloneRoots.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+                                  {parentsWithChildren.map(({ parent, children }) => (
+                                    <optgroup key={parent.id} label={`📂 ${parent.name}`}>
+                                      {parent.id !== step.id && (
+                                        <option value={parent.id}>{parent.name}</option>
+                                      )}
+                                      {children.map(child => (
+                                        <option key={child.id} value={child.id}>
+                                          &nbsp;&nbsp;↳ {child.name}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  ))}
+                                  {orphans.length > 0 && (
+                                    <optgroup label="📄 Other Steps">
+                                      {orphans.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </select>
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Create New Step Form */}
+                      {connectionMode === 'create' && (
+                        <div className="space-y-3">
+                          <div>
+                            <label htmlFor="edit-step-create-name" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                              Step Name <span className="text-red-500">*</span>
+                            </label>
+                            <StepNameAutocomplete
+                              value={newStepData.name}
+                              onChange={(e) => setNewStepData({ ...newStepData, name: e.target.value })}
+                              onSelect={(suggestion) => {
+                                setNewStepData({
+                                  ...newStepData,
+                                  name: suggestion.stepName,
+                                  type: suggestion.type,
+                                  alias: suggestion.alias || '',
+                                  description: suggestion.description || ''
+                                });
+                              }}
+                              dictionaryHook={dictionaryHook}
+                              placeholder="Enter step name..."
+                              className="w-full"
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor="edit-step-create-alias" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                                Alias
+                              </label>
+                              <Input
+                                id="edit-step-create-alias"
+                                value={newStepData.alias}
+                                onChange={(e) => setNewStepData({ ...newStepData, alias: e.target.value })}
+                                placeholder="e.g., LOGIN_PAGE"
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                                Type
+                              </label>
+                              <div className="flex gap-1">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={newStepData.type === 'state' ? 'default' : 'outline'}
+                                  onClick={() => setNewStepData({ ...newStepData, type: 'state' })}
+                                  className="h-9 px-2 text-xs flex-1"
+                                >
+                                  State
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={newStepData.type === 'rule' ? 'default' : 'outline'}
+                                  onClick={() => setNewStepData({ ...newStepData, type: 'rule' })}
+                                  className="h-9 px-2 text-xs flex-1"
+                                >
+                                  Rule
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={newStepData.type === 'behavior' ? 'default' : 'outline'}
+                                  onClick={() => setNewStepData({ ...newStepData, type: 'behavior' })}
+                                  className="h-9 px-2 text-xs flex-1"
+                                >
+                                  Behavior
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label htmlFor="edit-step-create-description" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                              Description
+                            </label>
+                            <Textarea
+                              id="edit-step-create-description"
+                              value={newStepData.description}
+                              onChange={(e) => setNewStepData({ ...newStepData, description: e.target.value })}
+                              placeholder="Optional description..."
+                              className="h-16 resize-none"
+                              rows={2}
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor="edit-step-create-parent" className="text-sm font-medium mb-1.5 block text-gray-700 dark:text-gray-300">
+                              Parent Step (optional)
+                            </label>
+                            <select
+                              id="edit-step-create-parent"
+                              value={newStepData.parentId}
+                              onChange={(e) => setNewStepData({ ...newStepData, parentId: e.target.value })}
+                              className="w-full h-9 rounded-md border-2 border-gray-300 dark:border-gray-600 
+                                       bg-white dark:bg-gray-700 px-3 text-sm"
+                            >
+                              <option value="">None (Root Step)</option>
+                              {allSteps
+                                .filter(s => !s.parentId && s.id !== step.id)
+                                .map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Preview */}
                     {(newConnectionTarget || (connectionMode === 'create' && newStepData.name)) && (
-                      <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs">
-                        <div className="text-gray-500 dark:text-gray-400 mb-1">Preview:</div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{step.name}</span>
-                          <span className={newConnectionType === 'success' ? 'text-green-600' : 'text-red-600'}>
+                      <div className="p-3 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+                        <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Preview:</div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">{step.name}</span>
+                          <span className={`text-lg ${newConnectionType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             →
                           </span>
-                          <span className="font-medium">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
                             {connectionMode === 'existing'
                               ? allSteps.find(s => s.id === newConnectionTarget)?.name
                               : newStepData.name
                             }
-                            {connectionMode === 'create' && <span className="text-purple-600 ml-1">(New)</span>}
                           </span>
+                          {connectionMode === 'create' && (
+                            <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full font-medium">
+                              NEW
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2">
                       <Button
                         size="sm"
                         onClick={() => {
@@ -481,22 +697,34 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                             // Create the new step
                             const newStepId = onAddStep({
                               name: newStepData.name.trim(),
+                              alias: newStepData.alias.trim() || undefined,
                               description: newStepData.description.trim(),
                               parentId: newStepData.parentId || null,
                               assumptions: [],
                               questions: [],
                               imageUrls: [],
-                              imageCaptions: []
+                              imageCaptions: [],
+                              type: newStepData.type
                             });
 
                             if (newStepId) {
+                              // Update dictionary
+                              if (dictionaryHook) {
+                                dictionaryHook.upsertEntry(
+                                  newStepData.name.trim(),
+                                  newStepData.type,
+                                  newStepData.alias.trim(),
+                                  newStepData.description.trim()
+                                );
+                              }
+
                               // Create connection from current step to new step
                               onAddConnection(step.id, newStepId, newConnectionType);
                               toast.success(`Created "${newStepData.name}" and connected!`);
                               
                               // Reset form
                               setShowConnectionCreator(false);
-                              setNewStepData({ name: '', description: '', parentId: '' });
+                              setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
                               setConnectionMode('existing');
                             }
                           }
@@ -508,7 +736,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                             : 'bg-red-600 hover:bg-red-700'
                         }`}
                       >
-                        <LinkIcon className="h-3 w-3 mr-1" />
+                        <LinkIcon className="h-4 w-4 mr-1.5" />
                         {connectionMode === 'existing' ? 'Add Connection' : 'Create & Connect'}
                       </Button>
                       <Button
@@ -517,9 +745,10 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                         onClick={() => {
                           setShowConnectionCreator(false);
                           setNewConnectionTarget('');
-                          setNewStepData({ name: '', description: '', parentId: '' });
+                          setNewStepData({ name: '', alias: '', description: '', parentId: '', type: 'state' });
                           setConnectionMode('existing');
                         }}
+                        className="px-6"
                       >
                         Cancel
                       </Button>
@@ -529,7 +758,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               )}
               
               {/* Success Connections */}
-              {connections.filter(c => c.fromStepId === step.id && c.type === 'success').length > 0 && (
+              {connections.some(c => c.fromStepId === step.id && c.type === 'success') && (
                 <div className="mb-3">
                   <div className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3" />
@@ -538,13 +767,13 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                   <div className="space-y-1">
                     {connections
                       .filter(c => c.fromStepId === step.id && c.type === 'success')
-                      .map((conn, idx) => {
+                      .map((conn) => {
                         const targetStep = allSteps.find(s => s.id === conn.toStepId);
                         if (!targetStep) return null;
                         
                         return (
                           <div 
-                            key={`success-${idx}`}
+                            key={`success-${conn.fromStepId}-${conn.toStepId}`}
                             className="flex items-center justify-between px-2 py-1 bg-green-100 dark:bg-green-800/40 rounded text-sm"
                           >
                             <div className="flex items-center gap-2">
@@ -571,7 +800,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               )}
 
               {/* Failure Connections */}
-              {connections.filter(c => c.fromStepId === step.id && c.type === 'failure').length > 0 && (
+              {connections.some(c => c.fromStepId === step.id && c.type === 'failure') && (
                 <div>
                   <div className="text-xs font-medium text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
                     <XCircle className="h-3 w-3" />
@@ -580,13 +809,13 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
                   <div className="space-y-1">
                     {connections
                       .filter(c => c.fromStepId === step.id && c.type === 'failure')
-                      .map((conn, idx) => {
+                      .map((conn) => {
                         const targetStep = allSteps.find(s => s.id === conn.toStepId);
                         if (!targetStep) return null;
                         
                         return (
                           <div 
-                            key={`failure-${idx}`}
+                            key={`failure-${conn.fromStepId}-${conn.toStepId}`}
                             className="flex items-center justify-between px-2 py-1 bg-red-100 dark:bg-red-800/40 rounded text-sm"
                           >
                             <div className="flex items-center gap-2">
@@ -613,7 +842,7 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
               )}
 
               {/* No connections message */}
-              {connections.filter(c => c.fromStepId === step.id).length === 0 && (
+              {!connections.some(c => c.fromStepId === step.id) && (
                 <div className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-2">
                   No connections from this step
                 </div>
@@ -624,11 +853,11 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           {/* Assumptions */}
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
             <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm font-semibold">💡 Assumptions ({formData.assumptions.length})</label>
+              <div className="text-sm font-semibold">💡 Assumptions ({formData.assumptions.length})</div>
             </div>
             <ul className="space-y-1 mb-2">
               {formData.assumptions.map((assumption, index) => (
-                <li key={index} className="flex items-center gap-2 bg-green-100 dark:bg-green-800/40 rounded px-2 py-1">
+                <li key={assumption} className="flex items-center gap-2 bg-green-100 dark:bg-green-800/40 rounded px-2 py-1">
                   {editingAssumptionIndex === index ? (
                     <>
                       <span className="font-semibold text-green-800 dark:text-green-200 min-w-[24px]">{index + 1}.</span>
@@ -705,11 +934,11 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
           {/* Questions */}
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
             <div className="flex items-center gap-2 mb-2">
-              <label className="text-sm font-semibold">❓ Questions ({formData.questions.length})</label>
+              <div className="text-sm font-semibold">❓ Questions ({formData.questions.length})</div>
             </div>
             <ul className="space-y-1 mb-2">
               {formData.questions.map((question, index) => (
-                <li key={index} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-800/40 rounded px-2 py-1">
+                <li key={question} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-800/40 rounded px-2 py-1">
                   {editingQuestionIndex === index ? (
                     <>
                       <span className="font-semibold text-blue-800 dark:text-blue-200 min-w-[24px]">{index + 1}.</span>
@@ -785,13 +1014,13 @@ const EditStepOverlay = ({ step, isOpen, onClose, onSave, allSteps = [], connect
 
           {/* Screenshots */}
           <div>
-            <label className="text-sm font-medium mb-2 block">
+            <div className="text-sm font-medium mb-2 block">
               📸 Screenshots ({formData.imageUrls.length})
-            </label>
+            </div>
             {formData.imageUrls.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 mb-2">
                 {formData.imageUrls.map((imageUrl, index) => (
-                  <div key={index} className="relative border rounded-md p-1 bg-gray-50 dark:bg-gray-800">
+                  <div key={imageUrl} className="relative border rounded-md p-1 bg-gray-50 dark:bg-gray-800">
                     <img
                       src={imageUrl}
                       alt={formData.imageCaptions[index] || `Screenshot ${index + 1}`}
@@ -852,7 +1081,9 @@ EditStepOverlay.propTypes = {
   step: PropTypes.shape({
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
+    alias: PropTypes.string,
     description: PropTypes.string,
+    type: PropTypes.oneOf(['state', 'rule', 'behavior']),
     assumptions: PropTypes.arrayOf(PropTypes.string),
     questions: PropTypes.arrayOf(PropTypes.string),
     imageUrls: PropTypes.arrayOf(PropTypes.string),
@@ -873,7 +1104,8 @@ EditStepOverlay.propTypes = {
   })),
   onRemoveConnection: PropTypes.func,
   onAddConnection: PropTypes.func,
-  onAddStep: PropTypes.func
+  onAddStep: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default EditStepOverlay;

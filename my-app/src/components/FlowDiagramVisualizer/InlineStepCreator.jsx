@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import StepNameAutocomplete from './StepNameAutocomplete';
 
 /**
  * InlineStepCreator Component
@@ -29,14 +30,17 @@ const InlineStepCreator = ({
   allSteps = [],
   onCreate,
   onCancel,
-  onAddConnection
+  onAddConnection,
+  dictionaryHook
 }) => {
   const [formData, setFormData] = useState({
     name: '',
+    alias: '',
     description: '',
     parentId: currentStep?.id || '', // Auto-set to current step if available
     autoConnect: !!currentStep,
-    connectionType: 'success'
+    connectionType: 'success',
+    type: 'state'
   });
 
   const handleCreate = () => {
@@ -48,42 +52,60 @@ const InlineStepCreator = ({
     // Create the step data
     const stepData = {
       name: formData.name.trim(),
+      alias: formData.alias.trim() || undefined,
       description: formData.description.trim(),
       parentId: formData.parentId || null,
       assumptions: [],
       questions: [],
       imageUrls: [],
-      imageCaptions: []
+      imageCaptions: [],
+      type: formData.type
     };
 
     // Call onCreate and get the new step ID
     const newStepId = onCreate(stepData);
 
-    // Auto-connect if requested
-    if (formData.autoConnect && currentStep && newStepId && onAddConnection) {
-      onAddConnection(currentStep.id, newStepId, formData.connectionType);
-      toast.success(`Created "${formData.name}" and connected from "${currentStep.name}"!`);
-    } else if (newStepId) {
-      toast.success(`Created "${formData.name}"!`);
+    if (newStepId) {
+      // Update dictionary
+      if (dictionaryHook) {
+        dictionaryHook.upsertEntry(
+          formData.name.trim(),
+          formData.type,
+          formData.alias.trim(),
+          formData.description.trim()
+        );
+      }
+
+      // Auto-connect if requested
+      if (formData.autoConnect && currentStep && onAddConnection) {
+        onAddConnection(currentStep.id, newStepId, formData.connectionType);
+        toast.success(`Created "${formData.name}" and connected from "${currentStep.name}"!`);
+      } else {
+        toast.success(`Created "${formData.name}"!`);
+      }
     }
 
     // Reset form
     setFormData({
       name: '',
+      alias: '',
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success'
+      connectionType: 'success',
+      type: 'state'
     });
   };
 
   const handleCancel = () => {
     setFormData({
       name: '',
+      alias: '',
       description: '',
       parentId: '',
       autoConnect: !!currentStep,
-      connectionType: 'success'
+      connectionType: 'success',
+      type: 'state'
     });
     onCancel();
   };
@@ -102,17 +124,74 @@ const InlineStepCreator = ({
           <label className="text-sm font-medium mb-1 block">
             Step Name <span className="text-red-500">*</span>
           </label>
-          <Input
-            placeholder="Enter step name..."
+          <StepNameAutocomplete
             value={formData.name}
             onChange={(e) => setFormData({...formData, name: e.target.value})}
+            onSelect={(suggestion) => {
+              setFormData({
+                ...formData,
+                name: suggestion.stepName,
+                type: suggestion.type,
+                alias: suggestion.alias || '',
+                description: suggestion.description || ''
+              });
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.ctrlKey) handleCreate();
               if (e.key === 'Escape') handleCancel();
             }}
+            dictionaryHook={dictionaryHook}
+            placeholder="Enter step name..."
             autoFocus
             className="w-full"
           />
+        </div>
+
+        {/* Alias */}
+        <div>
+          <label className="text-sm font-medium mb-1 block">
+            Alias <span className="text-gray-400 text-xs">(used in CSV)</span>
+          </label>
+          <Input
+            placeholder="Optional (e.g., LOGIN_PAGE)"
+            value={formData.alias}
+            onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+            className="w-full"
+          />
+        </div>
+
+        {/* Type */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Type</label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={formData.type === 'state' ? 'default' : 'outline'}
+              onClick={() => setFormData({ ...formData, type: 'state' })}
+              className="h-8 px-3"
+            >
+              State
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={formData.type === 'rule' ? 'default' : 'outline'}
+              onClick={() => setFormData({ ...formData, type: 'rule' })}
+              className="h-8 px-3"
+            >
+              Rule
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={formData.type === 'behavior' ? 'default' : 'outline'}
+              onClick={() => setFormData({ ...formData, type: 'behavior' })}
+              className="h-8 px-3"
+            >
+              Behavior
+            </Button>
+          </div>
         </div>
 
         {/* Description */}
@@ -270,7 +349,8 @@ InlineStepCreator.propTypes = {
   })),
   onCreate: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  onAddConnection: PropTypes.func
+  onAddConnection: PropTypes.func,
+  dictionaryHook: PropTypes.object
 };
 
 export default InlineStepCreator;

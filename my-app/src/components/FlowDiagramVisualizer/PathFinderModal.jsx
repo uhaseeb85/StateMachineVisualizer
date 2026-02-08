@@ -37,6 +37,7 @@ import { toast } from 'sonner';
  * @property {string} id - Unique identifier for the step
  * @property {string} name - Display name of the step
  * @property {string} [parentId] - ID of parent step if this is a sub-step
+ * @property {string} [alias] - Optional alias for export
  */
 
 /**
@@ -170,6 +171,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         const newPath = [...currentPath, {
           id: currentStep.id,
           name: currentStep.name,
+          alias: currentStep.alias,
           isSubStep: !!currentStep.parentId
         }];
         const newVisitedInPath = new Set(visitedInPath).add(currentStep.id);
@@ -319,6 +321,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
           const loopSteps = [...pathSteps.slice(loopStartIndex), { 
             id: currentStep.id, 
             name: currentStep.name,
+            alias: currentStep.alias,
             isSubStep: !!currentStep.parentId 
           }];
           
@@ -346,6 +349,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
         const newPathSteps = [...pathSteps, { 
           id: currentStep.id, 
           name: currentStep.name,
+          alias: currentStep.alias,
           isSubStep: !!currentStep.parentId 
         }];
 
@@ -514,7 +518,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             <div class="steps">
               ${path.steps.map((step, stepIndex) => `
                 <div class="step">
-                  <span class="step-name ${step.isSubStep ? 'sub-step' : ''}">${step.name}</span>
+                  <span class="step-name ${step.isSubStep ? 'sub-step' : ''}">${formatStepLabel(step)}</span>
                   ${stepIndex < path.steps.length - 1 ? `
                     <span class="arrow">→</span>
                     <span class="rule ${path.rules[stepIndex].type}">
@@ -572,15 +576,15 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
     const endStep = path.steps[path.steps.length - 1];
     const intermediateSteps = path.steps.slice(1, -1);
     
-    let description = `Path ${index + 1}: Navigate from "${startStep.name}"`;
+    let description = `Path ${index + 1}: Navigate from "${formatStepLabel(startStep)}"`;
     
     if (path.steps.length > 2) {
-      const intermediateNames = intermediateSteps.map(step => `"${step.name}"`).join(', ');
+      const intermediateNames = intermediateSteps.map(step => `"${formatStepLabel(step)}"`).join(', ');
       description += ` through ${intermediateNames}`;
     }
     
     if (path.steps.length > 1) {
-      description += ` to "${endStep.name}"`;
+      description += ` to "${formatStepLabel(endStep)}"`;
     }
 
     // Add rule information for better test documentation
@@ -618,7 +622,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
       const step = path.steps[i];
       
       if (i === 0) {
-        currentSection.push(`${absoluteStepNum}. Start at "${step.name}"`);
+        currentSection.push(`${absoluteStepNum}. Start at "${formatStepLabel(step)}"`);
         absoluteStepNum++;
       } else {
         const prevRule = path.rules[i - 1];
@@ -636,10 +640,10 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             currentSection = [];
           }
           // Add the failure step as its own section
-          instructionSections.push(`${absoluteStepNum}. Navigate to "${step.name}"${condition}`);
+          instructionSections.push(`${absoluteStepNum}. Navigate to "${formatStepLabel(step)}"${condition}`);
         } else {
           // Add to current section for success transitions
-          currentSection.push(`${absoluteStepNum}. Navigate to "${step.name}"${condition}`);
+          currentSection.push(`${absoluteStepNum}. Navigate to "${formatStepLabel(step)}"${condition}`);
         }
         
         absoluteStepNum++;
@@ -793,6 +797,13 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
   }, [paths]);
 
   // Update the path rendering in the return section
+  const formatStepLabel = (step) => {
+    if (!step) return '';
+    if (typeof step === 'string') return step;
+    const alias = (step.alias || '').trim();
+    return alias ? `${step.name} (${alias})` : step.name;
+  };
+
   const renderPath = (path) => (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {path.steps.map((step, stepIndex) => (
@@ -801,7 +812,7 @@ const PathFinderModal = ({ steps, connections, onClose }) => {
             ${typeof step === 'object' && step.isSubStep 
               ? 'bg-green-50 dark:bg-green-900/30 border-dashed' 
               : 'bg-blue-50 dark:bg-blue-900/30 border-solid'}`}>
-            {typeof step === 'object' ? step.name : step}
+            {formatStepLabel(step)}
           </span>
           {stepIndex < path.steps.length - 1 && (
             <div className="flex items-center gap-2">
