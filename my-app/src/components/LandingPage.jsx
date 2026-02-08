@@ -154,10 +154,7 @@ const LandingPage = ({ onGetStarted }) => {
                 </h1>
                 <div className="max-w-xl space-y-4">
                   <p className="text-lg text-slate-300">
-                    An enterprise-grade visual builder for state machines, flow diagrams, and log analysis.
-                    <span className="block text-slate-200">
-                      Map decisions, validate transitions, and simulate outcomes with clarity.
-                    </span>
+                     Empowers engineers to design precise logic, stress-test edge cases, and deliver one authoritative, shareable blueprint that aligns product and operations teams.
                   </p>
                   <div className="flex flex-wrap gap-3">
                     <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200">
@@ -459,12 +456,7 @@ const LandingPage = ({ onGetStarted }) => {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 py-14">
           <div className="max-w-3xl">
-            <h3 className="text-xl font-semibold mb-4">Mission Brief</h3>
-            <div className="space-y-4 text-sm text-slate-300">
-              <p>
-                Visual Flow Builder is built for engineers who need clarity under pressure. Model the logic, validate the edge cases,
-                and publish a single, shareable source of truth across product and operations teams.
-              </p>
+            <div className="space-y-4 text-sm text-slate-300">  
               <div className="grid grid-cols-2 gap-4 text-xs text-slate-400">
                 <div>
                   <div className="uppercase tracking-[0.2em]">Stack</div>
