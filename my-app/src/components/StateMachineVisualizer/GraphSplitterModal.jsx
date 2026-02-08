@@ -12,7 +12,7 @@
  * - Export all subgraphs as separate files
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { X, Download, Scissors, CheckCircle, ArrowLeftRight, FileBox } from 'lucide-react';
@@ -20,6 +20,163 @@ import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import storage from '@/utils/storageWrapper';
+import { toast } from 'sonner';
+
+// Constants
+const DEFAULT_PRIORITY = 50;
+const CALCULATION_DELAY = 100;
+const DEFAULT_TARGET_PARTITIONS = 3;
+
+/**
+ * Helper function to generate CSV data for a subgraph with external state handling
+ * Consolidates common logic used by both single and bulk export operations
+ * 
+ * @param {Array} subgraphStates - States in the subgraph to export
+ * @param {Array} allStates - All states from the original graph
+ * @param {string} sourceFile - Optional source file identifier for storage lookup
+ * @returns {Promise<Object>} Object containing csvData array and column definitions
+ */
+const generateSubgraphCSVData = async (subgraphStates, allStates, sourceFile = null) => {
+  if (!subgraphStates || subgraphStates.length === 0) {
+    throw new Error('No states provided for export');
+  }
+  
+  // Get all external references (outgoing boundaries)
+  const stateIdsInSubgraph = new Set(subgraphStates.map(s => s.id));
+  const externalStates = new Set();
+  
+  // Find all rules that point to states outside this subgraph
+  subgraphStates.forEach(state => {
+    state.rules.forEach(rule => {
+      if (rule.nextState && !stateIdsInSubgraph.has(rule.nextState)) {
+        const externalState = allStates.find(s => s.id === rule.nextState);
+        if (externalState && externalState.name) {
+          externalStates.add(externalState.name);
+        }
+      }
+    });
+  });
+  
+  // Try to get the original imported data
+  let baseData = [];
+  if (sourceFile) {
+    const fileSpecificData = await storage.getItem(`importedCSV_${sourceFile}`);
+    if (fileSpecificData) {
+      baseData = fileSpecificData;
+    }
+  }
+  
+  // Fall back to legacy storage if no file-specific data found
+  if (baseData.length === 0) {
+    const lastImportedData = await storage.getItem('lastImportedCSV');
+    baseData = lastImportedData || [];
+  }
+  
+  // Generate rules from states
+  const currentData = subgraphStates.flatMap(sourceState => 
+    sourceState.rules.map(rule => {
+      const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
+      const destState = subgraphStates.find(s => s.id === rule.nextState);
+      
+      let destinationName = '';
+      if (destState && destState.name) {
+        destinationName = destState.name;
+      } else if (rule.nextState) {
+        const externalState = allStates.find(s => s.id === rule.nextState);
+        destinationName = externalState && externalState.name
+          ? externalState.name 
+          : isIdFormat ? 'Unknown State' : rule.nextState;
+      }
+      
+      return {
+        'Source Node': sourceState.name,
+        'Destination Node': destinationName,
+        'Rule List': rule.condition || '',
+        'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : DEFAULT_PRIORITY,
+        'Operation / Edge Effect': rule.operation || ''
+      };
+    })
+  );
+  
+  // Add TRUE rules for external states
+  const externalStateRules = Array.from(externalStates).map(externalStateName => ({
+    'Source Node': externalStateName,
+    'Destination Node': externalStateName,
+    'Rule List': 'TRUE',
+    'Priority': DEFAULT_PRIORITY,
+    'Operation / Edge Effect': ''
+  }));
+  
+  // Merge with existing data or use current data only
+  const combinedRules = [...currentData, ...externalStateRules];
+  let csvData;
+  
+  if (baseData.length > 0) {
+    const allColumns = Object.keys(baseData[0]);
+    
+    csvData = combinedRules.map(currentRow => {
+      const newRow = {};
+      const matchingRow = baseData.find(
+        baseRow => 
+          baseRow['Source Node'] === currentRow['Source Node'] &&
+          baseRow['Destination Node'] === currentRow['Destination Node']
+      );
+
+      allColumns.forEach(column => {
+        if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
+          newRow[column] = currentRow[column];
+        } else if (column === 'Priority') {
+          newRow[column] = currentRow['Priority'];
+        } else if (column === 'Operation / Edge Effect') {
+          newRow[column] = currentRow['Operation / Edge Effect'];
+        } else {
+          newRow[column] = matchingRow ? matchingRow[column] : '';
+        }
+      });
+      
+      return newRow;
+    });
+  } else {
+    csvData = combinedRules;
+  }
+  
+  return { csvData, hasData: csvData.length > 0 };
+};
+
+/**
+ * Helper function to create an ExcelJS workbook from CSV data
+ * 
+ * @param {Array} csvData - Array of row objects to write
+ * @returns {ExcelJS.Workbook} Configured workbook ready for export
+ */
+const createWorkbookFromCSVData = (csvData) => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('State Machine');
+  
+  if (csvData.length > 0) {
+    const columns = Object.keys(csvData[0]).map(key => ({
+      header: key,
+      key: key,
+      width: key === 'Priority' ? 10 : key === 'Operation / Edge Effect' ? 40 : 20
+    }));
+    worksheet.columns = columns;
+    
+    csvData.forEach(row => {
+      const rowData = {};
+      Object.keys(row).forEach(key => {
+        if (key === 'Priority') {
+          const value = row[key];
+          rowData[key] = value === 0 || value === '0' ? 0 : (typeof value === 'number' ? value : (parseInt(value) || DEFAULT_PRIORITY));
+        } else {
+          rowData[key] = row[key];
+        }
+      });
+      worksheet.addRow(rowData);
+    });
+  }
+  
+  return workbook;
+};
 
 /**
  * Utility function to identify connected components in a graph
@@ -95,7 +252,20 @@ const findConnectedComponents = (states) => {
  * @param {number} targetPartitions - Target number of partitions to create
  * @returns {Array} Array of partition groups (arrays of state IDs)
  */
-const findPartitions = (states, targetPartitions = 3) => {
+const findPartitions = (states, targetPartitions = DEFAULT_TARGET_PARTITIONS) => {
+  // Validate inputs
+  if (!states || states.length === 0) {
+    return [];
+  }
+  
+  // If target partitions exceeds number of states, adjust to maximum possible
+  const validTargetPartitions = Math.min(targetPartitions, states.length);
+  
+  // If only one state, return it as a single partition
+  if (states.length === 1) {
+    return [[states[0].id]];
+  }
+  
   // Create an adjacency matrix representation of the graph
   const stateIdToIndex = new Map();
   states.forEach((state, index) => {
@@ -130,15 +300,15 @@ const findPartitions = (states, targetPartitions = 3) => {
   stateConnections.sort((a, b) => b.connections - a.connections);
   
   // Create partitions by distributing states across partitions, starting with the most connected
-  const partitions = Array.from({ length: targetPartitions }, () => []);
+  const partitions = Array.from({ length: validTargetPartitions }, () => []);
   
   // Distribute the top N most connected states across partitions as "seeds"
-  for (let i = 0; i < Math.min(targetPartitions, stateConnections.length); i++) {
+  for (let i = 0; i < Math.min(validTargetPartitions, stateConnections.length); i++) {
     partitions[i].push(stateConnections[i].id);
   }
   
   // Distribute remaining states to the partition with the fewest connections to that state
-  for (let i = targetPartitions; i < stateConnections.length; i++) {
+  for (let i = validTargetPartitions; i < stateConnections.length; i++) {
     const stateId = stateConnections[i].id;
     
     // For each state, find which partition it has the most connections to
@@ -246,172 +416,46 @@ const createSubgraph = (originalStates, stateIds) => {
  * @returns {Promise<void>}
  */
 const exportSubgraphToCSV = async (states, graphName, allStates) => {
-  if (!states || states.length === 0) return;
-  
-  // Get all external references (outgoing boundaries)
-  const outgoingBoundaries = [];
-  const stateIdsInSubgraph = new Set(states.map(s => s.id));
-  
-  // Find all rules that point to states outside this subgraph
-  states.forEach(state => {
-    state.rules.forEach(rule => {
-      if (rule.nextState && !stateIdsInSubgraph.has(rule.nextState)) {
-        const externalState = allStates.find(s => s.id === rule.nextState);
-        if (externalState) {
-          outgoingBoundaries.push({
-            sourceName: state.name,
-            destName: externalState.name
-          });
-        }
-      }
-    });
-  });
-  
-  // Create a Set to avoid duplicate external state entries
-  const externalStates = new Set(outgoingBoundaries.map(b => b.destName));
-  
-  // Try to identify the source file of this subgraph based on the first state
-  let sourceFile = null;
-  if (states.length > 0 && states[0].graphSource) {
-    sourceFile = states[0].graphSource;
-  }
-  
-  // Try to get the original imported data specific to this file
-  let baseData = [];
-  if (sourceFile) {
-    const fileSpecificData = await storage.getItem(`importedCSV_${sourceFile}`);
-    if (fileSpecificData) {
-      baseData = fileSpecificData;
-    } else {
-      // Fall back to the legacy storage if file-specific data not found
-      const lastImportedData = await storage.getItem('lastImportedCSV');
-      baseData = lastImportedData || [];
+  try {
+    if (!states || states.length === 0) {
+      toast.error('No states to export');
+      return;
     }
-  } else {
-    // Fall back to the legacy storage if no source file is found
-    const lastImportedData = await storage.getItem('lastImportedCSV');
-    baseData = lastImportedData || [];
-  }
-  
-  // Basic rules from states
-  const currentData = states.flatMap(sourceState => 
-    sourceState.rules.map(rule => {
-      // Check if the destination ID starts with "id_" pattern
-      const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
-      
-      // Find the destination state within the current subgraph first
-      const destState = states.find(s => s.id === rule.nextState);
-      
-      // If destination state is not in current subgraph, find its name from the original graph
-      let destinationName;
-      if (destState) {
-        destinationName = destState.name;
-      } else if (rule.nextState) {
-        // Look up the state name from the original graph
-        const externalState = allStates.find(s => s.id === rule.nextState);
-        destinationName = externalState 
-          ? externalState.name 
-          : isIdFormat ? `Unknown State` : rule.nextState;
-      } else {
-        destinationName = '';
-      }
-      
-      return {
-        'Source Node': sourceState.name,
-        'Destination Node': destinationName,
-        'Rule List': rule.condition,
-        'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50,
-        'Operation / Edge Effect': rule.operation || ''
-      };
-    })
-  );
-  
-  // Add TRUE rules for external states
-  const externalStateRules = Array.from(externalStates).map(externalStateName => {
-    return {
-      'Source Node': externalStateName,
-      'Destination Node': externalStateName,
-      'Rule List': 'TRUE',
-      'Priority': 50,
-      'Operation / Edge Effect': ''
-    };
-  });
-  
-  // Merge with existing data or use current data only
-  let csvData;
-  if (baseData.length > 0) {
-    // Get all columns from the base data to preserve original order
-    const allColumns = Object.keys(baseData[0]);
     
-    // Combine the normal rules with the external state rules
-    const combinedRules = [...currentData, ...externalStateRules];
+    if (!graphName) {
+      toast.error('Graph name is required');
+      return;
+    }
     
-    csvData = combinedRules.map(currentRow => {
-      const newRow = {};
-      const matchingRow = baseData.find(
-        baseRow => 
-          baseRow['Source Node'] === currentRow['Source Node'] &&
-          baseRow['Destination Node'] === currentRow['Destination Node']
-      );
-
-      // Use the original column order from the imported CSV
-      allColumns.forEach(column => {
-        if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
-          newRow[column] = currentRow[column];
-        } else if (column === 'Priority') {
-          newRow[column] = currentRow['Priority'];
-        } else if (column === 'Operation / Edge Effect') {
-          newRow[column] = currentRow['Operation / Edge Effect'];
-        } else {
-          newRow[column] = matchingRow ? matchingRow[column] : '';
-        }
-      });
-      
-      return newRow;
-    });
-  } else {
-    // If no previous data, create a structure with columns in standard order
-    csvData = [...currentData, ...externalStateRules];
-  }
-  
-  // Create a new workbook with ExcelJS
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('State Machine');
-  
-  // Get column names from first row of data
-  if (csvData.length > 0) {
-    const columns = Object.keys(csvData[0]).map(key => ({
-      header: key,
-      key: key,
-      width: key === 'Priority' ? 10 : key === 'Operation / Edge Effect' ? 40 : 20
-    }));
-    worksheet.columns = columns;
+    // Identify source file for storage lookup
+    const sourceFile = states.length > 0 && states[0].graphSource ? states[0].graphSource : null;
     
-    // Add rows
-    csvData.forEach(row => {
-      const rowData = {};
-      Object.keys(row).forEach(key => {
-        if (key === 'Priority') {
-          // Force numeric type for priority values
-          const value = row[key];
-          rowData[key] = value === 0 || value === '0' ? 0 : (typeof value === 'number' ? value : (parseInt(value) || 50));
-        } else {
-          rowData[key] = row[key];
-        }
-      });
-      worksheet.addRow(rowData);
-    });
+    // Generate CSV data using helper function
+    const { csvData, hasData } = await generateSubgraphCSVData(states, allStates, sourceFile);
+    
+    if (!hasData) {
+      toast.error('No data to export');
+      return;
+    }
+    
+    // Create workbook
+    const workbook = createWorkbookFromCSVData(csvData);
+    
+    // Generate filename
+    const timestamp = new Date().toISOString().split('T')[0];
+    const cleanName = graphName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const filename = `${cleanName}_${timestamp}.csv`;
+    
+    // Export file
+    const buffer = await workbook.csv.writeBuffer();
+    const blob = new Blob([buffer], { type: 'text/csv' });
+    saveAs(blob, filename);
+    
+    toast.success(`Exported ${filename} successfully`);
+  } catch (error) {
+    console.error('Error exporting subgraph:', error);
+    toast.error(`Failed to export: ${error.message}`);
   }
-  
-  // Generate a clean filename
-  const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const cleanName = graphName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-  const filename = `${cleanName}_${timestamp}.csv`;
-  
-  // Write to CSV buffer and download
-  const buffer = await workbook.csv.writeBuffer();
-  const blob = new Blob([buffer], { type: 'text/csv' });
-  saveAs(blob, filename);
 };
 
 /**
@@ -460,276 +504,206 @@ const GraphSplitterModal = ({ onClose, states }) => {
   const [partitions, setPartitions] = useState([]);
   const [subgraphs, setSubgraphs] = useState([]);
   const [selectedPartition, setSelectedPartition] = useState(null);
-  const [numPartitions, setNumPartitions] = useState(3);
+  const [numPartitions, setNumPartitions] = useState(DEFAULT_TARGET_PARTITIONS);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Calculate partitions when the modal opens
+  /**
+   * Calculates partitions and updates both partitions and subgraphs state
+   * Wrapped in useCallback to be reused by both useEffect and Recalculate button
+   */
+  const calculatePartitions = useCallback(() => {
+    if (!states || states.length === 0) {
+      toast.error('No states available to partition');
+      return;
+    }
+    
+    // Validate numPartitions
+    const validatedNum = Math.max(2, Math.min(10, Math.floor(numPartitions)));
+    if (validatedNum > states.length) {
+      toast.error(`Cannot create ${validatedNum} partitions from ${states.length} states. Maximum partitions: ${states.length}`);
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    // Use timeout to prevent UI blocking
+    const timeoutId = setTimeout(() => {
+      try {
+        const calculatedPartitions = findPartitions(states, validatedNum);
+        setPartitions(calculatedPartitions);
+        
+        // Create subgraphs from the partitions
+        const subgraphsData = calculatedPartitions.map((stateIds, index) => {
+          const subgraph = createSubgraph(states, stateIds);
+          return {
+            ...subgraph,
+            name: `Subgraph-${index + 1}`,
+            id: index.toString()
+          };
+        });
+        
+        setSubgraphs(subgraphsData);
+        if (subgraphsData.length > 0) {
+          setSelectedPartition(subgraphsData[0].id);
+        }
+        
+        toast.success(`Created ${subgraphsData.length} subgraphs`);
+      } catch (error) {
+        console.error('Error calculating partitions:', error);
+        toast.error(`Failed to calculate partitions: ${error.message}`);
+      } finally {
+        setIsProcessing(false);
+      }
+    }, CALCULATION_DELAY);
+    
+    // Return cleanup function
+    return () => clearTimeout(timeoutId);
+  }, [states, numPartitions]);
+  
+  // Calculate partitions when the modal opens or when states/numPartitions change
   useEffect(() => {
     if (states && states.length > 0) {
-      setIsProcessing(true);
-      // Use a timeout to allow the UI to update with the loading indicator
-      setTimeout(() => {
-        try {
-          const calculatedPartitions = findPartitions(states, numPartitions);
-          setPartitions(calculatedPartitions);
-          
-          // Create subgraphs from the partitions
-          const subgraphsData = calculatedPartitions.map((stateIds, index) => {
-            const subgraph = createSubgraph(states, stateIds);
-            return {
-              ...subgraph,
-              name: `Subgraph-${index + 1}`,
-              id: index.toString()
-            };
-          });
-          
-          setSubgraphs(subgraphsData);
-          if (subgraphsData.length > 0) {
-            setSelectedPartition(subgraphsData[0].id);
-          }
-        } catch (error) {
-          console.error("Error calculating partitions:", error);
-        } finally {
-          setIsProcessing(false);
-        }
-      }, 100);
+      const cleanup = calculatePartitions();
+      return cleanup;
     }
-  }, [states, numPartitions]);
+  }, [states, calculatePartitions]);
   
   /**
    * Handles downloading a single subgraph as a CSV file
    * 
    * @param {string} subgraphId - ID of the subgraph to download
    */
-  const handleDownloadSubgraph = async (subgraphId) => {
-    const subgraph = subgraphs.find(sg => sg.id === subgraphId);
-    if (subgraph) {
+  const handleDownloadSubgraph = useCallback(async (subgraphId) => {
+    try {
+      const subgraph = subgraphs.find(sg => sg.id === subgraphId);
+      if (!subgraph) {
+        toast.error('Subgraph not found');
+        return;
+      }
+      if (!subgraph.states || subgraph.states.length === 0) {
+        toast.error('Subgraph has no states to export');
+        return;
+      }
       await exportSubgraphToCSV(subgraph.states, subgraph.name, states);
+    } catch (error) {
+      console.error('Error downloading subgraph:', error);
+      toast.error(`Failed to download subgraph: ${error.message}`);
     }
-  };
+  }, [subgraphs, states]);
   
   /**
    * Handles downloading all subgraphs as a zip file containing individual CSV files
    */
-  const handleDownloadAllSubgraphs = async () => {
-    const zip = new JSZip();
-    
-    // Add each subgraph as a separate file in the zip
-    for (let i = 0; i < subgraphs.length; i++) {
-      const subgraph = subgraphs[i];
-      
-      // Get all external references for this subgraph
-      const outgoingBoundaries = [];
-      const stateIdsInSubgraph = new Set(subgraph.states.map(s => s.id));
-      
-      // Find all rules that point to states outside this subgraph
-      subgraph.states.forEach(state => {
-        state.rules.forEach(rule => {
-          if (rule.nextState && !stateIdsInSubgraph.has(rule.nextState)) {
-            const externalState = states.find(s => s.id === rule.nextState);
-            if (externalState) {
-              outgoingBoundaries.push({
-                sourceName: state.name,
-                destName: externalState.name
-              });
-            }
-          }
-        });
-      });
-      
-      // Create a Set to avoid duplicate external state entries
-      const externalStates = new Set(outgoingBoundaries.map(b => b.destName));
-      
-      // Try to identify the source file of this subgraph based on the first state
-      let sourceFile = null;
-      if (subgraph.states.length > 0 && subgraph.states[0].graphSource) {
-        sourceFile = subgraph.states[0].graphSource;
+  const handleDownloadAllSubgraphs = useCallback(async () => {
+    try {
+      if (!subgraphs || subgraphs.length === 0) {
+        toast.error('No subgraphs to export');
+        return;
       }
       
-      // Try to get the original imported data specific to this file
-      let baseData = [];
-      if (sourceFile) {
-        const fileSpecificData = await storage.getItem(`importedCSV_${sourceFile}`);
-        if (fileSpecificData) {
-          baseData = fileSpecificData;
-        } else {
-          // Fall back to the legacy storage if file-specific data not found
-          const lastImportedData = await storage.getItem('lastImportedCSV');
-          baseData = lastImportedData || [];
+      const zip = new JSZip();
+      
+      // Add each subgraph as a separate file in the zip
+      for (let i = 0; i < subgraphs.length; i++) {
+        const subgraph = subgraphs[i];
+        
+        if (!subgraph.states || subgraph.states.length === 0) {
+          console.warn(`Skipping empty subgraph: ${subgraph.name}`);
+          continue;
         }
-      } else {
-        // Fall back to the legacy storage if no source file is found
-        const lastImportedData = await storage.getItem('lastImportedCSV');
-        baseData = lastImportedData || [];
+        
+        // Identify source file
+        const sourceFile = subgraph.states.length > 0 && subgraph.states[0].graphSource 
+          ? subgraph.states[0].graphSource 
+          : null;
+        
+        // Generate CSV data using helper function
+        const { csvData } = await generateSubgraphCSVData(subgraph.states, states, sourceFile);
+        
+        // Create workbook
+        const workbook = createWorkbookFromCSVData(csvData);
+        
+        // Generate filename
+        const timestamp = new Date().toISOString().split('T')[0];
+        const cleanName = subgraph.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const filename = `${cleanName}_${timestamp}.csv`;
+        
+        // Get CSV buffer and add to zip
+        const csvBuffer = await workbook.csv.writeBuffer();
+        zip.file(filename, csvBuffer);
       }
       
-      // Create a CSV for this subgraph - normal rules
-      const currentData = subgraph.states.flatMap(sourceState => 
-        sourceState.rules.map(rule => {
-          // Check if the destination ID starts with "id_" pattern
-          const isIdFormat = rule.nextState && typeof rule.nextState === 'string' && rule.nextState.startsWith('id_');
-          
-          // Find the destination state within the current subgraph
-          const destState = subgraph.states.find(s => s.id === rule.nextState);
-          
-          // If destination state is not in current subgraph, find its name from the original graph
-          let destinationName;
-          if (destState) {
-            destinationName = destState.name;
-          } else if (rule.nextState) {
-            // Look up the state name from the original graph
-            const externalState = states.find(s => s.id === rule.nextState);
-            destinationName = externalState 
-              ? externalState.name 
-              : isIdFormat ? `Unknown State` : rule.nextState;
-          } else {
-            destinationName = '';
-          }
-          
-          return {
-            'Source Node': sourceState.name,
-            'Destination Node': destinationName,
-            'Rule List': rule.condition,
-            'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50,
-            'Operation / Edge Effect': rule.operation || ''
-          };
-        })
-      );
+      // Add metadata JSON file
+      const metadata = {
+        originalGraphSize: states.length,
+        partitions: subgraphs.map(sg => ({
+          name: sg.name,
+          size: sg.states ? sg.states.length : 0,
+          stateIds: sg.states ? sg.states.map(s => s.id) : [],
+          outgoingBoundaries: (sg.outgoingBoundaries || []).map(b => {
+            const isIdFormat = typeof b.id === 'string' && b.id.startsWith('id_');
+            const resolvedName = b.name || (isIdFormat ? 
+              (states.find(s => s.id === b.id)?.name || 'Unknown State') : b.id);
+            return { id: b.id, name: resolvedName };
+          }),
+          incomingBoundaries: (sg.incomingBoundaries || []).map(b => {
+            const isIdFormat = typeof b.id === 'string' && b.id.startsWith('id_');
+            const resolvedName = b.name || (isIdFormat ? 
+              (states.find(s => s.id === b.id)?.name || 'Unknown State') : b.id);
+            return { id: b.id, name: resolvedName };
+          })
+        }))
+      };
       
-      // Add TRUE rules for external states
-      const externalStateRules = Array.from(externalStates).map(externalStateName => {
-        return {
-          'Source Node': externalStateName,
-          'Destination Node': externalStateName,
-          'Rule List': 'TRUE',
-          'Priority': 50,
-          'Operation / Edge Effect': ''
-        };
-      });
+      zip.file('partitioning-metadata.json', JSON.stringify(metadata, null, 2));
       
-      // Merge with existing data or use current data only
-      let csvData;
-      if (baseData.length > 0) {
-        // Get all columns from the base data to preserve original order
-        const allColumns = Object.keys(baseData[0]);
-        
-        // Combine the normal rules with the external state rules
-        const combinedRules = [...currentData, ...externalStateRules];
-        
-        csvData = combinedRules.map(currentRow => {
-          const newRow = {};
-          const matchingRow = baseData.find(
-            baseRow => 
-              baseRow['Source Node'] === currentRow['Source Node'] &&
-              baseRow['Destination Node'] === currentRow['Destination Node']
-          );
-
-          // Use the original column order from the imported CSV
-          allColumns.forEach(column => {
-            if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
-              newRow[column] = currentRow[column];
-            } else if (column === 'Priority') {
-              newRow[column] = currentRow['Priority'];
-            } else if (column === 'Operation / Edge Effect') {
-              newRow[column] = currentRow['Operation / Edge Effect'];
-            } else {
-              newRow[column] = matchingRow ? matchingRow[column] : '';
-            }
-          });
-          
-          return newRow;
-        });
-      } else {
-        // If no previous data, create a structure with columns in standard order
-        csvData = [...currentData, ...externalStateRules];
-      }
+      // Generate and download the zip file
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, 'state-machine-subgraphs.zip');
       
-      // Convert to Excel format using ExcelJS
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('State Machine');
-      
-      // Get column names from first row of data
-      if (csvData.length > 0) {
-        const columns = Object.keys(csvData[0]).map(key => ({
-          header: key,
-          key: key,
-          width: key === 'Priority' ? 10 : key === 'Operation / Edge Effect' ? 40 : 20
-        }));
-        worksheet.columns = columns;
-        
-        // Add rows
-        csvData.forEach(row => {
-          const rowData = {};
-          Object.keys(row).forEach(key => {
-            if (key === 'Priority') {
-              // Force numeric type for priority values
-              const value = row[key];
-              rowData[key] = value === 0 || value === '0' ? 0 : (typeof value === 'number' ? value : (parseInt(value) || 50));
-            } else {
-              rowData[key] = row[key];
-            }
-          });
-          worksheet.addRow(rowData);
-        });
-      }
-      
-      // Generate a clean filename
-      const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const cleanName = subgraph.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const filename = `${cleanName}_${timestamp}.csv`;
-      
-      // Get the binary data for the CSV file
-      const csvBuffer = await workbook.csv.writeBuffer();
-      
-      // Add the file to the zip
-      zip.file(filename, csvBuffer);
+      toast.success(`Exported ${subgraphs.length} subgraphs successfully`);
+    } catch (error) {
+      console.error('Error creating ZIP file:', error);
+      toast.error(`Failed to create ZIP file: ${error.message}`);
     }
-    
-    // Add a JSON file with the partitioning metadata
-    const metadata = {
-      originalGraphSize: states.length,
-      partitions: subgraphs.map(sg => ({
-        name: sg.name,
-        size: sg.states.length,
-        stateIds: sg.states.map(s => s.id),
-        outgoingBoundaries: sg.outgoingBoundaries.map(b => {
-          // For consistency, resolve any ID-formatted boundary references
-          const isIdFormat = typeof b.id === 'string' && b.id.startsWith('id_');
-          // If it's an ID format but we don't have a name, look it up
-          const resolvedName = b.name || (isIdFormat ? 
-            (states.find(s => s.id === b.id)?.name || "Unknown State") : b.id);
-            
-          return {
-            id: b.id,
-            name: resolvedName
-          };
-        }),
-        incomingBoundaries: sg.incomingBoundaries.map(b => {
-          // For consistency, resolve any ID-formatted boundary references
-          const isIdFormat = typeof b.id === 'string' && b.id.startsWith('id_');
-          // If it's an ID format but we don't have a name, look it up
-          const resolvedName = b.name || (isIdFormat ? 
-            (states.find(s => s.id === b.id)?.name || "Unknown State") : b.id);
-            
-          return {
-            id: b.id,
-            name: resolvedName
-          };
-        })
-      }))
-    };
-    
-    zip.file("partitioning-metadata.json", JSON.stringify(metadata, null, 2));
-    
-    // Generate the zip file and trigger download
-    const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, "state-machine-subgraphs.zip");
-  };
+  }, [subgraphs, states]);
+  
+  // Memoize boundary rules calculation for the selected subgraph
+  const boundaryRules = useMemo(() => {
+    if (!selectedPartition) return [];
+    const subgraph = subgraphs.find(sg => sg.id === selectedPartition);
+    return getBoundaryRules(subgraph, states);
+  }, [selectedPartition, subgraphs, states]);
   
   // Get the currently selected subgraph
   const selectedSubgraph = selectedPartition 
     ? subgraphs.find(sg => sg.id === selectedPartition) 
     : null;
+  
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+  
+  // Handle number input changes with validation
+  const handleNumPartitionsChange = (e) => {
+    const value = e.target.value;
+    if (value === '') {
+      setNumPartitions(DEFAULT_TARGET_PARTITIONS);
+      return;
+    }
+    const parsed = parseInt(value);
+    if (!isNaN(parsed)) {
+      setNumPartitions(Math.max(2, Math.min(10, Math.floor(parsed))));
+    }
+  };
   
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -744,6 +718,7 @@ const GraphSplitterModal = ({ onClose, states }) => {
             variant="ghost" 
             className="h-8 w-8 p-0" 
             onClick={onClose}
+            aria-label="Close graph splitter modal"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -765,7 +740,7 @@ const GraphSplitterModal = ({ onClose, states }) => {
           
           {/* Loading or Content */}
           {isProcessing ? (
-            <div className="flex flex-col items-center justify-center py-8">
+            <div className="flex flex-col items-center justify-center py-8" role="status" aria-live="polite">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Calculating partitions...</p>
             </div>
@@ -776,23 +751,26 @@ const GraphSplitterModal = ({ onClose, states }) => {
                 <div className="mb-4">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Partition Options</h3>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-700 dark:text-gray-300">
+                    <label htmlFor="num-partitions-input" className="text-sm text-gray-700 dark:text-gray-300">
                       Target Partitions:
                     </label>
                     <input 
+                      id="num-partitions-input"
                       type="number" 
                       min={2} 
                       max={10} 
                       value={numPartitions} 
-                      onChange={(e) => setNumPartitions(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
+                      onChange={handleNumPartitionsChange}
+                      aria-label="Number of target partitions"
                       className="w-16 px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 
                                 dark:bg-gray-800 dark:text-gray-200"
                     />
                     <Button 
                       size="sm" 
-                      onClick={() => setPartitions(findPartitions(states, numPartitions))}
+                      onClick={calculatePartitions}
                       disabled={isProcessing}
                       className="ml-2 text-xs py-1"
+                      aria-label="Recalculate partitions"
                     >
                       Recalculate
                     </Button>
@@ -826,8 +804,11 @@ const GraphSplitterModal = ({ onClose, states }) => {
                                 ({subgraph.states.length} states)
                               </span>
                               {hasBoundaryConnections && (
-                                <span className="ml-1 flex-shrink-0 inline-block w-2 h-2 rounded-full bg-orange-400" 
-                                      title="Has external connections">
+                                <span 
+                                  className="ml-1 flex-shrink-0 inline-block w-2 h-2 rounded-full bg-orange-400" 
+                                  title="Has external connections"
+                                  aria-label="Has external connections"
+                                >
                                 </span>
                               )}
                             </div>
@@ -840,6 +821,7 @@ const GraphSplitterModal = ({ onClose, states }) => {
                                 handleDownloadSubgraph(subgraph.id);
                               }}
                               title="Download this subgraph"
+                              aria-label={`Download ${subgraph.name}`}
                             >
                               <Download className="h-3 w-3" />
                             </Button>
@@ -952,28 +934,28 @@ const GraphSplitterModal = ({ onClose, states }) => {
                         <ArrowLeftRight className="h-4 w-4 mr-1 text-orange-500" />
                         Cross-Boundary Rules
                       </h4>
-                      {getBoundaryRules(selectedSubgraph, states).length === 0 ? (
+                      {boundaryRules.length === 0 ? (
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           No cross-boundary rules found
                         </p>
                       ) : (
                         <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
-                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" aria-label="Cross-boundary rules table">
                             <thead className="bg-gray-50 dark:bg-gray-800">
                               <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                   Source State
                                 </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                   Rule
                                 </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                   Destination State
                                 </th>
                               </tr>
                             </thead>
                             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                              {getBoundaryRules(selectedSubgraph, states).map((rule, idx) => (
+                              {boundaryRules.map((rule, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                   <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                                     {rule.sourceState}
@@ -1035,7 +1017,21 @@ const GraphSplitterModal = ({ onClose, states }) => {
 
 GraphSplitterModal.propTypes = {
   onClose: PropTypes.func.isRequired,
-  states: PropTypes.array.isRequired
+  states: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+      rules: PropTypes.arrayOf(
+        PropTypes.shape({
+          nextState: PropTypes.string,
+          condition: PropTypes.string,
+          priority: PropTypes.number,
+          operation: PropTypes.string
+        })
+      ).isRequired,
+      graphSource: PropTypes.string
+    })
+  ).isRequired
 };
 
 export default GraphSplitterModal; 
