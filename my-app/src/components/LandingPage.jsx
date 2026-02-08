@@ -315,47 +315,6 @@ const LandingPage = ({ onGetStarted }) => {
             </Button>
           </motion.div>
 
-          {/* Reports Mode */}
-          <motion.div 
-            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-amber-400/60 hover:bg-white/10 
-                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px]"
-            onClick={() => handleModeSelect('htmlReports')}
-            whileHover={{ scale: 1.02 }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-          >
-            <div className="flex-grow mb-10">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 rounded-lg bg-amber-500/20">
-                  <FileText className="w-8 h-8 text-amber-300" />
-                </div>
-                <h3 className="text-2xl font-semibold">Reports</h3>
-              </div>
-              <p className="text-slate-300 mb-8 text-lg">
-                Store and browse metrics dashboards stored as HTML files.
-              </p>
-              <div className="h-[280px] relative rounded-2xl border border-white/10 bg-[#0f141b] p-6">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Reports</div>
-                <div className="mt-4 space-y-3">
-                  {['Quarterly Metrics', 'Latency Overview', 'Service Health'].map((label) => (
-                    <div key={label} className="flex items-center justify-between text-sm text-slate-300">
-                      <span>{label}</span>
-                      <span className="text-xs text-slate-500">HTML</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <Button 
-              className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 py-6
-                       group-hover:bg-amber-400 group-hover:text-slate-900 transition-all duration-300"
-            >
-              View Reports
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </motion.div>
-          
           {/* Log Analyzer Mode */}
           <motion.div 
             className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-violet-400/60 hover:bg-white/10 
@@ -418,6 +377,47 @@ const LandingPage = ({ onGetStarted }) => {
                        group-hover:bg-sky-400 group-hover:text-slate-900 transition-all duration-300"
             >
               Start AI Forensics
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </motion.div>
+
+          {/* Reports Mode */}
+          <motion.div 
+            className="group relative rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-amber-400/60 hover:bg-white/10 
+                     transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[520px] lg:col-span-2"
+            onClick={() => handleModeSelect('htmlReports')}
+            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            <div className="flex-grow mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-lg bg-amber-500/20">
+                  <FileText className="w-8 h-8 text-amber-300" />
+                </div>
+                <h3 className="text-2xl font-semibold">Reports</h3>
+              </div>
+              <p className="text-slate-300 mb-8 text-lg">
+                Store and browse metrics dashboards stored as HTML files.
+              </p>
+              <div className="h-[280px] relative rounded-2xl border border-white/10 bg-[#0f141b] p-6">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Reports</div>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {['Quarterly Metrics', 'Latency Overview', 'Service Health'].map((label) => (
+                    <div key={label} className="flex items-center justify-between text-sm text-slate-300 border border-white/10 rounded-lg px-3 py-2">
+                      <span>{label}</span>
+                      <span className="text-xs text-slate-500">HTML</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 py-6
+                       group-hover:bg-amber-400 group-hover:text-slate-900 transition-all duration-300"
+            >
+              View Reports
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
