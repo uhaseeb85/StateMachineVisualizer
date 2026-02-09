@@ -22,15 +22,7 @@ import { toast } from 'sonner';
 import StatePanel from './StatePanel';
 import RulesPanel from './RulesPanel';
 import TopActionBar from './TopActionBar';
-import SimulationModal from './SimulationModal';
-import PathFinderModal from './PathFinderModal';
-import UserGuideModal from './UserGuideModal';
-import ChangeLog from './ChangeLog';
 import VersionInfo from './VersionInfo';
-import SplunkConfig from './SplunkConfig';
-import GraphSplitterModal from './GraphSplitterModal';
-import ImportConfirmModal from './ImportConfirmModal';
-import StateMachineComparer from './StateMachineComparer';
 import ModalManager from './components/ModalManager';
 import ExportDialog from './components/ExportDialog';
 
@@ -47,8 +39,8 @@ import { Toaster } from 'sonner';
 import { Book, History } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import ExcelJS from 'exceljs';
-import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 import storage from '@/utils/storageWrapper';
+import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 
 // Constants
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
@@ -122,7 +114,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState(null);
   const [importFileName, setImportFileName] = useState('');
-  const [isDuplicateName, setIsDuplicateName] = useState(false);
+  const [isDuplicateName] = useState(false);
 
   // Dictionary states with IndexedDB persistence
   const [loadedDictionary, setLoadedDictionary] = useState(null);
@@ -179,14 +171,16 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   };
 
   // Common button styling for utility buttons
-  const buttonClass = "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md \
-                      bg-transparent \
-                      text-gray-700 dark:text-gray-200 \
-                      border border-gray-300 dark:border-gray-600 \
-                      hover:bg-gray-50/50 dark:hover:bg-gray-700/50 \
-                      hover:text-gray-900 dark:hover:text-white \
-                      transition-all duration-200 ease-in-out \
-                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400";
+  const buttonClass = [
+    "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md",
+    "bg-transparent",
+    "text-gray-700 dark:text-gray-200",
+    "border border-gray-300 dark:border-gray-600",
+    "hover:bg-gray-50/50 dark:hover:bg-gray-700/50",
+    "hover:text-gray-900 dark:hover:text-white",
+    "transition-all duration-200 ease-in-out",
+    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400"
+  ].join(' ');
 
   /**
    * Handles export button click - opens dialog with default filename
@@ -201,7 +195,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     let defaultName;
     if (currentFileName) {
       // Remove any existing version suffix (e.g., "_v2026-01-15") before adding new one
-      const baseNameWithoutVersion = currentFileName.replace(/_v\d{4}-\d{2}-\d{2}(?:_v\d{4}-\d{2}-\d{2})*/g, '');
+      const baseNameWithoutVersion = currentFileName.replaceAll(/_v\d{4}-\d{2}-\d{2}(?:_v\d{4}-\d{2}-\d{2})*/g, '');
       const timestamp = new Date().toISOString().split('T')[0];
       defaultName = `${baseNameWithoutVersion}_v${timestamp}`;
     } else {
@@ -639,23 +633,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           />
         </div>
 
-        {/* Modals */}
-        {showSimulation && (
-          <SimulationModal
-            states={states}
-            simulationState={simulationState}
-            onStateClick={handleStateClick}
-            onRuleClick={handleRuleClick}
-            onOutcome={handleOutcome}
-            onReset={resetSimulation}
-            onClose={() => setShowSimulation(false)}
-            onUndo={undo}
-            canUndo={canUndo}
-            loadedDictionary={loadedDictionary}
-            loadedStateDictionary={loadedStateDictionary}
-          />
-        )}
-
+        {/* Start State Selection Modal */}
         {showStartModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96">
