@@ -52,9 +52,9 @@ const ActionHistoryModal = ({
     if (searchText) {
       const lowerSearch = searchText.toLowerCase();
       filtered = filtered.filter(event =>
-        event.action.toLowerCase().includes(lowerSearch) ||
-        event.changeDetails.toLowerCase().includes(lowerSearch) ||
-        event.type.toLowerCase().includes(lowerSearch)
+        (event.action || '').toLowerCase().includes(lowerSearch) ||
+        (event.changeDetails || '').toLowerCase().includes(lowerSearch) ||
+        (event.type || '').toLowerCase().includes(lowerSearch)
       );
     }
 
@@ -103,6 +103,8 @@ const ActionHistoryModal = ({
         return { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', icon: '🗑️' };
       case EVENT_TYPES.FLOW_IMPORTED:
         return { color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: '📥' };
+      case EVENT_TYPES.FLOW_EXPORTED:
+        return { color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-900/20', icon: '📤' };
       case EVENT_TYPES.FLOW_CLEARED:
         return { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', icon: '🧹' };
       default:
@@ -178,6 +180,7 @@ const ActionHistoryModal = ({
                 <SelectItem value={EVENT_TYPES.CONNECTION_ADDED}>Connection Added</SelectItem>
                 <SelectItem value={EVENT_TYPES.CONNECTION_DELETED}>Connection Deleted</SelectItem>
                 <SelectItem value={EVENT_TYPES.FLOW_IMPORTED}>Flow Imported</SelectItem>
+                <SelectItem value={EVENT_TYPES.FLOW_EXPORTED}>Flow Exported</SelectItem>
                 <SelectItem value={EVENT_TYPES.FLOW_CLEARED}>Flow Cleared</SelectItem>
               </SelectContent>
             </Select>
@@ -221,7 +224,8 @@ const ActionHistoryModal = ({
           ) : (
             <div className="space-y-2">
               {paginatedHistory.map((event) => {
-                const style = getEventStyle(event.type);
+                const safeType = event.type || 'UNKNOWN';
+                const style = getEventStyle(safeType);
                 const isExpanded = expandedEvent === event.id;
 
                 return (
@@ -238,7 +242,7 @@ const ActionHistoryModal = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`text-sm font-medium ${style.color}`}>
-                            {event.type.replace(/_/g, ' ')}
+                            {safeType.replace(/_/g, ' ')}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {formatTimestamp(event.timestamp)}

@@ -1,9 +1,7 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Sparkles, Loader2 } from 'lucide-react';
-import { DEFAULT_ENDPOINTS } from '../../constants/apiConstants';
 import LogSizeManager from '../LogSizeManager';
 
 /**
@@ -26,6 +24,29 @@ const ApiSettings = ({
   isDetectingModel,
   chunkingEnabled
 }) => {
+  let statusContent = <p className="text-gray-500">Connection status unknown</p>;
+
+  if (demoMode) {
+    statusContent = (
+      <p className="text-amber-600 dark:text-amber-400">✓ Demo mode is active - using simulated AI responses</p>
+    );
+  } else if (apiAvailable === true) {
+    statusContent = (
+      <div>
+        <p className="text-green-600 dark:text-green-400">✓ Connected to AI API</p>
+        {detectedModelName && detectedModelName !== 'Unknown' && (
+          <p className="text-blue-600 dark:text-blue-400 mt-1">
+            Model: {detectedModelName} ({Math.floor(modelContextLimit / 1000)}K tokens)
+          </p>
+        )}
+      </div>
+    );
+  } else if (apiAvailable === false) {
+    statusContent = (
+      <p className="text-red-600 dark:text-red-400">✗ Cannot connect to AI</p>
+    );
+  }
+
   return (
     <div className="p-5 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
       <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-3">
@@ -74,9 +95,9 @@ const ApiSettings = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+          <p className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
             AI Provider
-          </label>
+          </p>
           <div className="grid grid-cols-3 gap-2">
             <Button
               variant={apiProvider === 'LM_STUDIO' ? 'default' : 'outline'}
@@ -106,10 +127,11 @@ const ApiSettings = ({
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+          <label htmlFor="api-endpoint" className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
             API Endpoint
           </label>
           <Input
+            id="api-endpoint"
             value={apiEndpoint}
             onChange={(e) => setApiEndpoint(e.target.value)}
             placeholder="Enter API endpoint URL"
@@ -124,10 +146,11 @@ const ApiSettings = ({
         
         {apiProvider === 'OLLAMA' && (
           <div>
-            <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+            <label htmlFor="ollama-model-name" className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
               Model Name
             </label>
             <Input
+              id="ollama-model-name"
               value={modelName}
               onChange={(e) => setModelName(e.target.value)}
               placeholder="llama3"
@@ -162,22 +185,7 @@ const ApiSettings = ({
         </div>
         
         <div className="text-xs mt-2">
-          {demoMode ? (
-            <p className="text-amber-600 dark:text-amber-400">✓ Demo mode is active - using simulated AI responses</p>
-          ) : apiAvailable === true ? (
-            <div>
-              <p className="text-green-600 dark:text-green-400">✓ Connected to AI API</p>
-              {detectedModelName && detectedModelName !== 'Unknown' && (
-                <p className="text-blue-600 dark:text-blue-400 mt-1">
-                  Model: {detectedModelName} ({Math.floor(modelContextLimit / 1000)}K tokens)
-                </p>
-              )}
-            </div>
-          ) : apiAvailable === false ? (
-            <p className="text-red-600 dark:text-red-400">✗ Cannot connect to AI</p>
-          ) : (
-            <p className="text-gray-500">Connection status unknown</p>
-          )}
+          {statusContent}
         </div>
       </div>
     </div>

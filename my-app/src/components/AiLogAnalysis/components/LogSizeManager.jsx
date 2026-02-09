@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon, Zap, AlertTriangle } from 'lucide-react';
@@ -46,10 +46,10 @@ const LogSizeManager = ({ logContent, modelContextLimit, modelName, chunkingEnab
           <div className="relative group">
             <InfoIcon 
               className="h-4 w-4 text-muted-foreground cursor-help"
-              title="Shows how your log content fits within the model's context window. Large logs will be automatically chunked for analysis." 
+              title="Shows how your log content fits within the model&apos;s context window. Large logs will be automatically chunked for analysis." 
             />
             <div className="absolute hidden group-hover:block bg-black text-white p-2 rounded shadow-lg w-64 text-xs -right-2 top-6 z-10">
-              The model's context window determines how much text can be analyzed at once. Large logs are automatically split into chunks for comprehensive analysis.
+              The model&apos;s context window determines how much text can be analyzed at once. Large logs are automatically split into chunks for comprehensive analysis.
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ const LogSizeManager = ({ logContent, modelContextLimit, modelName, chunkingEnab
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Automatic Chunking Active</AlertTitle>
           <AlertDescription>
-            Your log content exceeds the model's context window. It will be automatically split into 
+            Your log content exceeds the model&apos;s context window. It will be automatically split into 
             {Math.ceil(tokenCount / modelContextLimit)} chunks for analysis with intelligent overlap.
           </AlertDescription>
         </Alert>
@@ -106,7 +106,7 @@ const LogSizeManager = ({ logContent, modelContextLimit, modelName, chunkingEnab
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Content Too Large</AlertTitle>
           <AlertDescription>
-            Your log content exceeds the model's context window by {Math.floor(utilizationPercentage - 100)}%. 
+            Your log content exceeds the model&apos;s context window by {Math.floor(utilizationPercentage - 100)}%. 
             Please enable chunking or reduce the log size for analysis.
           </AlertDescription>
         </Alert>
@@ -117,12 +117,19 @@ const LogSizeManager = ({ logContent, modelContextLimit, modelName, chunkingEnab
           <InfoIcon className="h-4 w-4" />
           <AlertTitle>Model Detection Pending</AlertTitle>
           <AlertDescription>
-            Connect to your AI provider to detect the model's capabilities and context limits.
+            Connect to your AI provider to detect the model&apos;s capabilities and context limits.
           </AlertDescription>
         </Alert>
       )}
     </div>
   );
+};
+
+LogSizeManager.propTypes = {
+  logContent: PropTypes.string.isRequired,
+  modelContextLimit: PropTypes.number.isRequired,
+  modelName: PropTypes.string,
+  chunkingEnabled: PropTypes.bool
 };
 
 export default LogSizeManager; 

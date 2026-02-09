@@ -27,7 +27,7 @@ export const detectModelCapabilities = async (apiEndpoint, apiProvider, userMode
     } else {
       // For custom endpoints, try to extract base URL
       // Remove the last path segment
-      baseUrl = apiEndpoint.replace(/\/[^\/]*$/, '');
+      baseUrl = apiEndpoint.replace(/\/[^/]*$/, '');
       // If it ends with /v1, that's probably fine to keep
     }
     

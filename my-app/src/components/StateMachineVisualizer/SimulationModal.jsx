@@ -57,7 +57,7 @@ const SimulationModal = ({
       const currentRule = currentState?.rules.find(r => r.id === simulationState.currentRule);
       
       // Check if rule condition is "TRUE" (case-insensitive)
-      if (currentRule && currentRule.condition.trim().toLowerCase() === 'true') {
+      if (currentRule?.condition.trim().toLowerCase() === 'true') {
         // Auto-advance: first click the rule, then immediately succeed
         setTimeout(() => {
           onRuleClick(simulationState.currentRule);
@@ -76,13 +76,13 @@ const SimulationModal = ({
       const currentState = states.find(s => s.id === currentStateId);
       const currentRule = currentState?.rules.find(r => r.id === simulationState.currentRule);
       
-      if (currentRule && currentRule.condition.trim().toLowerCase() === 'true') {
+      if (currentRule?.condition.trim().toLowerCase() === 'true') {
         setTimeout(() => {
           onOutcome('success');
         }, 100);
       }
     }
-  }, [simulationState.status, simulationState.currentRule, states, onRuleClick, onOutcome]);
+  }, [simulationState.status, simulationState.currentRule, simulationState.path, states, onRuleClick, onOutcome]);
 
   /**
    * Gets tooltip content for a rule, handling compound rules
@@ -102,8 +102,8 @@ const SimulationModal = ({
     
     return (
       <div className="space-y-1">
-        {descriptions.map((desc, i) => (
-          <p key={i} className="text-sm">{desc}</p>
+        {descriptions.map((desc) => (
+          <p key={`desc-${desc.substring(0, 30)}`} className="text-sm">{desc}</p>
         ))}
       </div>
     );
@@ -119,7 +119,7 @@ const SimulationModal = ({
       if (!element) return;
 
       const defaultName = `state-machine-simulation-${new Date().toISOString().slice(0, 10)}`;
-      const fileName = window.prompt('Enter file name:', defaultName);
+      const fileName = globalThis.prompt('Enter file name:', defaultName);
       
       if (!fileName) return;
       
@@ -131,11 +131,242 @@ const SimulationModal = ({
       link.download = finalFileName;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
     } catch (error) {
       console.error('Error exporting simulation:', error);
       alert('Failed to export simulation image');
     }
+  };
+
+  /**
+   * Gets className for state node based on its state
+   * @param {Object} node - The node object
+   * @param {boolean} isActive - Whether the node is currently active
+   * @returns {string} CSS class names
+   */
+  const getStateNodeClassName = (node, isActive) => {
+    if (node.id === 'end') {
+      return 'bg-gray-500';
+    }
+    if (isActive) {
+      return 'bg-blue-600 cursor-pointer hover:bg-blue-700';
+    }
+    return 'bg-blue-400 dark:bg-white dark:text-blue-600';
+  };
+
+  /**
+   * Gets className for rule node based on evaluation state
+   * @param {boolean} isEvaluating - Whether rule is being evaluated
+   * @param {boolean} isDeciding - Whether decision is pending
+   * @param {boolean} hasOutcome - Whether rule succeeded
+   * @param {boolean} isFailure - Whether rule failed
+   * @returns {string} CSS class names
+   */
+  const getRuleNodeClassName = (isEvaluating, isDeciding, hasOutcome, isFailure) => {
+    if (isEvaluating) {
+      return 'bg-white text-gray-900 cursor-pointer hover:bg-gray-100';
+    }
+    if (isDeciding) {
+      return 'bg-white text-gray-900';
+    }
+    if (hasOutcome) {
+      return 'bg-green-500 text-white';
+    }
+    if (isFailure) {
+      return 'bg-red-500 text-white';
+    }
+    return 'bg-white text-gray-900';
+  };
+
+  /**
+   * Gets className for connector line based on path type
+   * @param {boolean} isSuccessPath - Whether this connects to a success state
+   * @param {boolean} isFailurePath - Whether this connects to a failure rule
+   * @returns {string} CSS class names
+   */
+  const getConnectorClassName = (isSuccessPath, isFailurePath) => {
+    if (isSuccessPath) {
+      return 'bg-gradient-to-r from-green-400 to-green-500';
+    }
+    if (isFailurePath) {
+      return 'bg-gradient-to-r from-red-400 to-red-500';
+    }
+    return 'bg-gradient-to-r from-gray-400 to-gray-500';
+  };
+
+  /**
+   * Renders a state node in the simulation
+   * @param {Object} node - The state node
+   * @param {number} index - Node index in the path
+   * @returns {JSX.Element} Rendered state node
+   */
+  const renderStateNode = (node, index) => {
+    const state = node.id === 'end' ? { name: 'END' } : states.find(s => s.id === node.id);
+    const isActive = simulationState.status === 'active' && node.id === simulationState.currentState;
+    const stateDescription = loadedStateDictionary?.[state?.name];
+    
+    const stateNode = (
+      <motion.div 
+        key={index}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ 
+          opacity: 1, 
+          scale: 1,
+          boxShadow: isActive ? '0 0 20px rgba(59, 130, 246, 0.5)' : '0 0 0 rgba(0,0,0,0)'
+        }}
+        whileHover={{ scale: 1.05 }}
+        transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+        className={`
+          min-w-[5rem] min-h-[5rem] w-auto h-auto p-4
+          rounded-full flex items-center justify-center text-white text-sm
+          ${getStateNodeClassName(node, isActive)}
+          transition-colors
+        `}
+        onClick={() => {
+          if (isActive) {
+            onStateClick(node.id);
+          }
+        }}
+      >
+        <span className="px-2 text-center break-words max-w-[150px]">
+          {state?.name || 'Unknown'}
+        </span>
+      </motion.div>
+    );
+
+    if (stateDescription && node.id !== 'end') {
+      return (
+        <Tooltip key={index}>
+          <TooltipTrigger asChild>
+            {stateNode}
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-sm max-w-xs">{stateDescription}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return stateNode;
+  };
+
+  /**
+   * Gets rule evaluation status flags
+   * @param {Object} node - The rule node
+   * @param {number} index - Node index in the path
+   * @returns {Object} Status flags
+   */
+  const getRuleStatus = (node, index) => {
+    const nextNode = simulationState.path[index + 1];
+    return {
+      hasOutcome: nextNode?.type === 'state' && nextNode.id !== 'end',
+      isFailure: nextNode?.type === 'rule',
+      isEvaluating: simulationState.status === 'evaluating' && node.id === simulationState.currentRule,
+      isDeciding: simulationState.status === 'deciding' && node.id === simulationState.currentRule
+    };
+  };
+
+  /**
+   * Renders outcome buttons for rule decisions
+   * @param {boolean} isDeciding - Whether the rule is in deciding state
+   * @param {boolean} isTrueRule - Whether this is a TRUE rule (auto-advance)
+   * @returns {JSX.Element|null} Outcome buttons or null
+   */
+  const renderOutcomeButtons = (isDeciding, isTrueRule) => {
+    if (!isDeciding || isTrueRule) return null;
+
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex gap-4 -mt-1"
+      >
+        <Button
+          onClick={() => onOutcome('success')}
+          className="min-w-[4rem] min-h-[2rem] w-auto h-auto p-2
+                   rounded-full bg-green-500 hover:bg-green-600 
+                   text-white text-xs"
+        >
+          True
+        </Button>
+        <Button
+          onClick={() => onOutcome('failure')}
+          className="min-w-[4rem] min-h-[2rem] w-auto h-auto p-2
+                   rounded-full bg-red-500 hover:bg-red-600 
+                   text-white text-xs"
+        >
+          False
+        </Button>
+      </motion.div>
+    );
+  };
+
+  /**
+   * Renders a rule node in the simulation
+   * @param {Object} node - The rule node
+   * @param {number} index - Node index in the path
+   * @returns {JSX.Element} Rendered rule node
+   */
+  const renderRuleNode = (node, index) => {
+    // Find the associated state for this rule
+    const ruleState = simulationState.path
+      .slice(0, index)
+      .reverse()
+      .find(n => n.type === 'state');
+    
+    const stateWithRule = states.find(s => s.id === ruleState?.id);
+    const rule = stateWithRule?.rules.find(r => r.id === node.id);
+
+    // Get rule status
+    const { hasOutcome, isFailure, isEvaluating, isDeciding } = getRuleStatus(node, index);
+    const ruleTooltip = getRuleTooltip(rule?.condition);
+    const isTrueRule = rule?.condition.trim().toLowerCase() === 'true';
+
+    const ruleNode = (
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ 
+          opacity: 1, 
+          scale: 1,
+          boxShadow: (isEvaluating || isDeciding) ? '0 0 20px rgba(59, 130, 246, 0.3)' : '0 0 0 rgba(0,0,0,0)'
+        }}
+        whileHover={{ scale: 1.05 }}
+        transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+        className={`
+          min-w-[8rem] min-h-[3.5rem] w-auto h-auto p-4
+          rounded-full flex items-center justify-center
+          ${getRuleNodeClassName(isEvaluating, isDeciding, hasOutcome, isFailure)}
+          transition-colors duration-300 border border-gray-200
+        `}
+        onClick={() => {
+          if (isEvaluating) {
+            onRuleClick(node.id);
+          }
+        }}
+      >
+        <span className="text-xs px-2 text-center break-words max-w-[150px]">
+          {rule?.condition || 'Unknown'}
+        </span>
+      </motion.div>
+    );
+
+    const wrappedRuleNode = ruleTooltip ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {ruleNode}
+        </TooltipTrigger>
+        <TooltipContent>
+          {ruleTooltip}
+        </TooltipContent>
+      </Tooltip>
+    ) : ruleNode;
+
+    return (
+      <div className="flex flex-col items-center gap-2">
+        {wrappedRuleNode}
+        {renderOutcomeButtons(isDeciding, isTrueRule)}
+      </div>
+    );
   };
 
   /**
@@ -145,164 +376,11 @@ const SimulationModal = ({
    * @returns {JSX.Element} Rendered node
    */
   const renderSimulationNode = (node, index) => {
-    // State node rendering
     if (node.type === 'state') {
-      const state = node.id === 'end' ? { name: 'END' } : states.find(s => s.id === node.id);
-      const isActive = simulationState.status === 'active' && node.id === simulationState.currentState;
-      const stateDescription = loadedStateDictionary?.[state?.name];
-      
-      const stateNode = (
-        <motion.div 
-          key={index}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ 
-            opacity: 1, 
-            scale: 1,
-            boxShadow: isActive ? '0 0 20px rgba(59, 130, 246, 0.5)' : '0 0 0 rgba(0,0,0,0)'
-          }}
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
-          className={`
-            min-w-[5rem] min-h-[5rem] w-auto h-auto p-4
-            rounded-full flex items-center justify-center text-white text-sm
-            ${node.id === 'end' 
-              ? 'bg-gray-500' 
-              : isActive
-                ? 'bg-blue-600 cursor-pointer hover:bg-blue-700'
-                : 'bg-blue-400 dark:bg-white dark:text-blue-600'
-            }
-            transition-colors
-          `}
-          onClick={() => {
-            if (isActive) {
-              onStateClick(node.id);
-            }
-          }}
-        >
-          <span className="px-2 text-center break-words max-w-[150px]">
-            {state?.name || 'Unknown'}
-          </span>
-        </motion.div>
-      );
-
-      if (stateDescription && node.id !== 'end') {
-        return (
-          <Tooltip key={index}>
-            <TooltipTrigger asChild>
-              {stateNode}
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-sm max-w-xs">{stateDescription}</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      }
-
-      return stateNode;
+      return renderStateNode(node, index);
     }
-
-    // Rule node rendering
     if (node.type === 'rule') {
-      // Find the associated state for this rule
-      const ruleState = simulationState.path
-        .slice(0, index)
-        .reverse()
-        .find(n => n.type === 'state');
-      
-      const stateWithRule = states.find(s => s.id === ruleState?.id);
-      const rule = stateWithRule?.rules.find(r => r.id === node.id);
-
-      // Determine rule outcome status
-      const nextNode = simulationState.path[index + 1];
-      const hasOutcome = nextNode && nextNode.type === 'state' && nextNode.id !== 'end';
-      const isFailure = nextNode && nextNode.type === 'rule';
-      const isEvaluating = simulationState.status === 'evaluating' && node.id === simulationState.currentRule;
-      const isDeciding = simulationState.status === 'deciding' && node.id === simulationState.currentRule;
-      
-      const ruleTooltip = getRuleTooltip(rule?.condition);
-
-      const ruleNode = (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ 
-            opacity: 1, 
-            scale: 1,
-            boxShadow: (isEvaluating || isDeciding) ? '0 0 20px rgba(59, 130, 246, 0.3)' : '0 0 0 rgba(0,0,0,0)'
-          }}
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
-          className={`
-            min-w-[8rem] min-h-[3.5rem] w-auto h-auto p-4
-            rounded-full flex items-center justify-center
-            ${isEvaluating
-              ? 'bg-white text-gray-900 cursor-pointer hover:bg-gray-100'
-              : isDeciding
-                ? 'bg-white text-gray-900'
-                : hasOutcome
-                  ? 'bg-green-500 text-white'
-                  : isFailure
-                    ? 'bg-red-500 text-white'
-                    : 'bg-white text-gray-900'
-            }
-            transition-colors duration-300 border border-gray-200
-          `}
-          onClick={() => {
-            if (isEvaluating) {
-              onRuleClick(node.id);
-            }
-          }}
-        >
-          <span className="text-xs px-2 text-center break-words max-w-[150px]">
-            {rule?.condition || 'Unknown'}
-          </span>
-        </motion.div>
-      );
-
-      const wrappedRuleNode = ruleTooltip ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {ruleNode}
-          </TooltipTrigger>
-          <TooltipContent>
-            {ruleTooltip}
-          </TooltipContent>
-        </Tooltip>
-      ) : ruleNode;
-
-      // Check if this is a TRUE rule (auto-advance, don't show buttons)
-      const isTrueRule = rule?.condition.trim().toLowerCase() === 'true';
-
-      return (
-        <div className="flex flex-col items-center gap-2">
-          {wrappedRuleNode}
-          
-          {/* Outcome Selection Buttons - Hidden for TRUE rules */}
-          {isDeciding && !isTrueRule && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-4 -mt-1"
-            >
-              <Button
-                onClick={() => onOutcome('success')}
-                className="min-w-[4rem] min-h-[2rem] w-auto h-auto p-2
-                         rounded-full bg-green-500 hover:bg-green-600 
-                         text-white text-xs"
-              >
-                True
-              </Button>
-              <Button
-                onClick={() => onOutcome('failure')}
-                className="min-w-[4rem] min-h-[2rem] w-auto h-auto p-2
-                         rounded-full bg-red-500 hover:bg-red-600 
-                         text-white text-xs"
-              >
-                False
-              </Button>
-            </motion.div>
-          )}
-        </div>
-      );
+      return renderRuleNode(node, index);
     }
   };
 
@@ -374,11 +452,11 @@ const SimulationModal = ({
                         p-4`}>
             {simulationState.path.map((node, index) => {
               const nextNode = simulationState.path[index + 1];
-              const isSuccessPath = nextNode && nextNode.type === 'state' && nextNode.id !== 'end';
-              const isFailurePath = nextNode && nextNode.type === 'rule';
+              const isSuccessPath = nextNode?.type === 'state' && nextNode.id !== 'end';
+              const isFailurePath = nextNode?.type === 'rule';
               
               return (
-                <div key={index} className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row'} 
+                <div key={`${node.type}-${node.id}-${index}`} className={`flex ${isVerticalLayout ? 'flex-col' : 'flex-row'} 
                                          items-center`}>
                   {renderSimulationNode(node, index)}
                   {/* Enhanced Connector Line */}
@@ -389,12 +467,7 @@ const SimulationModal = ({
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className={`
                         ${isVerticalLayout ? 'h-6 w-1 my-2' : 'w-6 h-1 mx-2'}
-                        ${isSuccessPath 
-                          ? 'bg-gradient-to-r from-green-400 to-green-500' 
-                          : isFailurePath 
-                            ? 'bg-gradient-to-r from-red-400 to-red-500'
-                            : 'bg-gradient-to-r from-gray-400 to-gray-500'
-                        }
+                        ${getConnectorClassName(isSuccessPath, isFailurePath)}
                         rounded-full shadow-sm
                       `} 
                     />

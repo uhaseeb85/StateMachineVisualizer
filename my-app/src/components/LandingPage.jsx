@@ -98,14 +98,14 @@ const LandingPage = ({ onGetStarted }) => {
     },
     {
       icon: Waypoints,
-      title: "Flow Command Map",
-      description: "Branch, merge, and validate API process routes in seconds.",
+      title: "Process Orchestration",
+      description: "Design resilient workflows with clear routing and decision control.",
       className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
     },
     {
       icon: FileJson,
-      title: "Export-Grade IO",
-      description: "Round-trip CSV/JSON/Excel while preserving custom columns.",
+      title: "Operational Reporting",
+      description: "Publish metrics-ready outputs and dashboards for stakeholders.",
       className: "border-amber-500/40 bg-amber-500/10 text-amber-200"
     },
     {

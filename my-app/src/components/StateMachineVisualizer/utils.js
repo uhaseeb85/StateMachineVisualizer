@@ -1,6 +1,7 @@
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
+import { getDataValidationService } from './services/validation/DataValidationService';
 
 export const generateId = () => {
   return 'id_' + Math.random().toString(36).substr(2, 9);
@@ -75,35 +76,9 @@ export const parseExcelFile = async (file) => {
 };
 
 export const validateExcelData = (rows) => {
-  if (rows.length < 2) {
-    throw new Error('File contains no data rows');
-  }
-
-  const headers = rows[0].map(h => h?.toString().trim().toLowerCase());
-  
-  const sourceNodeIndex = headers.findIndex(h => 
-    h === 'source node' || h === 'source node '
-  );
-  const destNodeIndex = headers.findIndex(h => 
-    h === 'destination node' || h === 'destination node '
-  );
-  const ruleListIndex = headers.findIndex(h => 
-    h === 'rule list' || h === 'rule list '
-  );
-
-  if (sourceNodeIndex === -1 || destNodeIndex === -1 || ruleListIndex === -1) {
-    throw new Error(
-      'Missing required columns. Please ensure your file has: "Source Node", "Destination Node", and "Rule List"\n' +
-      'Found columns: ' + headers.join(', ')
-    );
-  }
-
-  return {
-    sourceNodeIndex,
-    destNodeIndex,
-    ruleListIndex,
-    headers
-  };
+  // Use validation service for consistent validation logic
+  const validationService = getDataValidationService();
+  return validationService.validateExcelData(rows);
 };
 
 /**

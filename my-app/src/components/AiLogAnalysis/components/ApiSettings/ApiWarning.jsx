@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, Sparkles } from 'lucide-react';

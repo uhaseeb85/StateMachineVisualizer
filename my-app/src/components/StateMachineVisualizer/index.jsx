@@ -22,19 +22,16 @@ import { toast } from 'sonner';
 import StatePanel from './StatePanel';
 import RulesPanel from './RulesPanel';
 import TopActionBar from './TopActionBar';
-import SimulationModal from './SimulationModal';
-import PathFinderModal from './PathFinderModal';
-import UserGuideModal from './UserGuideModal';
-import ChangeLog from './ChangeLog';
 import VersionInfo from './VersionInfo';
-import SplunkConfig from './SplunkConfig';
-import GraphSplitterModal from './GraphSplitterModal';
-import ImportConfirmModal from './ImportConfirmModal';
-import StateMachineComparer from './StateMachineComparer';
+import ModalManager from './components/ModalManager';
+import ExportDialog from './components/ExportDialog';
 
 // Custom hooks
-import useStateMachine from './hooks/useStateMachine';
+import useStateMachineOrchestrator from './hooks/useStateMachineOrchestrator';
 import useSimulation from './hooks/useSimulation';
+
+// Dependency injection context
+import { ServicesProvider } from './context/ServicesContext';
 
 // UI Components and utilities
 import { TourProvider } from './TourProvider';
@@ -42,8 +39,8 @@ import { Toaster } from 'sonner';
 import { Book, History } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import ExcelJS from 'exceljs';
-import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 import storage from '@/utils/storageWrapper';
+import { migrateFromLocalStorage } from '@/utils/storageWrapper';
 
 // Constants
 const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
@@ -55,7 +52,7 @@ const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
  * @param {Function} props.onChangeMode - Function to change the theme mode
  */
 const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
-  // Core state machine functionality from custom hook
+  // Core state machine functionality from orchestrator hook
   const {
     states,
     setStates,
@@ -81,7 +78,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     canUndo: stateMachineCanUndo,
     canRedo: stateMachineCanRedo,
     withUndoCapture
-  } = useStateMachine();
+  } = useStateMachineOrchestrator();
 
   // Simulation functionality from custom hook
   const {
@@ -115,9 +112,9 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   
   // Import confirmation modal state
   const [showImportConfirm, setShowImportConfirm] = useState(false);
-  const [pendingImportEvent, setPendingImportEvent] = useState(null);
+  const [pendingImportFile, setPendingImportFile] = useState(null);
   const [importFileName, setImportFileName] = useState('');
-  const [isDuplicateName, setIsDuplicateName] = useState(false);
+  const [isDuplicateName] = useState(false);
 
   // Dictionary states with IndexedDB persistence
   const [loadedDictionary, setLoadedDictionary] = useState(null);
@@ -174,14 +171,16 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   };
 
   // Common button styling for utility buttons
-  const buttonClass = "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md \
-                      bg-transparent \
-                      text-gray-700 dark:text-gray-200 \
-                      border border-gray-300 dark:border-gray-600 \
-                      hover:bg-gray-50/50 dark:hover:bg-gray-700/50 \
-                      hover:text-gray-900 dark:hover:text-white \
-                      transition-all duration-200 ease-in-out \
-                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400";
+  const buttonClass = [
+    "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md",
+    "bg-transparent",
+    "text-gray-700 dark:text-gray-200",
+    "border border-gray-300 dark:border-gray-600",
+    "hover:bg-gray-50/50 dark:hover:bg-gray-700/50",
+    "hover:text-gray-900 dark:hover:text-white",
+    "transition-all duration-200 ease-in-out",
+    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400"
+  ].join(' ');
 
   /**
    * Handles export button click - opens dialog with default filename
@@ -196,7 +195,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     let defaultName;
     if (currentFileName) {
       // Remove any existing version suffix (e.g., "_v2026-01-15") before adding new one
-      const baseNameWithoutVersion = currentFileName.replace(/_v\d{4}-\d{2}-\d{2}(?:_v\d{4}-\d{2}-\d{2})*/g, '');
+      const baseNameWithoutVersion = currentFileName.replaceAll(/_v\d{4}-\d{2}-\d{2}(?:_v\d{4}-\d{2}-\d{2})*/g, '');
       const timestamp = new Date().toISOString().split('T')[0];
       defaultName = `${baseNameWithoutVersion}_v${timestamp}`;
     } else {
@@ -224,51 +223,6 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     exportStatesAsCSV(states, filename);
     setShowExportDialog(false);
     toast.success(`Exported as ${filename}`);
-  };
-
-  /**
-   * Handles CSV export with preservation of additional columns
-   */
-  const handleExportCSV = async () => {
-    // If no states exist, create a single generic export
-    if (states.length === 0) {
-      await exportSingleCSV();
-      return;
-    }
-    
-    // Group states by their source file
-    const statesBySource = {};
-    
-    // First, categorize states by their source file
-    states.forEach(state => {
-      const source = state.graphSource || 'unknown';
-      if (!statesBySource[source]) {
-        statesBySource[source] = [];
-      }
-      statesBySource[source].push(state);
-    });
-    
-    // If only one source or no source information, export as a single file
-    if (Object.keys(statesBySource).length <= 1) {
-      await exportSingleCSV();
-      return;
-    }
-    
-    // Export each source as its own CSV
-    await Promise.all(Object.entries(statesBySource).map(async ([source, sourceStates]) => {
-      if (source === 'unknown') {
-        await exportStatesAsCSV(sourceStates, 'state_machine_new_data.csv');
-      } else {
-        // Create a clean filename derived from the original
-        const baseFilename = source.replace(/\.[^/.]+$/, ""); // Remove extension
-        const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const exportFilename = `${baseFilename}_export_${timestamp}.csv`;
-        await exportStatesAsCSV(sourceStates, exportFilename);
-      }
-    }));
-    
-    // Show success message for multiple exports
-    toast.success(`Exported ${Object.keys(statesBySource).length} CSV files successfully.`);
   };
 
   /**
@@ -379,102 +333,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     link.download = filename;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
-  };
-
-  /**
-   * Exports all states as a single CSV file (legacy behavior)
-   */
-  const exportSingleCSV = async () => {
-    const lastImportedData = await storage.getItem('lastImportedCSV');
-    let baseData = lastImportedData || [];
-    
-    // Create current state data with updated values
-    const currentData = states.flatMap(sourceState => 
-      sourceState.rules.map(rule => {
-        const destState = states.find(s => s.id === rule.nextState);
-        return {
-          'Source Node': sourceState.name,
-          'Destination Node': destState ? destState.name : rule.nextState,
-          'Rule List': rule.condition,
-          'Priority': rule.priority !== undefined && rule.priority !== null ? rule.priority : 50,
-          'Operation / Edge Effect': rule.operation || ''
-        };
-      })
-    );
-
-    // Merge with existing data or use current data only
-    let csvData;
-    if (baseData.length > 0) {
-      // Get all columns from the base data to preserve original order
-      const allColumns = Object.keys(baseData[0]);
-      
-      csvData = currentData.map(currentRow => {
-        const newRow = {};
-        const matchingRow = baseData.find(
-          baseRow => 
-            baseRow['Source Node'] === currentRow['Source Node'] &&
-            baseRow['Destination Node'] === currentRow['Destination Node']
-        );
-
-        // Use the original column order from the imported CSV
-        allColumns.forEach(column => {
-          if (column === 'Source Node' || column === 'Destination Node' || column === 'Rule List') {
-            newRow[column] = currentRow[column];
-          } else if (column === 'Priority') {
-            newRow[column] = currentRow['Priority'];
-          } else if (column === 'Operation / Edge Effect') {
-            newRow[column] = currentRow['Operation / Edge Effect'];
-          } else {
-            newRow[column] = matchingRow ? matchingRow[column] : '';
-          }
-        });
-        
-        return newRow;
-      });
-    } else {
-      // If no previous data, create a structure with columns in standard order
-      csvData = currentData;
-    }
-
-    // Generate and download the CSV file with special handling for zeros
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(csvData);
-    
-    // Find the column index for Priority
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    let priorityCol = -1;
-    
-    // Look for the Priority column
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
-      if (ws[cellAddress] && ws[cellAddress].v === 'Priority') {
-        priorityCol = C;
-        break;
-      }
-    }
-    
-    // If we found the Priority column, explicitly set cell types for all values
-    if (priorityCol !== -1) {
-      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-        const cellAddress = XLSX.utils.encode_cell({r:R, c:priorityCol});
-        if (ws[cellAddress]) {
-          const value = ws[cellAddress].v;
-          
-          // Force numeric type for priority values
-          ws[cellAddress] = {
-            t: 'n',  // numeric type
-            v: value === 0 || value === '0' ? 0 : (value || 50),
-            w: value === 0 || value === '0' ? '0' : (value || '50').toString()
-          };
-        }
-      }
-    }
-    
-    // Use the modified worksheet and only export CSV
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, 'state_machine_export.csv', { bookType: 'csv', rawNumbers: true });
   };
 
   /**
@@ -482,25 +342,24 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Shows confirmation modal if there are existing states or if filename already exists
    */
   const handleInitialImport = (event) => {
-    // We need to clone the event since the original will be cleared
-    const clonedEvent = {
-      target: {
-        files: event.target.files
-      }
-    };
+    const file = event.target.files[0];
     
-    const fileName = event.target.files[0]?.name || "file";
+    if (!file) {
+      return;
+    }
+    
+    const fileName = file.name || "file";
     
     // Only show confirmation if there are actual states
     const hasExistingStates = Array.isArray(states) && states.length > 0;
     
     if (hasExistingStates) {
-      setPendingImportEvent(clonedEvent);
+      setPendingImportFile(file);
       setImportFileName(fileName);
       setShowImportConfirm(true);
     } else {
       // No existing states, just import directly
-      handleExcelImport(clonedEvent, { replaceExisting: false });
+      handleExcelImport(file, { replaceExisting: false });
     }
   };
   
@@ -508,10 +367,10 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Handles import with replacing existing states
    */
   const handleReplaceImport = () => {
-    if (pendingImportEvent) {
-      handleExcelImport(pendingImportEvent, { replaceExisting: true });
+    if (pendingImportFile) {
+      handleExcelImport(pendingImportFile, { replaceExisting: true });
       setShowImportConfirm(false);
-      setPendingImportEvent(null);
+      setPendingImportFile(null);
     }
   };
   
@@ -519,10 +378,10 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Handles import to display alongside existing states
    */
   const handleDisplayAlongsideImport = () => {
-    if (pendingImportEvent) {
-      handleExcelImport(pendingImportEvent, { replaceExisting: false });
+    if (pendingImportFile) {
+      handleExcelImport(pendingImportFile, { replaceExisting: false });
       setShowImportConfirm(false);
-      setPendingImportEvent(null);
+      setPendingImportFile(null);
     }
   };
 
@@ -534,7 +393,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     clearData();
     
     // Reset any pending import
-    setPendingImportEvent(null);
+    setPendingImportFile(null);
     setShowImportConfirm(false);
   };
 
@@ -635,23 +494,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           />
         </div>
 
-        {/* Modals */}
-        {showSimulation && (
-          <SimulationModal
-            states={states}
-            simulationState={simulationState}
-            onStateClick={handleStateClick}
-            onRuleClick={handleRuleClick}
-            onOutcome={handleOutcome}
-            onReset={resetSimulation}
-            onClose={() => setShowSimulation(false)}
-            onUndo={undo}
-            canUndo={canUndo}
-            loadedDictionary={loadedDictionary}
-            loadedStateDictionary={loadedStateDictionary}
-          />
-        )}
-
+        {/* Start State Selection Modal */}
         {showStartModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-96">
@@ -703,19 +546,71 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           </div>
         )}
 
-        {showPathFinder && (
-          <PathFinderModal
-            states={states}
-            onClose={() => setShowPathFinder(false)}
-            onSelectState={handleStateSelect}
-          />
-        )}
+        {/* Centralized modal rendering */}
+        <ModalManager
+          // Modal visibility flags
+          showSimulation={showSimulation}
+          showPathFinder={showPathFinder}
+          showUserGuide={showUserGuide}
+          showChangeLog={showChangeLog}
+          showSplunkConfig={showSplunkConfig}
+          showGraphSplitter={showGraphSplitter}
+          showStateMachineComparer={showStateMachineComparer}
+          showExportDialog={false}
+          showImportConfirm={showImportConfirm}
+          
+          // Modal close handlers
+          onCloseSimulation={() => setShowSimulation(false)}
+          onClosePathFinder={() => setShowPathFinder(false)}
+          onCloseUserGuide={() => setShowUserGuide(false)}
+          onCloseChangeLog={() => setShowChangeLog(false)}
+          onCloseSplunkConfig={() => setShowSplunkConfig(false)}
+          onCloseGraphSplitter={() => setShowGraphSplitter(false)}
+          onCloseStateMachineComparer={() => setShowStateMachineComparer(false)}
+          onCloseExportDialog={() => setShowExportDialog(false)}
+          onCloseImportConfirm={() => setShowImportConfirm(false)}
+          
+          // Bundled props for each modal
+          simulationProps={{
+            states,
+            simulationState,
+            onStateClick: handleStateClick,
+            onRuleClick: handleRuleClick,
+            onOutcome: handleOutcome,
+            onReset: resetSimulation,
+            onUndo: undo,
+            canUndo,
+            loadedDictionary,
+            loadedStateDictionary
+          }}
+          pathFinderProps={{
+            states
+          }}
+          changeLogProps={{
+            changeLog,
+            setChangeLog
+          }}
+          graphSplitterProps={{
+            states
+          }}
+          comparerProps={{
+            states
+          }}
+          importConfirmProps={{
+            onReplace: handleReplaceImport,
+            onDisplayAlongside: handleDisplayAlongsideImport,
+            importFileName,
+            isDuplicateName
+          }}
+        />
 
-        <ChangeLog
-          changeLog={changeLog}
-          isOpen={showChangeLog}
-          onClose={() => setShowChangeLog(false)}
-          setChangeLog={setChangeLog}
+        {/* Export Dialog as dedicated component */}
+        <ExportDialog
+          isOpen={showExportDialog}
+          filename={exportFileName}
+          onFilenameChange={setExportFileName}
+          onConfirm={confirmExport}
+          onClose={() => setShowExportDialog(false)}
         />
       </div>
 
@@ -739,97 +634,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
         </Button>
       </div>
 
-      {/* Additional modals */}
-      {showUserGuide && (
-        <UserGuideModal onClose={() => setShowUserGuide(false)} />
-      )}
-
-      {showSplunkConfig && (
-        <SplunkConfig
-          onClose={() => setShowSplunkConfig(false)}
-          onSave={() => {
-            setShowSplunkConfig(false);
-          }}
-        />
-      )}
-
-      {showGraphSplitter && (
-        <GraphSplitterModal
-          onClose={() => setShowGraphSplitter(false)}
-          states={states}
-        />
-      )}
-
-      {/* Import confirmation modal */}
-      <ImportConfirmModal
-        isOpen={showImportConfirm}
-        onClose={() => {
-          setShowImportConfirm(false);
-          setPendingImportEvent(null);
-        }}
-        onReplace={handleReplaceImport}
-        onDisplayAlongside={handleDisplayAlongsideImport}
-        importFileName={importFileName}
-        isDuplicateName={isDuplicateName}
-      />
-
-      {/* Export Dialog */}
-      {showExportDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-              Export State Machine
-            </h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filename
-              </label>
-              <input
-                type="text"
-                value={exportFileName}
-                onChange={(e) => setExportFileName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmExport();
-                  if (e.key === 'Escape') setShowExportDialog(false);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter filename"
-                autoFocus
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                .csv extension will be added automatically
-              </p>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowExportDialog(false)}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 
-                           dark:hover:bg-gray-700 rounded transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmExport}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                Export
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Version information */}
       <VersionInfo />
-
-      {/* State Machine Comparer Modal */}
-      <StateMachineComparer
-        isOpen={showStateMachineComparer}
-        onClose={() => setShowStateMachineComparer(false)}
-        states={states}
-      />
     </div>
   );
 };
@@ -840,13 +646,17 @@ StateMachineVisualizerContent.propTypes = {
 };
 
 /**
- * Root component wrapped with TourProvider for guided tour functionality
+ * Root component wrapped with ServicesProvider and TourProvider
+ * ServicesProvider enables dependency injection for storage, notifications, etc.
+ * TourProvider enables guided tour functionality
  */
 const StateMachineVisualizer = ({ onChangeMode }) => {
   return (
-    <TourProvider>
-      <StateMachineVisualizerContent startTour={() => {}} onChangeMode={onChangeMode} />
-    </TourProvider>
+    <ServicesProvider>
+      <TourProvider>
+        <StateMachineVisualizerContent startTour={() => {}} onChangeMode={onChangeMode} />
+      </TourProvider>
+    </ServicesProvider>
   );
 };
 

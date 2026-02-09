@@ -6,7 +6,7 @@
  * and sends match results back to the main thread.
  */
 
-self.onmessage = function(e) {
+globalThis.onmessage = function(e) {
   const { logs, patterns, workerId } = e.data;
   const matchGroups = new Map();
   
@@ -16,7 +16,7 @@ self.onmessage = function(e) {
   let lastReportedProgress = 0;
   
   // Report initial progress
-  self.postMessage({
+  globalThis.postMessage({
     type: 'progress',
     workerId,
     value: 0
@@ -31,14 +31,14 @@ self.onmessage = function(e) {
           regex: new RegExp(pattern.regex_pattern, 'i')
         };
       } catch (error) {
-        console.error(`Invalid regex pattern: ${pattern.regex_pattern}`);
+        console.error(`Invalid regex pattern: ${pattern.regex_pattern}`, error);
         return null;
       }
     }).filter(p => p !== null);
     
     // Process each log entry against all patterns
-    logs.forEach((log, logIndex) => {
-      compiledPatterns.forEach((compiledPattern, patternIndex) => {
+    logs.forEach((log) => {
+      compiledPatterns.forEach((compiledPattern) => {
         if (!compiledPattern) return;
         
         try {
@@ -68,7 +68,7 @@ self.onmessage = function(e) {
         
         if (currentProgress >= lastReportedProgress + 5 || completedOperations === totalOperations) {
           lastReportedProgress = currentProgress;
-          self.postMessage({
+          globalThis.postMessage({
             type: 'progress',
             workerId,
             value: currentProgress
@@ -78,14 +78,14 @@ self.onmessage = function(e) {
     });
     
     // Send final results
-    self.postMessage({
+    globalThis.postMessage({
       type: 'result',
       workerId,
       results: Array.from(matchGroups.values())
     });
   } catch (error) {
     // Report any errors back to the main thread
-    self.postMessage({
+    globalThis.postMessage({
       type: 'error',
       workerId,
       error: error.message
