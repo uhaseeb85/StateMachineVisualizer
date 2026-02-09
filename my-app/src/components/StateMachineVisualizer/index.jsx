@@ -31,10 +31,15 @@ import SplunkConfig from './SplunkConfig';
 import GraphSplitterModal from './GraphSplitterModal';
 import ImportConfirmModal from './ImportConfirmModal';
 import StateMachineComparer from './StateMachineComparer';
+import ModalManager from './components/ModalManager';
+import ExportDialog from './components/ExportDialog';
 
 // Custom hooks
-import useStateMachine from './hooks/useStateMachine';
+import useStateMachineOrchestrator from './hooks/useStateMachineOrchestrator';
 import useSimulation from './hooks/useSimulation';
+
+// Dependency injection context
+import { ServicesProvider } from './context/ServicesContext';
 
 // UI Components and utilities
 import { TourProvider } from './TourProvider';
@@ -55,7 +60,7 @@ const DICTIONARY_STORAGE_KEY = 'ruleDictionary';
  * @param {Function} props.onChangeMode - Function to change the theme mode
  */
 const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
-  // Core state machine functionality from custom hook
+  // Core state machine functionality from orchestrator hook
   const {
     states,
     setStates,
@@ -81,7 +86,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     canUndo: stateMachineCanUndo,
     canRedo: stateMachineCanRedo,
     withUndoCapture
-  } = useStateMachine();
+  } = useStateMachineOrchestrator();
 
   // Simulation functionality from custom hook
   const {
@@ -703,19 +708,71 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
           </div>
         )}
 
-        {showPathFinder && (
-          <PathFinderModal
-            states={states}
-            onClose={() => setShowPathFinder(false)}
-            onSelectState={handleStateSelect}
-          />
-        )}
+        {/* Centralized modal rendering */}
+        <ModalManager
+          // Modal visibility flags
+          showSimulation={showSimulation}
+          showPathFinder={showPathFinder}
+          showUserGuide={showUserGuide}
+          showChangeLog={showChangeLog}
+          showSplunkConfig={showSplunkConfig}
+          showGraphSplitter={showGraphSplitter}
+          showStateMachineComparer={showStateMachineComparer}
+          showExportDialog={false}
+          showImportConfirm={showImportConfirm}
+          
+          // Modal close handlers
+          onCloseSimulation={() => setShowSimulation(false)}
+          onClosePathFinder={() => setShowPathFinder(false)}
+          onCloseUserGuide={() => setShowUserGuide(false)}
+          onCloseChangeLog={() => setShowChangeLog(false)}
+          onCloseSplunkConfig={() => setShowSplunkConfig(false)}
+          onCloseGraphSplitter={() => setShowGraphSplitter(false)}
+          onCloseStateMachineComparer={() => setShowStateMachineComparer(false)}
+          onCloseExportDialog={() => setShowExportDialog(false)}
+          onCloseImportConfirm={() => setShowImportConfirm(false)}
+          
+          // Bundled props for each modal
+          simulationProps={{
+            states,
+            simulationState,
+            onStateClick: handleStateClick,
+            onRuleClick: handleRuleClick,
+            onOutcome: handleOutcome,
+            onReset: resetSimulation,
+            onUndo: undo,
+            canUndo,
+            loadedDictionary,
+            loadedStateDictionary
+          }}
+          pathFinderProps={{
+            states
+          }}
+          changeLogProps={{
+            changeLog,
+            setChangeLog
+          }}
+          graphSplitterProps={{
+            states
+          }}
+          comparerProps={{
+            states
+          }}
+          importConfirmProps={{
+            onReplace: handleReplaceImport,
+            onDisplayAlongside: handleDisplayAlongsideImport,
+            importFileName,
+            isDuplicateName
+          }}
+        />
 
-        <ChangeLog
-          changeLog={changeLog}
-          isOpen={showChangeLog}
-          onClose={() => setShowChangeLog(false)}
-          setChangeLog={setChangeLog}
+        {/* Export Dialog as dedicated component */}
+        <ExportDialog
+          isOpen={showExportDialog}
+          filename={exportFileName}
+          onFilenameChange={setExportFileName}
+          onConfirm={confirmExport}
+          onClose={() => setShowExportDialog(false)}
         />
       </div>
 
@@ -739,97 +796,8 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
         </Button>
       </div>
 
-      {/* Additional modals */}
-      {showUserGuide && (
-        <UserGuideModal onClose={() => setShowUserGuide(false)} />
-      )}
-
-      {showSplunkConfig && (
-        <SplunkConfig
-          onClose={() => setShowSplunkConfig(false)}
-          onSave={() => {
-            setShowSplunkConfig(false);
-          }}
-        />
-      )}
-
-      {showGraphSplitter && (
-        <GraphSplitterModal
-          onClose={() => setShowGraphSplitter(false)}
-          states={states}
-        />
-      )}
-
-      {/* Import confirmation modal */}
-      <ImportConfirmModal
-        isOpen={showImportConfirm}
-        onClose={() => {
-          setShowImportConfirm(false);
-          setPendingImportEvent(null);
-        }}
-        onReplace={handleReplaceImport}
-        onDisplayAlongside={handleDisplayAlongsideImport}
-        importFileName={importFileName}
-        isDuplicateName={isDuplicateName}
-      />
-
-      {/* Export Dialog */}
-      {showExportDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-              Export State Machine
-            </h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filename
-              </label>
-              <input
-                type="text"
-                value={exportFileName}
-                onChange={(e) => setExportFileName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmExport();
-                  if (e.key === 'Escape') setShowExportDialog(false);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter filename"
-                autoFocus
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                .csv extension will be added automatically
-              </p>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowExportDialog(false)}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 
-                           dark:hover:bg-gray-700 rounded transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmExport}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                Export
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Version information */}
       <VersionInfo />
-
-      {/* State Machine Comparer Modal */}
-      <StateMachineComparer
-        isOpen={showStateMachineComparer}
-        onClose={() => setShowStateMachineComparer(false)}
-        states={states}
-      />
     </div>
   );
 };
@@ -840,13 +808,17 @@ StateMachineVisualizerContent.propTypes = {
 };
 
 /**
- * Root component wrapped with TourProvider for guided tour functionality
+ * Root component wrapped with ServicesProvider and TourProvider
+ * ServicesProvider enables dependency injection for storage, notifications, etc.
+ * TourProvider enables guided tour functionality
  */
 const StateMachineVisualizer = ({ onChangeMode }) => {
   return (
-    <TourProvider>
-      <StateMachineVisualizerContent startTour={() => {}} onChangeMode={onChangeMode} />
-    </TourProvider>
+    <ServicesProvider>
+      <TourProvider>
+        <StateMachineVisualizerContent startTour={() => {}} onChangeMode={onChangeMode} />
+      </TourProvider>
+    </ServicesProvider>
   );
 };
 
