@@ -5,6 +5,8 @@
  * Provides storage, notification, and other services to components.
  */
 
+/* eslint-disable react-refresh/only-export-components */
+
 import { createContext, useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { IndexedDBStorageService } from '../services/storage/IndexedDBStorageService';
