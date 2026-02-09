@@ -206,7 +206,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                     Configure AI Connection
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Click the blue "AI Settings" button to connect to your AI provider (LM Studio, Ollama, or custom endpoint).
+                    Click the blue &quot;AI Settings&quot; button to connect to your AI provider (LM Studio, Ollama, or custom endpoint).
                   </p>
                 </div>
               </div>
@@ -220,7 +220,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                     Upload Log File
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Upload your log file using the "Upload Log Files" button. Text (.txt) and log (.log) files are supported.
+                    Upload your log file using the &quot;Upload Log Files&quot; button. Text (.txt) and log (.log) files are supported.
                   </p>
                 </div>
               </div>
@@ -234,7 +234,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                     Optional: Add a Log Dictionary
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300">
-                    For enhanced analysis, upload a log dictionary with known patterns using the "Add Log Dictionary" button.
+                    For enhanced analysis, upload a log dictionary with known patterns using the &quot;Add Log Dictionary&quot; button.
                   </p>
                 </div>
               </div>
@@ -262,7 +262,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
                     Control the AI
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300">
-                    You can stop the AI's response at any time using the Stop button. Your chat history is preserved during your session.
+                    You can stop the AI&apos;s response at any time using the Stop button. Your chat history is preserved during your session.
                   </p>
                 </div>
               </div>
@@ -270,7 +270,7 @@ const AiLogAnalysis = ({ onChangeMode }) => {
             
             <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                You can access this guide anytime using the "Getting Started" button.
+                You can access this guide anytime using the &quot;Getting Started&quot; button.
               </p>
               <Button 
                 onClick={() => {

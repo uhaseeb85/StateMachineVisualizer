@@ -5,6 +5,8 @@
  * Abstracts the underlying storage mechanism (IndexedDB, localStorage, etc.)
  */
 
+/* eslint-disable no-unused-vars */
+
 /**
  * Storage service interface
  * @interface
@@ -15,7 +17,7 @@ export class IStorageService {
    * @param {string} key - Storage key
    * @returns {Promise<any>} The stored value or null if not found
    */
-  async getItem(key) {
+  async getItem(_key) {
     throw new Error('Method not implemented');
   }
 
@@ -25,7 +27,7 @@ export class IStorageService {
    * @param {any} value - Value to store
    * @returns {Promise<void>}
    */
-  async setItem(key, value) {
+  async setItem(_key, _value) {
     throw new Error('Method not implemented');
   }
 
@@ -34,7 +36,7 @@ export class IStorageService {
    * @param {string} key - Storage key
    * @returns {Promise<void>}
    */
-  async removeItem(key) {
+  async removeItem(_key) {
     throw new Error('Method not implemented');
   }
 
@@ -51,7 +53,7 @@ export class IStorageService {
    * @param {string} key - Storage key
    * @returns {Promise<boolean>}
    */
-  async hasItem(key) {
+  async hasItem(_key) {
     throw new Error('Method not implemented');
   }
 

@@ -32,6 +32,7 @@ import ConvertToStateMachineWelcomeModal from './ConvertToStateMachineWelcomeMod
  * Default classification rules for auto-categorizing steps
  * These can be customized by the user in the Classification Rules tab
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_CLASSIFICATION_RULES = [
   {
     id: 'rule-1',
@@ -80,7 +81,7 @@ export const DEFAULT_CLASSIFICATION_RULES = [
   },
   {
     id: 'rule-6',
-    pattern: '^[A-Z][A-Z0-9_\\s]*$',
+    pattern: String.raw`^[A-Z][A-Z0-9_\s]*$`,
     patternType: 'regex',
     matchType: 'regex',
     resultType: 'state',
@@ -88,6 +89,44 @@ export const DEFAULT_CLASSIFICATION_RULES = [
     enabled: true
   }
 ];
+
+/**
+ * Test if a regex pattern matches the step name
+ */
+const testRegexPattern = (pattern, stepName) => {
+  const regex = new RegExp(pattern, 'i');
+  return regex.test(stepName);
+};
+
+/**
+ * Test if a simple pattern matches the step name based on match type
+ */
+const testSimplePattern = (pattern, matchType, stepName, lowerStepName) => {
+  const patterns = pattern.split('|').map(p => p.trim());
+  
+  const matchCheckers = {
+    endsWith: (p) => stepName.endsWith(p),
+    startsWith: (p) => {
+      const lowerPattern = p.toLowerCase();
+      return lowerStepName.startsWith(lowerPattern) || lowerStepName === lowerPattern.trim();
+    },
+    contains: (p) => lowerStepName.includes(p.toLowerCase()),
+    equals: (p) => lowerStepName === p.toLowerCase()
+  };
+  
+  const checker = matchCheckers[matchType];
+  return checker ? patterns.some(checker) : false;
+};
+
+/**
+ * Check if a classification rule matches the step name
+ */
+const checkRuleMatch = (rule, stepName, lowerStepName) => {
+  if (rule.patternType === 'regex') {
+    return testRegexPattern(rule.pattern, stepName);
+  }
+  return testSimplePattern(rule.pattern, rule.matchType, stepName, lowerStepName);
+};
 
 /**
  * Auto-classify steps based on classification rules
@@ -106,30 +145,7 @@ const autoClassifyStep = (stepName, rules = DEFAULT_CLASSIFICATION_RULES) => {
     if (!rule.enabled) continue;
     
     try {
-      let matches = false;
-      
-      if (rule.patternType === 'regex') {
-        // Regex pattern matching
-        const regex = new RegExp(rule.pattern, 'i');
-        matches = regex.test(trimmedName);
-      } else {
-        // Simple pattern matching
-        const patterns = rule.pattern.split('|').map(p => p.trim());
-        
-        if (rule.matchType === 'endsWith') {
-          matches = patterns.some(p => trimmedName.endsWith(p));
-        } else if (rule.matchType === 'startsWith') {
-          matches = patterns.some(p => {
-            const lowerPattern = p.toLowerCase();
-            return lowerName.startsWith(lowerPattern) || lowerName === lowerPattern.trim();
-          });
-        } else if (rule.matchType === 'contains') {
-          matches = patterns.some(p => lowerName.includes(p.toLowerCase()));
-        } else if (rule.matchType === 'equals') {
-          matches = patterns.some(p => lowerName === p.toLowerCase());
-        }
-      }
-      
+      const matches = checkRuleMatch(rule, trimmedName, lowerName);
       if (matches) {
         return rule.resultType;
       }
@@ -384,22 +400,6 @@ const exportCSV = async (rows, filename) => {
   const blob = new Blob([buffer], { type: 'text/csv;charset=utf-8;' });
   
   // Download
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-};
-
-/**
- * Export dictionary as JSON
- */
-const exportDictionary = (dictionary, filename) => {
-  const json = JSON.stringify(dictionary, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -1107,7 +1107,6 @@ StepClassificationEditor.propTypes = {
 const validateStateMachineRows = (rows, steps = [], connections = [], selectedRootStepIds = []) => {
   const issues = [];
   const normalize = (value) => (value ?? '').toString().trim();
-  const isBlank = (value) => normalize(value) === '';
   const addIssue = ({ id, row = null, type, message, suggestion }) => {
     issues.push({ id, row, type, message, suggestion });
   };
@@ -1314,16 +1313,20 @@ const ValidationResultsDisplay = ({ results }) => {
   const warningCount = summary?.warnings || 0;
   const errorPluralSuffix = errorCount === 1 ? '' : 's';
   const warningPluralSuffix = warningCount === 1 ? '' : 's';
-  const headerBgClass = errorCount > 0
-    ? 'bg-red-50 dark:bg-red-950/20'
-    : warningCount > 0
-      ? 'bg-amber-50 dark:bg-amber-950/20'
-      : 'bg-green-50 dark:bg-green-950/20';
-  const titleText = errorCount > 0
-    ? `${errorCount} Error${errorPluralSuffix} Found`
-    : warningCount > 0
-      ? `${warningCount} Warning${warningPluralSuffix} Found`
-      : 'Validation Passed';
+  
+  let headerBgClass = 'bg-green-50 dark:bg-green-950/20';
+  if (errorCount > 0) {
+    headerBgClass = 'bg-red-50 dark:bg-red-950/20';
+  } else if (warningCount > 0) {
+    headerBgClass = 'bg-amber-50 dark:bg-amber-950/20';
+  }
+  
+  let titleText = 'Validation Passed';
+  if (errorCount > 0) {
+    titleText = `${errorCount} Error${errorPluralSuffix} Found`;
+  } else if (warningCount > 0) {
+    titleText = `${warningCount} Warning${warningPluralSuffix} Found`;
+  }
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -1394,7 +1397,15 @@ ValidationResultsDisplay.propTypes = {
       errors: PropTypes.number,
       warnings: PropTypes.number,
       infos: PropTypes.number
-    })
+    }),
+    globalIssues: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string,
+        type: PropTypes.string,
+        message: PropTypes.string,
+        suggestion: PropTypes.string
+      })
+    )
   })
 };
 
@@ -1512,17 +1523,6 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
     if (!isOpen) return [];
     return convertToStateMachineRows(filteredSteps, filteredConnections);
   }, [filteredSteps, filteredConnections, isOpen]);
-
-  const stepTypeByLabel = useMemo(() => {
-    const map = new Map();
-    filteredSteps.forEach((step) => {
-      const label = (step.alias || '').trim() || step.name || '';
-      if (label) {
-        map.set(label, step.type || 'state');
-      }
-    });
-    return map;
-  }, [filteredSteps]);
 
   // Refresh CSV preview on open to sync with Step Panel changes
   useEffect(() => {

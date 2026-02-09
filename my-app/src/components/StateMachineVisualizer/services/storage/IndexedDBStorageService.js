@@ -88,13 +88,8 @@ export class IndexedDBStorageService extends IStorageService {
    * @returns {Promise<string[]>}
    */
   async keys() {
-    try {
-      // Note: storageWrapper may not support this natively
-      // This is a placeholder implementation
-      return [];
-    } catch (error) {
-      console.error('Error getting keys from storage', error);
-      return [];
-    }
+    // Note: storageWrapper may not support this natively
+    // This is a placeholder implementation
+    return [];
   }
 }

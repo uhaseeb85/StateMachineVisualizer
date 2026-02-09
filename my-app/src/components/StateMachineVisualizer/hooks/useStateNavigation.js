@@ -32,7 +32,7 @@ export const useStateNavigation = (states) => {
    */
   const findStateByName = useCallback((name, options = {}) => {
     return ruleNavigationService.findStateByName(states, name, options);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Finds a state by ID
@@ -42,7 +42,7 @@ export const useStateNavigation = (states) => {
    */
   const findStateById = useCallback((id) => {
     return ruleNavigationService.findStateById(states, id);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Gets the target state for a rule
@@ -52,7 +52,7 @@ export const useStateNavigation = (states) => {
    */
   const getTargetState = useCallback((rule) => {
     return ruleNavigationService.getTargetState(states, rule);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Finds all states that reference a given state
@@ -62,7 +62,7 @@ export const useStateNavigation = (states) => {
    */
   const getReferencingStates = useCallback((stateId) => {
     return ruleNavigationService.getReferencingStates(states, stateId);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Finds all states reachable from a given state
@@ -72,7 +72,7 @@ export const useStateNavigation = (states) => {
    */
   const getReachableStates = useCallback((stateId) => {
     return ruleNavigationService.getReachableStates(states, stateId);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Finds orphaned states (states with no incoming edges)
@@ -81,7 +81,7 @@ export const useStateNavigation = (states) => {
    */
   const findOrphanedStates = useCallback(() => {
     return ruleNavigationService.findOrphanedStates(states);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Finds dead-end states (states with no outgoing edges)
@@ -90,7 +90,7 @@ export const useStateNavigation = (states) => {
    */
   const findDeadEndStates = useCallback(() => {
     return ruleNavigationService.findDeadEndStates(states);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   /**
    * Finds the shortest path between two states
@@ -101,7 +101,7 @@ export const useStateNavigation = (states) => {
    */
   const findShortestPath = useCallback((fromStateId, toStateId) => {
     return pathFindingService.findShortestPath(states, fromStateId, toStateId);
-  }, [states]);
+  }, [pathFindingService, states]);
 
   /**
    * Checks if a state is reachable from another state
@@ -112,7 +112,7 @@ export const useStateNavigation = (states) => {
    */
   const isReachable = useCallback((fromStateId, toStateId) => {
     return pathFindingService.isReachable(states, fromStateId, toStateId);
-  }, [states]);
+  }, [pathFindingService, states]);
 
   /**
    * Scrolls to a state element in the UI
@@ -139,7 +139,7 @@ export const useStateNavigation = (states) => {
    */
   const buildAdjacencyMap = useCallback(() => {
     return ruleNavigationService.buildAdjacencyMap(states);
-  }, [states]);
+  }, [ruleNavigationService, states]);
 
   return {
     findStateByName,

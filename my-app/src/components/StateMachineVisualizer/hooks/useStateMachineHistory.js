@@ -124,7 +124,7 @@ export const useStateMachineHistory = (states, selectedState, onRestore) => {
     });
 
     // Pop from undo stack and restore
-    const previousSnapshot = undoStack[undoStack.length - 1];
+    const previousSnapshot = undoStack.at(-1);
     setUndoStack(prev => {
       const newStack = prev.slice(0, -1);
       saveUndoStack(newStack);
@@ -156,7 +156,7 @@ export const useStateMachineHistory = (states, selectedState, onRestore) => {
     });
 
     // Pop from redo stack and restore
-    const nextSnapshot = redoStack[redoStack.length - 1];
+    const nextSnapshot = redoStack.at(-1);
     setRedoStack(prev => {
       const newStack = prev.slice(0, -1);
       saveRedoStack(newStack);

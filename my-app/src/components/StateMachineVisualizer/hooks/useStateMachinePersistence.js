@@ -55,7 +55,7 @@ export const useStateMachinePersistence = (states, onStatesLoaded) => {
     };
 
     loadData();
-  }, []); // Only run on mount
+  }, [storage, onStatesLoaded, notification]);
 
   /**
    * Save states to storage

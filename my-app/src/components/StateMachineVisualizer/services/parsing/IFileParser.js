@@ -5,6 +5,8 @@
  * Allows adding new file formats without modifying existing code (OCP).
  */
 
+/* eslint-disable no-unused-vars */
+
 /**
  * File parser interface
  * @interface
@@ -15,7 +17,7 @@ export class IFileParser {
    * @param {File} file - File to check
    * @returns {boolean} True if parser can handle this file
    */
-  canParse(file) {
+  canParse(_file) {
     throw new Error('Method not implemented');
   }
 
@@ -24,7 +26,7 @@ export class IFileParser {
    * @param {File} file - File to parse
    * @returns {Promise<Array>} Parsed data rows
    */
-  async parse(file) {
+  async parse(_file) {
     throw new Error('Method not implemented');
   }
 

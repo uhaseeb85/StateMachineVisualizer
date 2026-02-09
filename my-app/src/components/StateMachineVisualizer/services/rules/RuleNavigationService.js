@@ -67,7 +67,7 @@ export class RuleNavigationService {
    * @returns {Object|null} Target state or null
    */
   getTargetState(states, rule) {
-    if (!rule || !rule.nextState) {
+    if (!rule?.nextState) {
       return null;
     }
     return this.findStateById(states, rule.nextState);

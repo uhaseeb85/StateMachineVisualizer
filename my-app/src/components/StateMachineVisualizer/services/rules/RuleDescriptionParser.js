@@ -90,8 +90,7 @@ export class RuleDescriptionParser {
    */
   formatDescription(ruleDescription, dictionary = {}, options = {}) {
     const {
-      expandCompound = false,
-      separator = ' '
+      expandCompound = false
     } = options;
 
     if (!ruleDescription) {
@@ -185,14 +184,14 @@ export class RuleDescriptionParser {
     let normalized = ruleDescription.trim();
 
     // Standardize operators
-    normalized = normalized.replace(/\s+AND\s+/gi, ' AND ');
-    normalized = normalized.replace(/\s+OR\s+/gi, ' OR ');
-    normalized = normalized.replace(/\s*\+\s*/g, ' + ');
-    normalized = normalized.replace(/\s+&\s+/g, ' & ');
-    normalized = normalized.replace(/\s+\|\s+/g, ' | ');
+    normalized = normalized.replaceAll(/\s+AND\s+/gi, ' AND ');
+    normalized = normalized.replaceAll(/\s+OR\s+/gi, ' OR ');
+    normalized = normalized.replaceAll(/\s*\+\s*/g, ' + ');
+    normalized = normalized.replaceAll(/\s+&\s+/g, ' & ');
+    normalized = normalized.replaceAll(/\s+\|\s+/g, ' | ');
 
     // Remove extra whitespace
-    normalized = normalized.replace(/\s+/g, ' ');
+    normalized = normalized.replaceAll(/\s+/g, ' ');
 
     return normalized;
   }

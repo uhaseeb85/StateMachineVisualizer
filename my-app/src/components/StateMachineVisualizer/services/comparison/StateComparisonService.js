@@ -156,8 +156,6 @@ export class StateComparisonService {
           this.rulesMatch(baseRule, baseStates, cr, compareStates)
         );
 
-        const ruleKey = `${baseState.name}:${baseRule.condition}`;
-
         if (matchingRule) {
           comparedRuleKeys.add(`${matchingState.name}:${matchingRule.condition}`);
 

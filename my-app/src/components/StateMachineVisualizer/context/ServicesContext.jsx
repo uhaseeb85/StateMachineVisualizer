@@ -5,13 +5,13 @@
  * Provides storage, notification, and other services to components.
  */
 
-import React, { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { IndexedDBStorageService } from '../services/storage/IndexedDBStorageService';
 import { ToastNotificationService } from '../services/notification/ToastNotificationService';
 
 /**
- * Services context
+ * Services context instance
  */
 const ServicesContext = createContext(null);
 
@@ -41,31 +41,27 @@ ServicesProvider.propTypes = {
 };
 
 /**
- * Hook to access all services
- * @returns {object} Services object with storage and notification services
- */
-export const useServices = () => {
-  const context = useContext(ServicesContext);
-  if (!context) {
-    throw new Error('useServices must be used within a ServicesProvider');
-  }
-  return context;
-};
-
-/**
  * Hook to access storage service
- * @returns {IStorageService} Storage service instance
+ * @returns {Object} Storage service instance
  */
 export const useStorage = () => {
-  const { storage } = useServices();
-  return storage;
+  const context = useContext(ServicesContext);
+  if (!context) {
+    throw new Error('useStorage must be used within ServicesProvider');
+  }
+  return context.storage;
 };
 
 /**
  * Hook to access notification service
- * @returns {INotificationService} Notification service instance
+ * @returns {Object} Notification service instance
  */
 export const useNotification = () => {
-  const { notification } = useServices();
-  return notification;
+  const context = useContext(ServicesContext);
+  if (!context) {
+    throw new Error('useNotification must be used within ServicesProvider');
+  }
+  return context.notification;
 };
+
+export default ServicesContext;

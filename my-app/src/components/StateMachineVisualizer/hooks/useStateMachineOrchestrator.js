@@ -36,10 +36,13 @@ export const useStateMachineOrchestrator = () => {
     replaceStates
   } = stateOps;
 
-  // Persistence
-  const persistenceOps = useStateMachinePersistence(states, (loadedStates) => {
+  // Persistence callback - memoized to prevent infinite loops
+  const handleStatesLoaded = useCallback((loadedStates) => {
     replaceStates(loadedStates);
-  });
+  }, [replaceStates]);
+
+  // Persistence
+  const persistenceOps = useStateMachinePersistence(states, handleStatesLoaded);
   const {
     isLoading,
     currentFileName,
@@ -53,14 +56,17 @@ export const useStateMachineOrchestrator = () => {
     hasStoredData
   } = persistenceOps;
 
+  // History callback - memoized to prevent infinite loops
+  const handleHistoryRestore = useCallback((restoredStates, restoredSelectedState) => {
+    setStates(restoredStates);
+    setSelectedState(restoredSelectedState);
+  }, [setStates, setSelectedState]);
+
   // History (undo/redo)
   const historyOps = useStateMachineHistory(
     states,
     selectedState,
-    (restoredStates, restoredSelectedState) => {
-      setStates(restoredStates);
-      setSelectedState(restoredSelectedState);
-    }
+    handleHistoryRestore
   );
   const {
     undo,
@@ -73,12 +79,15 @@ export const useStateMachineOrchestrator = () => {
     canRedo
   } = historyOps;
 
-  // Import/Export
-  const importExportOps = useStateMachineImportExport(states, (importedStates, filename) => {
+  // Import/Export callback - memoized to prevent infinite loops
+  const handleImportComplete = useCallback((importedStates, filename) => {
     replaceStates(importedStates);
     setCurrentFileName(filename);
     saveFileName(filename);
-  });
+  }, [replaceStates, setCurrentFileName, saveFileName]);
+
+  // Import/Export
+  const importExportOps = useStateMachineImportExport(states, handleImportComplete);
   const {
     importFile,
     exportStates,
@@ -215,7 +224,7 @@ export const useStateMachineOrchestrator = () => {
       const dictionary = JSON.parse(text);
       
       if (typeof dictionary !== 'object') {
-        throw new Error('Invalid dictionary format');
+        throw new TypeError('Invalid dictionary format');
       }
 
       addToChangeLogCore(`Imported rule dictionary from ${file.name}`);

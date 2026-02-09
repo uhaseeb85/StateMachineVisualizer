@@ -58,6 +58,63 @@ export class GraphSplittingService {
   }
 
   /**
+   * Finds outgoing edges for a state (states that this state points to)
+   * 
+   * @param {Object} state - The state object
+   * @param {Set} visited - Set of already visited state IDs
+   * @returns {Set} Set of connected state IDs
+   */
+  findOutgoingEdges(state, visited) {
+    const connectedIds = new Set();
+    state.rules.forEach(rule => {
+      if (rule.nextState && !visited.has(rule.nextState)) {
+        connectedIds.add(rule.nextState);
+      }
+    });
+    return connectedIds;
+  }
+
+  /**
+   * Finds incoming edges for a state (states that point to this state)
+   * 
+   * @param {string} stateId - The state ID to check
+   * @param {Array} states - All states
+   * @param {Set} visited - Set of already visited state IDs
+   * @returns {Set} Set of connected state IDs
+   */
+  findIncomingEdges(stateId, states, visited) {
+    const connectedIds = new Set();
+    states.forEach(s => {
+      if (s.id !== stateId) {
+        s.rules.forEach(rule => {
+          if (rule.nextState === stateId && !visited.has(s.id)) {
+            connectedIds.add(s.id);
+          }
+        });
+      }
+    });
+    return connectedIds;
+  }
+
+  /**
+   * Finds all connected states for a given state
+   * 
+   * @param {string} stateId - The state ID
+   * @param {Array} states - All states
+   * @param {Set} visited - Set of already visited state IDs
+   * @returns {Set} Set of connected state IDs
+   */
+  findAllConnectedStates(stateId, states, visited) {
+    const currentState = states.find(s => s.id === stateId);
+    if (!currentState) return new Set();
+
+    const outgoing = this.findOutgoingEdges(currentState, visited);
+    const incoming = this.findIncomingEdges(stateId, states, visited);
+    
+    return new Set([...outgoing, ...incoming]);
+  }
+
+  /**
    * Finds connected components in a graph using BFS
    * A connected component is a maximal set of states where every state
    * is reachable from every other state through some path
@@ -81,30 +138,8 @@ export class GraphSplittingService {
         const currentId = queue.shift();
         component.push(currentId);
 
-        // Find the current state object
-        const currentState = states.find(s => s.id === currentId);
-        if (!currentState) continue;
-
-        // Add all connected states to the queue
-        const connectedStateIds = new Set();
-
-        // Add states that are targets of this state's rules (outgoing edges)
-        currentState.rules.forEach(rule => {
-          if (rule.nextState && !visited.has(rule.nextState)) {
-            connectedStateIds.add(rule.nextState);
-          }
-        });
-
-        // Add states that have this state as a target in their rules (incoming edges)
-        states.forEach(s => {
-          if (s.id !== currentId) {
-            s.rules.forEach(rule => {
-              if (rule.nextState === currentId && !visited.has(s.id)) {
-                connectedStateIds.add(s.id);
-              }
-            });
-          }
-        });
+        // Find all connected states
+        const connectedStateIds = this.findAllConnectedStates(currentId, states, visited);
 
         // Process all connected states
         for (const id of connectedStateIds) {
@@ -311,10 +346,9 @@ export class GraphSplittingService {
    * Finds exit points - states in a partition that reference states outside
    * 
    * @param {Array} partitionStates - States in the partition
-   * @param {Array} allStates - All states in the graph
    * @returns {Array} Array of exit point state names
    */
-  findExitPoints(partitionStates, allStates) {
+  findExitPoints(partitionStates) {
     const partitionStateIds = new Set(partitionStates.map(s => s.id));
     const exitPoints = new Set();
 
@@ -374,7 +408,7 @@ export class GraphSplittingService {
       states: partitionStates,
       stateCount: uniqueStateIds.length,
       boundaries: boundaries.length,
-      boundary Edges: boundaries
+      boundaryEdges: boundaries
     };
   }
 

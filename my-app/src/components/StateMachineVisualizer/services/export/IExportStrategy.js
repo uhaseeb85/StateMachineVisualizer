@@ -5,6 +5,8 @@
  * Allows adding new export formats without modifying existing code (OCP).
  */
 
+/* eslint-disable no-unused-vars */
+
 /**
  * Export strategy interface
  * @interface
@@ -17,7 +19,7 @@ export class IExportStrategy {
    * @param {object} options - Additional export options
    * @returns {Promise<void>}
    */
-  async export(data, filename, options = {}) {
+  async export(_data, _filename, _options = {}) {
     throw new Error('Method not implemented');
   }
 

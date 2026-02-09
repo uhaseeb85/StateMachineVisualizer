@@ -90,7 +90,6 @@ export const useRuleOperations = (states, setStates, addToChangeLog = () => {}, 
         const rule = state.rules.find(r => r.id === ruleId);
         if (!rule) return state;
 
-        const targetState = states.find(s => s.id === (updates.nextState ?? rule.nextState));
         addToChangeLog(
           `Updated rule in state "${state.name}": ${rule.condition} → Modified`
         );

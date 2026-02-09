@@ -11,6 +11,98 @@ import { parseFile } from '../services/parsing/FileParserRegistry';
 import { getExportService } from '../services/export/ExportService';
 import { validateExcelData, sortRulesByPriority } from '../utils';
 
+const createStateId = () => `state-${Date.now()}-${Math.random()}`;
+const createRuleId = () => `rule-${Date.now()}-${Math.random()}`;
+
+const getRuleDescription = (ruleList, ruleDictionary) => {
+  let ruleDescription = ruleList;
+
+  for (const [key, description] of Object.entries(ruleDictionary)) {
+    if (ruleList.includes(key)) {
+      ruleDescription = description;
+      break;
+    }
+  }
+
+  return ruleDescription;
+};
+
+const buildStateMap = (rows, headers, indexes, ruleDictionary) => {
+  const stateMap = new Map();
+
+  rows.forEach(row => {
+    const sourceNode = row[headers[indexes.sourceNodeIndex]]?.trim();
+    const destNode = row[headers[indexes.destNodeIndex]]?.trim();
+    const ruleList = row[headers[indexes.ruleListIndex]]?.trim() || '';
+
+    if (!sourceNode) return;
+
+    if (!stateMap.has(sourceNode)) {
+      stateMap.set(sourceNode, {
+        id: createStateId(),
+        name: sourceNode,
+        rules: []
+      });
+    }
+
+    if (destNode && ruleList) {
+      const ruleDescription = getRuleDescription(ruleList, ruleDictionary);
+
+      stateMap.get(sourceNode).rules.push({
+        id: createRuleId(),
+        condition: ruleDescription,
+        nextState: null,
+        _targetStateName: destNode
+      });
+    }
+  });
+
+  return Array.from(stateMap.values());
+};
+
+const resolveRuleTargets = (importedStates) => {
+  const nameToId = new Map(importedStates.map(state => [state.name, state.id]));
+
+  return importedStates.map(state => ({
+    ...state,
+    rules: state.rules
+      .map(rule => ({
+        id: rule.id,
+        condition: rule.condition,
+        nextState: nameToId.get(rule._targetStateName) || null
+      }))
+      .filter(rule => rule.nextState !== null)
+  }));
+};
+
+const sortStateRules = (importedStates) => importedStates.map(state => ({
+  ...state,
+  rules: sortRulesByPriority(state.rules)
+}));
+
+const mergeImportedStates = (existingStates, importedStates) => {
+  const mergedMap = new Map();
+
+  existingStates.forEach(state => {
+    mergedMap.set(state.name, state);
+  });
+
+  importedStates.forEach(importedState => {
+    if (mergedMap.has(importedState.name)) {
+      const existing = mergedMap.get(importedState.name);
+      mergedMap.set(importedState.name, {
+        ...existing,
+        rules: [...existing.rules, ...importedState.rules]
+      });
+      return;
+    }
+
+    mergedMap.set(importedState.name, importedState);
+  });
+
+  return Array.from(mergedMap.values());
+};
+
 /**
  * Hook for import/export operations
  * Uses dependency-injected parsing and export services
@@ -45,94 +137,23 @@ export const useStateMachineImportExport = (states, onStatesImported) => {
       const { sourceNodeIndex, destNodeIndex, ruleListIndex, headers } = validateExcelData(rows);
 
       // Convert rows to state machine format
-      const stateMap = new Map();
-      
-      rows.forEach(row => {
-        const sourceNode = row[headers[sourceNodeIndex]]?.trim();
-        const destNode = row[headers[destNodeIndex]]?.trim();
-        const ruleList = row[headers[ruleListIndex]]?.trim() || '';
-
-        if (!sourceNode) return;
-
-        // Get or create source state
-        if (!stateMap.has(sourceNode)) {
-          stateMap.set(sourceNode, {
-            id: `state-${Date.now()}-${Math.random()}`,
-            name: sourceNode,
-            rules: []
-          });
-        }
-
-        const state = stateMap.get(sourceNode);
-
-        // Add rule if destination exists
-        if (destNode && ruleList) {
-          // Look up rule in dictionary
-          let ruleDescription = ruleList;
-          for (const [key, description] of Object.entries(ruleDictionary)) {
-            if (ruleList.includes(key)) {
-              ruleDescription = description;
-              break;
-            }
-          }
-
-          state.rules.push({
-            id: `rule-${Date.now()}-${Math.random()}`,
-            condition: ruleDescription,
-            nextState: null, // Will be resolved after all states are created
-            _targetStateName: destNode // Temporary field
-          });
-        }
-      });
-
-      // Convert map to array
-      let importedStates = Array.from(stateMap.values());
+      let importedStates = buildStateMap(
+        rows,
+        headers,
+        { sourceNodeIndex, destNodeIndex, ruleListIndex },
+        ruleDictionary
+      );
 
       // Resolve rule next state IDs
-      importedStates = importedStates.map(state => ({
-        ...state,
-        rules: state.rules.map(rule => {
-          const targetState = importedStates.find(s => s.name === rule._targetStateName);
-          return {
-            id: rule.id,
-            condition: rule.condition,
-            nextState: targetState ? targetState.id : null
-          };
-        }).filter(rule => rule.nextState !== null) // Remove rules with invalid targets
-      }));
+      importedStates = resolveRuleTargets(importedStates);
 
       // Sort rules by priority
-      importedStates = importedStates.map(state => ({
-        ...state,
-        rules: sortRulesByPriority(state.rules)
-      }));
+      importedStates = sortStateRules(importedStates);
 
       // Merge or replace
       let finalStates = importedStates;
       if (merge && states.length > 0) {
-        // Merge logic: combine states by name
-        const mergedMap = new Map();
-        
-        // Add existing states
-        states.forEach(state => {
-          mergedMap.set(state.name, state);
-        });
-        
-        // Add/merge imported states
-        importedStates.forEach(importedState => {
-          if (mergedMap.has(importedState.name)) {
-            // Merge rules
-            const existing = mergedMap.get(importedState.name);
-            mergedMap.set(importedState.name, {
-              ...existing,
-              rules: [...existing.rules, ...importedState.rules]
-            });
-          } else {
-            mergedMap.set(importedState.name, importedState);
-          }
-        });
-        
-        finalStates = Array.from(mergedMap.values());
+        finalStates = mergeImportedStates(states, importedStates);
       }
 
       // Notify caller

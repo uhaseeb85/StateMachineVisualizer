@@ -18,7 +18,7 @@ export class ExcelParser extends IFileParser {
    * @returns {boolean} True if file is Excel
    */
   canParse(file) {
-    if (!file || !file.name) return false;
+    if (!file?.name) return false;
     const extension = file.name.split('.').pop().toLowerCase();
     return this.getSupportedExtensions().includes(extension);
   }
