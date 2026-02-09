@@ -120,7 +120,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
   
   // Import confirmation modal state
   const [showImportConfirm, setShowImportConfirm] = useState(false);
-  const [pendingImportEvent, setPendingImportEvent] = useState(null);
+  const [pendingImportFile, setPendingImportFile] = useState(null);
   const [importFileName, setImportFileName] = useState('');
   const [isDuplicateName, setIsDuplicateName] = useState(false);
 
@@ -487,25 +487,24 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Shows confirmation modal if there are existing states or if filename already exists
    */
   const handleInitialImport = (event) => {
-    // We need to clone the event since the original will be cleared
-    const clonedEvent = {
-      target: {
-        files: event.target.files
-      }
-    };
+    const file = event.target.files[0];
     
-    const fileName = event.target.files[0]?.name || "file";
+    if (!file) {
+      return;
+    }
+    
+    const fileName = file.name || "file";
     
     // Only show confirmation if there are actual states
     const hasExistingStates = Array.isArray(states) && states.length > 0;
     
     if (hasExistingStates) {
-      setPendingImportEvent(clonedEvent);
+      setPendingImportFile(file);
       setImportFileName(fileName);
       setShowImportConfirm(true);
     } else {
       // No existing states, just import directly
-      handleExcelImport(clonedEvent, { replaceExisting: false });
+      handleExcelImport(file, { replaceExisting: false });
     }
   };
   
@@ -513,10 +512,10 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Handles import with replacing existing states
    */
   const handleReplaceImport = () => {
-    if (pendingImportEvent) {
-      handleExcelImport(pendingImportEvent, { replaceExisting: true });
+    if (pendingImportFile) {
+      handleExcelImport(pendingImportFile, { replaceExisting: true });
       setShowImportConfirm(false);
-      setPendingImportEvent(null);
+      setPendingImportFile(null);
     }
   };
   
@@ -524,10 +523,10 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
    * Handles import to display alongside existing states
    */
   const handleDisplayAlongsideImport = () => {
-    if (pendingImportEvent) {
-      handleExcelImport(pendingImportEvent, { replaceExisting: false });
+    if (pendingImportFile) {
+      handleExcelImport(pendingImportFile, { replaceExisting: false });
       setShowImportConfirm(false);
-      setPendingImportEvent(null);
+      setPendingImportFile(null);
     }
   };
 
@@ -539,7 +538,7 @@ const StateMachineVisualizerContent = ({ startTour, onChangeMode }) => {
     clearData();
     
     // Reset any pending import
-    setPendingImportEvent(null);
+    setPendingImportFile(null);
     setShowImportConfirm(false);
   };
 
