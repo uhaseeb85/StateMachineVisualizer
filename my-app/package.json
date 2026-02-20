@@ -8,7 +8,6 @@
     "build": "vite build",
     "build:tomcat": "cross-env DEPLOYMENT_ENV=tomcat vite build",
     "build:vercel": "vite build",
-    "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -26,7 +25,7 @@
     "@xenova/transformers": "^2.17.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "exceljs": "^4.4.0",
+    "exceljs": "4.4.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.4.7",
     "html-to-image": "^1.11.13",
@@ -50,16 +49,15 @@
     "@vitejs/plugin-react": "^4.2.2",
     "autoprefixer": "^10.4.17",
     "cross-env": "^7.0.3",
-    "eslint": "^9.17.0",
-    "eslint-plugin-react": "^7.37.2",
-    "eslint-plugin-react-hooks": "^5.0.0",
-    "eslint-plugin-react-refresh": "^0.4.16",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "vite": "^6.2.0"
   },
-  "main": "eslint.config.js",
+  "overrides": {
+    "minimatch": "^10.2.1",
+    "glob": "^11.0.0"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

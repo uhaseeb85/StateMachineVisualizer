@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 
 /**
@@ -21,15 +20,20 @@ const ChatMessage = ({ message, index }) => {
     new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
     "Unknown time";
   
+  // Determine message style based on role and error state
+  let messageStyleClass;
+  if (isUser) {
+    messageStyleClass = 'bg-blue-500 text-white rounded-tr-none';
+  } else if (message.isError) {
+    messageStyleClass = 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-tl-none border border-red-200 dark:border-red-800';
+  } else {
+    messageStyleClass = 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-tl-none';
+  }
+  
   return (
     <div className={`mb-4 ${isUser ? 'text-right' : 'text-left'}`}>
       <div className={`inline-block max-w-[80%] px-4 py-3 rounded-lg border ${isUser ? 'border-blue-300' : 'border-gray-300'}
-        ${isUser 
-          ? 'bg-blue-500 text-white rounded-tr-none' 
-          : message.isError 
-            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-tl-none border border-red-200 dark:border-red-800'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-tl-none'
-        }`}
+        ${messageStyleClass}`}
       >
         <div className="font-medium text-sm mb-1">
           {isUser ? 'You' : 'AI Assistant'}
