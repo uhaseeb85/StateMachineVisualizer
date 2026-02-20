@@ -91,10 +91,14 @@ export const DEFAULT_CLASSIFICATION_RULES = [
 ];
 
 /**
- * Test if a regex pattern matches the step name
+ * Test if a regex pattern matches the step name.
+ * Case sensitivity is controlled by the rule's caseSensitive field.
+ * Regex rules default to case-sensitive (no 'i' flag) so that patterns like
+ * ^[A-Z][A-Z0-9_\s]*$ correctly match only ALL-CAPS identifiers.
  */
-const testRegexPattern = (pattern, stepName) => {
-  const regex = new RegExp(pattern, 'i');
+const testRegexPattern = (pattern, stepName, caseSensitive = true) => {
+  const flags = caseSensitive ? '' : 'i';
+  const regex = new RegExp(pattern, flags);
   return regex.test(stepName);
 };
 
@@ -123,7 +127,10 @@ const testSimplePattern = (pattern, matchType, stepName, lowerStepName) => {
  */
 const checkRuleMatch = (rule, stepName, lowerStepName) => {
   if (rule.patternType === 'regex') {
-    return testRegexPattern(rule.pattern, stepName);
+    // Regex rules are case-sensitive by default unless the rule explicitly opts out.
+    // This ensures ALL-CAPS patterns like ^[A-Z][A-Z0-9_\s]*$ work correctly.
+    const caseSensitive = rule.caseSensitive !== false;
+    return testRegexPattern(rule.pattern, stepName, caseSensitive);
   }
   return testSimplePattern(rule.pattern, rule.matchType, stepName, lowerStepName);
 };
@@ -196,78 +203,124 @@ const getNextStepIdFromConnections = (connectionsBySource, fromStepId) => {
   return nextConnections?.[0]?.toStepId || null;
 };
 
+const getNextStepIdsFromConnections = (connectionsBySource, fromStepId) => {
+  const nextConnections = connectionsBySource.get(fromStepId);
+  return nextConnections ? nextConnections.map(c => c.toStepId) : [];
+};
+
 const followRuleBehaviorChainToState = ({ startStepId, connectionsBySource, getStepType, getStepLabel }) => {
-  const ruleChain = [];
-  let currentStepId = startStepId;
+  // Use BFS to fan out across all branches from rule/behavior nodes, collecting
+  // every (ruleChain, destinationState) pair. This handles cases where a rule
+  // or behavior node has multiple outgoing connections.
+  const results = [];
+
+  // Each queue entry tracks the current step and the rule labels accumulated so far.
+  const queue = [{ stepId: startStepId, ruleChain: [] }];
   const visited = new Set();
 
-  while (currentStepId && !visited.has(currentStepId)) {
+  while (queue.length > 0) {
+    const { stepId: currentStepId, ruleChain } = queue.shift();
+
+    if (!currentStepId || visited.has(currentStepId)) continue;
     visited.add(currentStepId);
 
     const currentType = getStepType(currentStepId);
+
     if (currentType === 'rule') {
-      ruleChain.push(getStepLabel(currentStepId));
-      currentStepId = getNextStepIdFromConnections(connectionsBySource, currentStepId);
+      const label = getStepLabel(currentStepId);
+      const nextIds = getNextStepIdsFromConnections(connectionsBySource, currentStepId);
+      if (nextIds.length === 0) {
+        // Dead-end rule chain — emit with empty destination
+        results.push({ ruleList: [...ruleChain, label].join(' + '), destinationNode: '' });
+      } else {
+        nextIds.forEach(nextId => {
+          queue.push({ stepId: nextId, ruleChain: [...ruleChain, label] });
+        });
+      }
       continue;
     }
 
     if (currentType === 'behavior') {
-      currentStepId = getNextStepIdFromConnections(connectionsBySource, currentStepId);
+      const nextIds = getNextStepIdsFromConnections(connectionsBySource, currentStepId);
+      if (nextIds.length === 0) {
+        results.push({ ruleList: ruleChain.join(' + '), destinationNode: '' });
+      } else {
+        nextIds.forEach(nextId => {
+          queue.push({ stepId: nextId, ruleChain: [...ruleChain] });
+        });
+      }
       continue;
     }
 
-    return {
-      ruleList: ruleChain.join(' + '),
-      destinationNode: getStepLabel(currentStepId)
-    };
+    // Landed on a state (or unknown type defaults to state)
+    results.push({ ruleList: ruleChain.join(' + '), destinationNode: getStepLabel(currentStepId) });
   }
 
-  return {
-    ruleList: ruleChain.join(' + '),
-    destinationNode: ''
-  };
+  // Return all discovered transitions. Callers that only expect one result get the
+  // first; callers that support multiple get the full array.
+  return results.length > 0
+    ? results
+    : [{ ruleList: '', destinationNode: '' }];
 };
 
 const skipBehaviorChain = ({ startStepId, connectionsBySource, getStepType }) => {
-  let currentStepId = startStepId;
+  // BFS skip: traverse all consecutive behavior nodes and return every
+  // non-behavior step reachable at the end of the behavior chain.
+  const results = [];
+  const queue = [startStepId];
   const visited = new Set();
 
-  while (currentStepId && !visited.has(currentStepId) && getStepType(currentStepId) === 'behavior') {
+  while (queue.length > 0) {
+    const currentStepId = queue.shift();
+    if (!currentStepId || visited.has(currentStepId)) continue;
     visited.add(currentStepId);
-    currentStepId = getNextStepIdFromConnections(connectionsBySource, currentStepId);
+
+    if (getStepType(currentStepId) === 'behavior') {
+      const nextIds = getNextStepIdsFromConnections(connectionsBySource, currentStepId);
+      nextIds.forEach(id => queue.push(id));
+    } else {
+      results.push(currentStepId);
+    }
   }
 
-  return currentStepId;
+  return results;
 };
 
 const resolveStateConnection = ({ toStepId, connectionsBySource, getStepType, getStepLabel }) => {
   const toType = getStepType(toStepId);
 
   if (toType === 'rule') {
+    // followRuleBehaviorChainToState already fans out over all branches and
+    // returns an array of { ruleList, destinationNode } results.
     return followRuleBehaviorChainToState({ startStepId: toStepId, connectionsBySource, getStepType, getStepLabel });
   }
 
   if (toType === 'behavior') {
     const nextAfterBehaviors = skipBehaviorChain({ startStepId: toStepId, connectionsBySource, getStepType });
-    if (!nextAfterBehaviors) {
-      return { ruleList: '', destinationNode: '' };
+
+    if (nextAfterBehaviors.length === 0) {
+      // Pure behavior cycle with no exit — warn via empty sentinel
+      return [{ ruleList: '', destinationNode: '', _cycleWarning: true }];
     }
 
-    const nextType = getStepType(nextAfterBehaviors);
-    if (nextType === 'rule') {
-      return followRuleBehaviorChainToState({ startStepId: nextAfterBehaviors, connectionsBySource, getStepType, getStepLabel });
-    }
+    // Fan out from each non-behavior step reached after skipping the chain
+    const results = [];
+    nextAfterBehaviors.forEach(nextStepId => {
+      const nextType = getStepType(nextStepId);
+      if (nextType === 'rule') {
+        const subResults = followRuleBehaviorChainToState({ startStepId: nextStepId, connectionsBySource, getStepType, getStepLabel });
+        results.push(...subResults);
+      } else {
+        // Behavior leads directly to a state (no rule) — empty ruleList is intentional
+        results.push({ ruleList: '', destinationNode: getStepLabel(nextStepId) });
+      }
+    });
 
-    if (nextType === 'behavior') {
-      return { ruleList: '', destinationNode: '' };
-    }
-
-    // Behavior leads directly to a state (no rule) - flag via validation ruleList empty.
-    return { ruleList: '', destinationNode: getStepLabel(nextAfterBehaviors) };
+    return results.length > 0 ? results : [{ ruleList: '', destinationNode: '' }];
   }
 
   // Normal state-to-state connection
-  return { ruleList: 'TRUE', destinationNode: getStepLabel(toStepId) };
+  return [{ ruleList: 'TRUE', destinationNode: getStepLabel(toStepId) }];
 };
 
 /**
@@ -325,16 +378,18 @@ const convertToStateMachineRows = (steps, connections) => {
         operation: ''
       });
     } else {
-      // Add a row for each connection
+      // Each connection may resolve to multiple rows (branching through rules/behaviors)
       stepConnections.forEach(conn => {
-        const { ruleList, destinationNode } = resolveConnection(conn.toStepId);
-        
-        rows.push({
-          sourceNode: sourceName,
-          destinationNode,
-          ruleList,
-          priority: priority++,
-          operation: ''
+        const resolved = resolveConnection(conn.toStepId);
+        resolved.forEach(({ ruleList, destinationNode, _cycleWarning }) => {
+          rows.push({
+            sourceNode: sourceName,
+            destinationNode,
+            ruleList,
+            priority: priority++,
+            operation: '',
+            _cycleWarning: _cycleWarning || false
+          });
         });
       });
     }
@@ -642,6 +697,14 @@ const ClassificationRulesEditor = ({ rules, onUpdateRules }) => {
     onUpdateRules(updatedRules);
   };
 
+  const handleRuleChanges = (ruleId, updates) => {
+    const updatedRules = localRules.map(rule =>
+      rule.id === ruleId ? { ...rule, ...updates } : rule
+    );
+    setLocalRules(updatedRules);
+    onUpdateRules(updatedRules);
+  };
+
   const handleAddRule = () => {
     const newRule = {
       id: `rule-${Date.now()}`,
@@ -854,10 +917,12 @@ const ClassificationRulesEditor = ({ rules, onUpdateRules }) => {
                     <select
                       value={rule.patternType}
                       onChange={(e) => {
-                        handleRuleChange(rule.id, 'patternType', e.target.value);
-                        if (e.target.value === 'regex') {
-                          handleRuleChange(rule.id, 'matchType', 'regex');
-                        }
+                        const newPatternType = e.target.value;
+                        // Batch both updates in one state write to avoid stale-state overwrite
+                        handleRuleChanges(rule.id, {
+                          patternType: newPatternType,
+                          ...(newPatternType === 'regex' ? { matchType: 'regex' } : {})
+                        });
                       }}
                       className="h-8 w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2"
                     >
@@ -1141,6 +1206,16 @@ const validateStateMachineRows = (rows, steps = [], connections = [], selectedRo
       });
     }
 
+    if (row._cycleWarning) {
+      addIssue({
+        id: `warn-behavior-cycle-${index}`,
+        row: index,
+        type: 'warning',
+        message: `Row ${rowNum}: Behavior cycle detected — a behavior node loops back to itself with no exit.`,
+        suggestion: 'Add a connection from the behavior chain to a state or remove the cycle.'
+      });
+    }
+
     if (source && destination && source === destination && (!ruleList || ruleList.toUpperCase() === 'TRUE')) {
       addIssue({
         id: `err-self-loop-${index}`,
@@ -1152,18 +1227,21 @@ const validateStateMachineRows = (rows, steps = [], connections = [], selectedRo
     }
   });
 
-  // Alias format checks
-  steps.forEach((step) => {
-    const alias = normalize(step.alias);
-    if (alias && !aliasPattern.test(alias)) {
-      addIssue({
-        id: `err-alias-format-${step.id}`,
-        type: 'error',
-        message: `Alias "${alias}" contains illegal characters or spaces.`,
-        suggestion: 'Use only letters, numbers, and underscores in aliases.'
-      });
-    }
-  });
+  // Alias format checks — only applies to state-typed steps since rules and
+  // behaviors never appear as source/destination nodes in the CSV output.
+  steps
+    .filter(step => (step.type || 'state') === 'state')
+    .forEach((step) => {
+      const alias = normalize(step.alias);
+      if (alias && !aliasPattern.test(alias)) {
+        addIssue({
+          id: `err-alias-format-${step.id}`,
+          type: 'error',
+          message: `Alias "${alias}" contains illegal characters or spaces.`,
+          suggestion: 'Use only letters, numbers, and underscores in aliases.'
+        });
+      }
+    });
 
   // Orphan sub-steps (missing/invalid parentId)
   steps.forEach((step) => {
@@ -1219,9 +1297,12 @@ const validateStateMachineRows = (rows, steps = [], connections = [], selectedRo
     }
   });
 
-  // Disconnected nodes (not reachable from selected roots)
+  // Disconnected nodes (not reachable from selected roots).
+  // Only check steps that were actually passed in (the filtered set) — steps
+  // from deliberately-excluded root branches must not generate spurious warnings.
+  const filteredStepIds = new Set(steps.map(s => s.id));
   const rootIds = selectedRootStepIds.length > 0
-    ? selectedRootStepIds
+    ? selectedRootStepIds.filter(id => filteredStepIds.has(id))
     : steps.filter((s) => !s.parentId).map((s) => s.id);
 
   if (rootIds.length > 0) {
@@ -1524,16 +1605,17 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
     return convertToStateMachineRows(filteredSteps, filteredConnections);
   }, [filteredSteps, filteredConnections, isOpen]);
 
-  // Refresh CSV preview on open to sync with Step Panel changes
+  // Reset manual-edits flag and clear validation when the modal is opened.
+  // This is intentionally separate from the csvRows sync below so that opening
+  // the modal always starts with a clean slate without touching editableRows twice.
   useEffect(() => {
     if (!isOpen) return;
     hasManualEditsRef.current = false;
     setValidationResults(null);
-    const refreshedRows = convertToStateMachineRows(filteredSteps, filteredConnections);
-    setEditableRows(refreshedRows);
-  }, [isOpen, filteredSteps, filteredConnections]);
-  
-  // Update editable rows when csvRows change (unless user has edited cells)
+  }, [isOpen]);
+
+  // Sync editable rows whenever the computed rows change, unless the user has
+  // manually edited a cell since the modal was opened.
   useEffect(() => {
     if (!isOpen) return;
     if (hasManualEditsRef.current) return;
@@ -1964,7 +2046,7 @@ const ConvertToStateMachineModal = ({ isOpen, onClose, steps, connections, onUpd
           </Button>
           <Button 
             onClick={handleExportCSV} 
-            disabled={csvRows.length === 0}
+            disabled={editableRows.length === 0}
             className="bg-emerald-600 hover:bg-emerald-500 text-white"
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" />
